@@ -1,262 +1,91 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Image,
-  Modal,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import { LivePanel } from './src/components/LivePanel';
+import { NewsCard } from './src/components/NewsCard';
+import { PlayerCard } from './src/components/PlayerCard';
 import { seedContent } from './src/data/seed';
 import { loadContent, resetContent, saveContent } from './src/services/content-store';
-import { AppContent, Fixture, FixtureStatus, NewsArticle, Player } from './src/types';
+import { colors, radii } from './src/theme';
+import { AppContent, Fixture, LiveEvent, NewsArticle, Player } from './src/types';
 
-type Tab = 'home' | 'news' | 'live' | 'stats' | 'club' | 'admin';
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-
-const tabs: Array<{ key: Tab; label: string; icon: IconName }> = [
-  { key: 'home', label: 'Home', icon: 'home-variant-outline' },
+type Tab = 'home' | 'news' | 'live' | 'club' | 'admin';
+type AdminView = 'players' | 'news' | 'live';
+const tabs: Array<{ key: Tab; label: string; icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'] }> = [
+  { key: 'home', label: 'Home', icon: 'home-outline' },
   { key: 'news', label: 'News', icon: 'newspaper-variant-outline' },
   { key: 'live', label: 'Live', icon: 'broadcast' },
-  { key: 'stats', label: 'Stats', icon: 'chart-bar' },
-  { key: 'club', label: 'Club', icon: 'shield-outline' },
+  { key: 'club', label: 'Rosa', icon: 'account-group-outline' },
 ];
+const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
+const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-const roleIcon: Record<Player['role'], IconName> = {
-  Portiere: 'shield-account-outline',
-  Difensore: 'shield-outline',
-  Centrocampista: 'transit-connection-variant',
-  Attaccante: 'target',
-};
+export default function App() {
+  const [content, setContent] = useState<AppContent>(seedContent);
+  const [tab, setTab] = useState<Tab>('home');
+  const [adminView, setAdminView] = useState<AdminView>('players');
+  const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
+  useEffect(() => { loadContent().then(setContent); }, []);
+  const commit = async (next: AppContent) => { const stamped = { ...next, updatedAt: stamp() }; setContent(stamped); await saveContent(stamped); };
+  const liveFixture = useMemo(() => content.fixtures.find((fixture) => fixture.status === 'live') ?? content.fixtures[0], [content.fixtures]);
 
-const stamp = () =>
-  new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
-
-function statusMeta(status: FixtureStatus, minute?: number) {
-  if (status === 'live') return { label: `${minute ?? 0}' LIVE`, color: colors.live };
-  if (status === 'final') return { label: 'FINALE', color: colors.muted };
-  return { label: 'PROSSIMA', color: colors.accent }; 
-}
-
-function AppMark() {
   return (
-    <View style={styles.appMark}>
-      <Image source={require('./assets/ac-prato-crest.png')} resizeMode="contain" style={styles.appMarkImage} />
-    </View>
+    <SafeAreaView style={styles.safe}>
+      <StatusBar style="light" />
+      <View style={styles.header}>
+        <View style={styles.brand}><Image source={require('./assets/ac-prato-crest.png')} style={styles.logo} /><View><Text style={styles.brandTop}>AC PRATO</Text><Text style={styles.brandBottom}>SPORT</Text></View></View>
+        <Pressable style={styles.adminButton} onPress={() => setTab(tab === 'admin' ? 'home' : 'admin')}><MaterialCommunityIcons name="cog-outline" size={21} color={colors.paper} /></Pressable>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        {tab === 'home' ? <Home content={content} onNews={setSelectedNews} onTab={setTab} /> : null}
+        {tab === 'news' ? <Screen title="News"><View style={styles.stack}>{content.news.map((article) => <NewsCard key={article.id} article={article} onPress={() => setSelectedNews(article)} />)}</View></Screen> : null}
+        {tab === 'live' && liveFixture ? <Screen title="Live"><LivePanel fixture={liveFixture} /></Screen> : null}
+        {tab === 'club' ? <Screen title="Rosa"><View style={styles.stack}>{content.players.map((player) => <PlayerCard key={player.id} player={player} />)}</View></Screen> : null}
+        {tab === 'admin' ? <Admin content={content} view={adminView} setView={setAdminView} onChange={commit} onReset={async () => setContent(await resetContent())} /> : null}
+      </ScrollView>
+      {tab !== 'admin' ? <View style={styles.nav}>{tabs.map((item) => <Pressable key={item.key} onPress={() => setTab(item.key)} style={[styles.navItem, tab === item.key && styles.navItemActive]}><MaterialCommunityIcons name={item.icon} size={22} color={tab === item.key ? colors.ink : colors.muted} /><Text style={[styles.navText, tab === item.key && styles.navTextActive]}>{item.label}</Text></Pressable>)}</View> : null}
+      <Modal visible={!!selectedNews} animationType="slide" onRequestClose={() => setSelectedNews(null)}><SafeAreaView style={styles.modal}><Pressable onPress={() => setSelectedNews(null)} style={styles.close}><MaterialCommunityIcons name="close" size={24} color={colors.ink} /></Pressable><ScrollView contentContainerStyle={styles.article}>{selectedNews?.imageUrl ? <Image source={{ uri: selectedNews.imageUrl }} style={styles.articleImage} /> : null}<Text style={styles.eyebrow}>{selectedNews?.category}</Text><Text style={styles.articleTitle}>{selectedNews?.title}</Text><Text style={styles.articleBody}>{selectedNews?.body ?? selectedNews?.summary}</Text></ScrollView></SafeAreaView></Modal>
+    </SafeAreaView>
   );
 }
 
-function IconButton({ icon, label, onPress, active }: { icon: IconName; label?: string; onPress: () => void; active?: boolean }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.iconButton, active && styles.iconButtonActive]}>
-      <MaterialCommunityIcons name={icon} size={20} color={active ? colors.ink : colors.paper} />
-    </Pressable>
-  );
-}
-
-function TabButton({ item, active, onPress, compact }: { item: (typeof tabs)[number]; active: boolean; onPress: () => void; compact?: boolean }) {
-  return (
-    <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.tabButton, compact && styles.tabButtonCompact, active && styles.tabButtonActive, compact && active && styles.tabButtonCompactActive]}>
-      <MaterialCommunityIcons name={item.icon} size={compact ? 21 : 19} color={active ? colors.inkSoft : colors.muted} />
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{item.label}</Text>
-    </Pressable>
-  );
-}
-
-function SectionTitle({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
-  return (
-    <View style={styles.sectionTitleRow}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {action && onAction ? (
-        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={8}>
-          <Text style={styles.sectionAction}>{action}</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
-function FixtureCard({ fixture, featured = false }: { fixture: Fixture; featured?: boolean }) {
-  const meta = statusMeta(fixture.status, fixture.minute);
-  const hasScore = fixture.homeScore !== undefined && fixture.awayScore !== undefined;
-
-  return (
-    <View style={[styles.fixtureCard, featured && styles.fixtureCardFeatured]}>
-      <View style={styles.fixtureTopLine}>
-        <Text style={styles.fixtureCompetition}>{fixture.competition}</Text>
-        <View style={[styles.statusPill, { backgroundColor: meta.color }]}>
-          {fixture.status === 'live' ? <View style={styles.liveDot} /> : null}
-          <Text style={styles.statusPillText}>{meta.label}</Text>
-        </View>
-      </View>
-      <Text style={styles.fixtureMatchday}>{fixture.matchday}</Text>
-      <View style={styles.scoreRow}>
-        <Text numberOfLines={1} style={styles.teamName}>{fixture.home}</Text>
-        <View style={styles.scoreBlock}>
-          {hasScore ? (
-            <Text style={styles.scoreText}>{fixture.homeScore} - {fixture.awayScore}</Text>
-          ) : (
-            <Text style={styles.kickoffText}>{fixture.time}</Text>
-          )}
-        </View>
-        <Text numberOfLines={1} style={[styles.teamName, styles.teamAway]}>{fixture.away}</Text>
-      </View>
-      <View style={styles.fixtureFooter}>
-        <Text style={styles.fixtureFooterText}>{fixture.dateLabel}  |  {fixture.venue}</Text>
-      </View>
-    </View>
-  );
-}
-
-function StandingsTable({ content }: { content: AppContent }) {
-  return (
-    <View style={styles.standingsTable}>
-      <View style={styles.standingsHeader}>
-        <Text style={[styles.standingsHeaderText, styles.rankColumn]}>#</Text>
-        <Text style={[styles.standingsHeaderText, styles.clubColumn]}>SQUADRA</Text>
-        <Text style={styles.standingsHeaderText}>G</Text>
-        <Text style={styles.standingsHeaderText}>PT</Text>
-      </View>
-      {content.standings.map((row) => (
-        <View key={row.club} style={[styles.standingRow, row.club === 'Prato' && styles.standingRowPrato]}>
-          <Text style={[styles.rankText, styles.rankColumn]}>{row.rank}</Text>
-          <View style={styles.clubColumn}>
-            <Text numberOfLines={1} style={[styles.clubText, row.club === 'Prato' && styles.clubTextPrato]}>{row.club}</Text>
-            <View style={styles.formRow}>
-              {row.form.slice(-5).map((item, index) => (
-                <View key={`${row.club}-${index}`} style={[styles.formDot, item === 'W' ? styles.formWin : item === 'D' ? styles.formDraw : styles.formLoss]} />
-              ))}
-            </View>
-          </View>
-          <Text style={styles.playedText}>{row.played}</Text>
-          <Text style={[styles.pointsText, row.club === 'Prato' && styles.pointsTextPrato]}>{row.points}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function NewsCard({ article, onPress, featured = false }: { article: NewsArticle; onPress: () => void; featured?: boolean }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.newsCard, featured && styles.newsCardFeatured]}>
-      <View style={styles.newsMetaRow}>
-        <Text style={styles.newsCategory}>{article.category}</Text>
-        <Text style={styles.newsDate}>{article.publishedAt}</Text>
-      </View>
-      <Text style={[styles.newsTitle, featured && styles.newsTitleFeatured]}>{article.title}</Text>
-      <Text numberOfLines={featured ? 3 : 2} style={styles.newsSummary}>{article.summary}</Text>
-      <View style={styles.newsSourceRow}>
-        <MaterialCommunityIcons name="arrow-top-right" size={16} color={colors.inkSoft} />
-        <Text style={styles.newsSource}>{article.source}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
-function LiveScoreCard({ fixture, onPress }: { fixture: Fixture; onPress?: () => void }) {
-  const hasScore = fixture.homeScore !== undefined && fixture.awayScore !== undefined;
-
-  return (
-    <Pressable accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={styles.liveScoreCard}>
-      <View style={styles.liveScoreTop}>
-        <Text style={styles.liveScoreCompetition}>{fixture.competition.toUpperCase()} Â· {fixture.matchday.toUpperCase()}</Text>
-        <View style={styles.liveBadge}><View style={styles.liveBadgeDot} /><Text style={styles.liveBadgeText}>{fixture.isDemo ? 'DEMO LIVE' : "LIVE"}</Text></View>
-      </View>
-      <View style={styles.liveTeamsRow}>
-        <View style={styles.liveTeam}><AppMark /><Text style={styles.liveTeamName}>{fixture.home}</Text></View>
-        <View style={styles.liveScoreCenter}>
-          <Text style={styles.liveScoreValue}>{hasScore ? `${fixture.homeScore} - ${fixture.awayScore}` : fixture.time}</Text>
-          <Text style={styles.liveMinute}>{fixture.status === 'live' ? `${fixture.minute ?? 0}'` : fixture.dateLabel}</Text>
-        </View>
-        <View style={styles.liveTeam}><View style={styles.opponentBadge}><Text style={styles.opponentBadgeText}>{fixture.away.slice(0, 1)}</Text></View><Text style={styles.liveTeamName}>{fixture.away}</Text></View>
-      </View>
-    </Pressable>
-  );
-}
-
-function HomeScreen({ content, onTab, onNews }: { content: AppContent; onTab: (tab: Tab) => void; onNews: (news: NewsArticle) => void }) {
-  const primaryFixture = content.fixtures.find((fixture) => fixture.status === 'live') ?? content.fixtures.find((fixture) => fixture.status === 'scheduled') ?? content.fixtures[0];
-  const featuredNews = content.news.find((article) => article.featured) ?? content.news[0];
-
-  return (
-    <>
-      <View style={styles.homeIntro}>
-        <Text style={styles.pageEyebrow}>STAGIONE 2026/27</Text>
-        <Text style={styles.homeTitle}>AC Prato Sport</Text>
-        <Text style={styles.homeDescription}>News, live, Serie D e tutto il club in un unico posto.</Text>
-      </View>
-      {primaryFixture ? (
-        <View style={styles.homeFixtureWrap}>
-          <SectionTitle title="Partita in corso" action="Apri diretta" onAction={() => onTab('live')} />
-          <LiveScoreCard fixture={primaryFixture} onPress={() => onTab('live')} />
-        </View>
-      ) : null}
-      {featuredNews ? (
-        <View style={styles.contentSection}>
-          <SectionTitle title="Ultime news" action="Tutte le news" onAction={() => onTab('news')} />
-          <NewsCard article={featuredNews} featured onPress={() => onNews(featuredNews)} />
-        </View>
-      ) : null}
-      <View style={styles.contentSection}>
-        <SectionTitle title="Classifica" action="Statistiche" onAction={() => onTab('stats')} />
-        <StandingsTable content={content} />
-      </View>
-    </>
-  );
-}
-
-const liveEvents: Array<{ minute: string; icon: IconName; title: string; team: string; description: string; score?: string }> = [
-  { minute: '67', icon: 'information-outline', title: 'Occasione', team: 'AC PRATO', description: 'Azione pericolosa dalla destra, conclusione alta di poco.' },
-  { minute: '54', icon: 'soccer', title: 'Pareggio Tau', team: 'TAU ALTOPASCIO', description: 'Conclusione dal limite dopo una respinta corta.', score: '1-1' },
-  { minute: '31', icon: 'card-outline', title: 'Ammonizione Tau', team: 'TAU ALTOPASCIO', description: 'Intervento in ritardo a centrocampo.' },
-  { minute: '18', icon: 'soccer', title: 'Gol AC Prato', team: 'AC PRATO', description: 'Inserimento sul primo palo e vantaggio biancazzurro.', score: '1-0' },
-  { minute: '1', icon: 'information-outline', title: 'Inizio partita', team: 'SISTEMA', description: 'Partiti al Lungobisenzio.' },
-];
-
-const pitchPositions = [
-  { bottom: 10, left: '37%' },
-  { bottom: '27%', left: '5%' }, { bottom: '27%', left: '37%' }, { bottom: '27%', right: '5%' },
-  { bottom: '48%', left: '2%' }, { bottom: '48%', left: '25%' }, { bottom: '48%', left: '49%' }, { bottom: '48%', right: '2%' },
-  { top: '17%', left: '15%' }, { top: '17%', right: '15%' }, { top: '5%', left: '37%' },
-] as const;
-
-function LiveScreen({ content }: { content: AppContent }) {
-  const [view, setView] = useState<'diretta' | 'formazioni' | 'tabellino'>('diretta');
+function Home({ content, onNews, onTab }: { content: AppContent; onNews: (item: NewsArticle) => void; onTab: (tab: Tab) => void }) {
   const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0];
-  const lineup = ['Furghieri', 'Berizzi', 'Polvani', 'Risaliti', 'Zanon', 'Lattarulo', 'Greselin', 'Fiorini', 'Cesari', 'Rossetti', 'Verde'];
+  const article = content.news.find((item) => item.featured) ?? content.news[0];
+  return <View style={styles.stack}><View style={styles.hero}><Text style={styles.heroKicker}>STAGIONE 2026/27</Text><Text style={styles.heroTitle}>Tutto il Prato, sempre con te.</Text><Text style={styles.heroCopy}>Notizie, rosa e aggiornamenti live in unâ€™unica app.</Text></View>{fixture ? <Pressable onPress={() => onTab('live')}><LivePanel fixture={{ ...fixture, liveEvents: [] }} /></Pressable> : null}{article ? <><Text style={styles.sectionLabel}>Ultime notizie</Text><NewsCard article={article} onPress={() => onNews(article)} /></> : null}</View>;
+}
+function Screen({ title, children }: { title: string; children: React.ReactNode }) { return <View><Text style={styles.pageTitle}>{title}</Text>{children}</View>; }
 
-  return (
-    <View style={styles.pageSection}>
-      <Text style={styles.pageEyebrow}>CENTRO PARTITA</Text>
-      <Text style={styles.pageTitle}>Live</Text>
-      {fixture ? <LiveScoreCard fixture={fixture} /> : null}
-      <View style={styles.liveTabs}>
-        {([
-          ['diretta', 'broadcast', 'Diretta'],
-          ['formazioni', 'account-group-outline', 'Formazioni'],
-          ['tabellino', 'text-box-outline', 'Tabellino'],
-        ] as Array<[typeof view, IconName, string]>).map(([key, icon, label]) => (
-          <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: view === key }} onPress={() => setView(key)} style={[styles.liveTab, view === key && styles.liveTabActive]}>
-            <MaterialCommunityIcons name={icon} size={16} color={view === key ? colors.inkSoft : colors.muted} />
-            <Text style={[styles.liveTabText, view === key && styles.liveTabTextActive]}>{label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      {view === 'diretta' ? <View style={styles.liveEventStack}>{liveEvents.map((event) => <View key={`${event.minute}-${event.title}`} style={styles.liveEventCard}><View style={styles.eventMinute}><Text style={styles.eventMinuteText}>{event.minute}'</Text></View><View style={styles.eventIcon}><MaterialCommunityIcons name={event.icon} size={20} color={event.icon === 'soccer' ? colors.success : colors.inkSoft} /></View><View style={styles.eventContent}><Text style={styles.eventTitle}>{event.title}</Text><Text style={styles.eventTeam}>{event.team}</Text><Text style={styles.eventDescription}>{event.description}</Text>{event.score ? <View style={styles.eventScore}><Text style={styles.eventScoreText}>{event.score}</Text></View> : null}</View></View>)}</View> : null}
-      {view === 'formazioni' ? <View style={styles.formationPanel}><View style={styles.formationTitleRow}><Text style={styles.formationTitle}>AC Prato</Text><View style={styles.formationPill}><Text style={styles.formationPillText}>3-5-2</Text></View></View><View style={styles.pitch}><View style={styles.pitchBoxTop} /><View style={styles.pitchMidLine} /><View style={styles.pitchCircle} />{lineup.map((player, index) => <View key={player} style={[styles.pitchPlayer, pitchPositions[index]]}><Text numberOfLines={1} style={styles.pitchPlayerText}>{player}</Text></View>)}</View><Text style={styles.formationNote}>Formazione dimostrativa. Il pannello admin potra confermare titolari e panchina.</Text></View> : null}
-      {view === 'tabellino' ? <View style={styles.matchSheet}><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Modulo</Text><Text style={styles.matchSheetValue}>3-5-2</Text></View><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Stadio</Text><Text style={styles.matchSheetValue}>Lungobisenzio</Text></View><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Marcatori</Text><Text style={styles.matchSheetValue}>18' AC Prato Â· 54' Tau</Text></View><Text style={styles.matchSheetNote}>I dati di questa partita sono dimostrativi.</Text></View> : null}
-    </View>
-  );
+function Admin({ content, view, setView, onChange, onReset }: { content: AppContent; view: AdminView; setView: (view: AdminView) => void; onChange: (next: AppContent) => Promise<void>; onReset: () => Promise<void> }) {
+  return <View><Text style={styles.pageTitle}>Pannello admin</Text><Text style={styles.adminIntro}>Gestisci contenuti, rosa e diretta. Al momento i dati restano sul dispositivo.</Text><View style={styles.segment}>{(['players','news','live'] as AdminView[]).map((item) => <Pressable key={item} onPress={() => setView(item)} style={[styles.segmentButton, view === item && styles.segmentActive]}><Text style={[styles.segmentText, view === item && styles.segmentTextActive]}>{item === 'players' ? 'Rosa' : item === 'news' ? 'News' : 'Live'}</Text></Pressable>)}</View>{view === 'players' ? <PlayersAdmin content={content} onChange={onChange} /> : null}{view === 'news' ? <NewsAdmin content={content} onChange={onChange} /> : null}{view === 'live' ? <LiveAdmin content={content} onChange={onChange} /> : null}<Pressable onPress={onReset} style={styles.reset}><Text style={styles.resetText}>Ripristina dati demo</Text></Pressable></View>;
 }
 
-function StatsScreen({ content }: { content: AppContent }) {
-  const [filter, setFilter] = useState<'all' | FixtureStatus>('all');
-  const visibleFixtures = content.fixtures.filter((fixture) => filter === 'all' || fixture.stató½z¶‰žËkºwµçI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ÄÀ°µ…É¥¹Q½Àè€ÈÐô°(€Ñ•…µ9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄØ°™½¹Ñ]•¥¡Ðè€œàÀÀœ°™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€Ñ•…µÝ…äèìÑ•áÑ±¥¸è€É¥¡Ðœô°(€Í½É•	±½¬èìµ¥¹]¥‘Ñ è€ØÐ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœô°(€Í½É•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÈÐ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€­¥­½™™Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™¥áÑÕÉ•½½Ñ•Èèìµ…É¥¹Q½Àè€ÈÈ°Á…‘‘¥¹Q½Àè€ÄÄ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ðô°(€™¥áÑÕÉ•½½Ñ•ÉQ•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄô°(€ÍÑ…¹‘¥¹ÍQ…‰±”èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°½Ù•É™±½Üè€¡¥‘‘•¸œô°(€ÍÑ…¹‘¥¹Í!•…‘•Èèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÌ°¡•¥¡Ðè€ÌÈ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬ô°(€ÍÑ…¹‘¥¹Í!•…‘•ÉQ•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œàÀÀœ°Ñ•áÑ±¥¸è€•¹Ñ•Èœ°Ý¥‘Ñ è€Èàô°(€É…¹­½±Õµ¸èìÝ¥‘Ñ è€Èà°Ñ•áÑ±¥¸è€±•™Ðœô°(€±Õ‰½±Õµ¸èì™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€ÍÑ…¹‘¥¹I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°µ¥¹!•¥¡Ðè€ÔÜ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÌ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ðô°(€ÍÑ…¹‘¥¹I½ÝAÉ…Ñ¼èì‰…­É½Õ¹‘½±½Èè€œåÔœô°(€É…¹­Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€±Õ‰Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œÜÀÀœô°(€±Õ‰Q•áÑAÉ…Ñ¼èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™½ÉµI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Ð°µ…É¥¹Q½Àè€Ôô°(€™½Éµ½ÐèìÝ¥‘Ñ è€Ø°¡•¥¡Ðè€Ø°‰½É‘•ÉI…‘¥ÕÌè€ääô°(€™½Éµ]¥¸èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕ•ÍÌô°(€™½ÉµÉ…Üèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹µÕÑ•ô°(€™½Éµ1½ÍÌèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹±¥Ù”ô°(€Á±…å•‘Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°Ý¥‘Ñ è€Èà°™½¹ÑM¥é”è€ÄÌ°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€Á½¥¹ÑÍQ•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°Ý¥‘Ñ è€Èà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÌ°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€Á½¥¹ÑÍQ•áÑAÉ…Ñ¼èì½±½Èè½±½ÉÌ¹¥¹­M½™Ðô°(€Á…•M•Ñ¥½¸èìÁ…‘‘¥¹!½É¥é½¹Ñ…°è€ÈÀ°Á…‘‘¥¹Q½Àè€ÈÜô°(€Á…•å•‰É½Üèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹	½ÑÑ½´è€Üô°(€Á…•Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÌÀ°±¥¹•!•¥¡Ðè€ÌÔ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Á…••ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹µÕÑ•°µ…É¥¹Q½Àè€à°±¥¹•!•¥¡Ðè€ÈÀ°™½¹ÑM¥é”è€ÄÐ°µ…á]¥‘Ñ è€ÔàÀô°(€±¥Ù•Q…‰Ìèì¡•¥¡Ðè€ÔÄ°™±•á¥É•Ñ¥½¸è€É½Üœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ü°µ…É¥¹Q½Àè€ÄÐ°½Ù•É™±½Üè€¡¥‘‘•¸œô°(€±¥Ù•Q…ˆèì™±•àè€Ä°µ¥¹]¥‘Ñ è€À°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Ô°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ì°‰½É‘•É	½ÑÑ½µ½±½Èè€ÑÉ…¹ÍÁ…É•¹Ðœô°(€±¥Ù•Q…‰Ñ¥Ù”èì‰…­É½Õ¹‘½±½Èè€œÕœ°‰½É‘•É	½ÑÑ½µ½±½Èè½±½ÉÌ¹…•¹Ðô°(€±¥Ù•Q…‰Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€±¥Ù•Q…‰Q•áÑÑ¥Ù”èì½±½Èè½±½ÉÌ¹¥¹­M½™Ðô°(€±¥Ù•Ù•¹ÑMÑ…¬èì…Àè€ÄÀ°Á…‘‘¥¹Q½Àè€ÄÐô°(€±¥Ù•Ù•¹Ñ…Éèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€™±•àµÍÑ…ÉÐœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°Á…‘‘¥¹œè€ÄÌ°‰½É‘•ÉI…‘¥ÕÌè€Ü°…Àè€äô°(€•Ù•¹Ñ5¥¹ÕÑ”èìµ¥¹]¥‘Ñ è€ÐÔ°¡•¥¡Ðè€ÌÌ°‰½É‘•ÉI…‘¥ÕÌè€Ø°‰…­É½Õ¹‘½±½Èè€œÕàœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€•Ù•¹Ñ5¥¹ÕÑ•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÐô°(€•Ù•¹Ñ%½¸èì¡•¥¡Ðè€ÌÌ°Ý¥‘Ñ è€ÌÌ°‰½É‘•ÉI…‘¥ÕÌè€ää°‰…­É½Õ¹‘½±½Èè€œáÕœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€•Ù•¹Ñ½¹Ñ•¹Ðèì™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€•Ù•¹ÑQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÐô°(€•Ù•¹ÑQ•…´èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÀ°µ…É¥¹Q½Àè€Èô°(€•Ù•¹Ñ•ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€Äà°µ…É¥¹Q½Àè€Øô°(€•Ù•¹ÑM½É”èì…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹­M½™Ð°Á…‘‘¥¹!½É¥é½¹Ñ…°è€à°Á…‘‘¥¹Y•ÉÑ¥…°è€Ð°‰½É‘•ÉI…‘¥ÕÌè€Ô°µ…É¥¹Q½Àè€àô°(€•Ù•¹ÑM½É•Q•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™½Éµ…Ñ¥½¹A…¹•°èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ü°µ…É¥¹Q½Àè€ÄÐ°Á…‘‘¥¹œè€ÄÀô°(€™½Éµ…Ñ¥½¹Q¥Ñ±•I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Ð°Á…‘‘¥¹	½ÑÑ½´è€äô°(€™½Éµ…Ñ¥½¹Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄØ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™½Éµ…Ñ¥½¹A¥±°èì‰…­É½Õ¹‘½±½Èè€œÕÑœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€à°Á…‘‘¥¹Y•ÉÑ¥…°è€Ð°‰½É‘•ÉI…‘¥ÕÌè€Ðô°(€™½Éµ…Ñ¥½¹A¥±±Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Á¥Ñ èì¡•¥¡Ðè€ÐÌÀ°‰…­É½Õ¹‘½±½Èè€œŒÄäÜÔÐÈœ°‰½É‘•ÉI…‘¥ÕÌè€Ø°½Ù•É™±½Üè€¡¥‘‘•¸œ°‰½É‘•É½±½Èè€œŒÔÑàÜäœ°‰½É‘•É]¥‘Ñ è€Ä°Á½Í¥Ñ¥½¸è€É•±…Ñ¥Ù”œô°(€Á¥Ñ¡	½áQ½ÀèìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ý¥‘Ñ è€œÌà”œ°¡•¥¡Ðè€œÄÈ”œ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÝÑÜœ°‰½É‘•ÉQ½Á]¥‘Ñ è€À°Ñ½Àè€À°±•™Ðè€œÌÄ”œô°(€Á¥Ñ¡5¥‘1¥¹”èìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ñ½Àè€œÔÀ”œ°Ý¥‘Ñ è€œÄÀÀ”œ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÝÑÜœô°(€Á¥Ñ¡¥É±”èìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ñ½Àè€œÐÀ”œ°±•™Ðè€œÌÜ”œ°¡•¥¡Ðè€àØ°Ý¥‘Ñ è€àØ°‰½É‘•ÉI…‘¥ÕÌè€ää°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÝÑÜœô°(€Á¥Ñ¡A±…å•ÈèìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ý¥‘Ñ è€àÈ°µ¥¹!•¥¡Ðè€ÌÐ°‰…­É½Õ¹‘½±½Èè€œŒÁÉÈÐœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Ô°‰½É‘•ÉI…‘¥ÕÌè€Ø°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœô°(€Á¥Ñ¡A±…å•ÉQ•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹Ñ]•¥¡Ðè€œàÀÀœ°™½¹ÑM¥é”è€ä°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€™½Éµ…Ñ¥½¹9½Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°±¥¹•!•¥¡Ðè€ÄØ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Ð°Á…‘‘¥¹Q½Àè€ÄÀ°Á…‘‘¥¹	½ÑÑ½´è€Èô°(€µ…Ñ¡M¡••Ðèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ü°µ…É¥¹Q½Àè€ÄÐ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÔô°(€µ…Ñ¡M¡••ÑI½Üèìµ¥¹!•¥¡Ðè€ÔÈ°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ä°‰½É‘•É	½ÑÑ½µ½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ð°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄØô°(€µ…Ñ¡M¡••Ñ1…‰•°èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€µ…Ñ¡M¡••ÑY…±Õ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™±•àè€Ä°Ñ•áÑ±¥¸è€É¥¡Ðœô°(€µ…Ñ¡M¡••Ñ9½Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°Á…‘‘¥¹Y•ÉÑ¥…°è€ÄÌô°(€™¥±Ñ•ÉI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€à°µ…É¥¹Y•ÉÑ¥…°è€ÈÀ°™±•á]É…Àè€ÝÉ…Àœô°(€¡½É¥é½¹Ñ…±¥±Ñ•ÉÌèì…Àè€à°Á…‘‘¥¹Y•ÉÑ¥…°è€ÈÀ°Á…‘‘¥¹I¥¡Ðè€ÈÀô°(€™¥±Ñ•É	ÕÑÑ½¸èìµ¥¹!•¥¡Ðè€ÌÐ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÄ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•ÉI…‘¥ÕÌè€Ð°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”ô°(€™¥±Ñ•É	ÕÑÑ½¹Ñ¥Ù”èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹…•¹Ð°‰½É‘•É½±½Èè½±½ÉÌ¹…•¹Ðô°(€™¥±Ñ•ÉQ•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€™¥±Ñ•ÉQ•áÑÑ¥Ù”èì½±½Èè½±½ÉÌ¹¥¹¬ô°(€ÍÑ…¬èì…Àè€ÄÀ°µ…É¥¹	½ÑÑ½´è€Èàô°(€±Õ‰Q…‰Ìèì…Àè€à°Á…‘‘¥¹Q½Àè€Äà°Á…‘‘¥¹	½ÑÑ½´è€ÄÐ°Á…‘‘¥¹I¥¡Ðè€ÈÀô°(€±Õ‰Q…ˆèìµ¥¹!•¥¡Ðè€ÐÐ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÐ°‰½É‘•ÉI…‘¥ÕÌè€Ü°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Üô°(€±Õ‰Q…‰Ñ¥Ù”èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹­M½™Ð°‰½É‘•É½±½Èè½±½ÉÌ¹¥¹­M½™Ðô°(€±Õ‰Q…‰Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€±Õ‰Q…‰Q•áÑÑ¥Ù”èì½±½Èè½±½ÉÌ¹Á…Á•Èô°(€É½ÍÑ•ÉM½ÕÉ”èì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Ü°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°Á…‘‘¥¹Y•ÉÑ¥…°è€à°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÀ°‰½É‘•ÉI…‘¥ÕÌè€Ø°‰…­É½Õ¹‘½±½Èè€œÙœ°…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœô°(€É½ÍÑ•ÉM½ÕÉ•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€Á±…å•ÉÉ¥èì…Àè€ÄÀô°(€Á±…å•É…Éèì™±•á¥É•Ñ¥½¸è€É½Üœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°½Ù•É™±½Üè€¡¥‘‘•¸œ°µ¥¹!•¥¡Ðè€äÔô°(€Á±…å•É9Õµ‰•ÈèìÝ¥‘Ñ è€ØÌ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€Á±…å•É9Õµ‰•ÉQ•áÐèì½±½Èè½±½ÉÌ¹…•¹Ð°™½¹ÑM¥é”è€Èä°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Á±…å•É	½‘äèì™±•àè€Ä°Á…‘‘¥¹œè€ÄÌ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€Á±…å•ÉI½±•I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Ôô°(€Á±…å•ÉI½±”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œÜÀÀœô°(€Á±…å•É9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄØ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹Q½Àè€Ðô°(€Á±…å•ÉMÑ…Ðèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°µ…É¥¹Q½Àè€Ôô°(€Á±…å•ÉM½ÕÉ”èìÝ¥‘Ñ è€ÌØ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°‰½É‘•É1•™Ñ]¥‘Ñ è€Ä°‰½É‘•É1•™Ñ½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ðô°(€Á±…å•ÉM½ÕÉ•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€±Õ‰½¹Ñ•¹Ðèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€à°Á…‘‘¥¹œè€ÄØ°µ…É¥¹Q½Àè€Èô°(€±Õ‰½¹Ñ•¹ÑQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÈÈ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹	½ÑÑ½´è€ÄÐô°(€±Õ‰	½‘äèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÔ°±¥¹•!•¥¡Ðè€ÈÈ°µ…á]¥‘Ñ è€ÐàÀô°(€µ•‘¥…I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€ÄÈ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ð°Á…‘‘¥¹Y•ÉÑ¥…°è€ÄÈô°(€µ•‘¥…Q¡ÕµˆèìÝ¥‘Ñ è€ÜØ°¡•¥¡Ðè€ØÈ°‰…­É½Õ¹‘½±½Èè€œÙœ°‰½É‘•ÉI…‘¥ÕÌè€Ø°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€µ•‘¥…½Áäèì™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€µ•‘¥…Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÔ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€µ•‘¥…•ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€Äà°µ…É¥¹Q½Àè€Ðô°(€ÍÑ…‘¥Õµ9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹	½ÑÑ½´è€àô°(€Ñ¥­•Ñ%¹™¼èìµ…É¥¹Q½Àè€Äà°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°Á…‘‘¥¹œè€ÄÌô°(€Ñ¥­•Ñ1…‰•°èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Ñ¥­•ÑAÉ¥”èì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€¹•ÝÍ…Éèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°Á…‘‘¥¹œè€ÄØ°‰½É‘•ÉI…‘¥ÕÌè€Øô°(€¹•ÝÍ…É‘•…ÑÕÉ•èì‰…­É½Õ¹‘½±½Èè€œåÔœ°‰½É‘•É½±½Èè€œÙØÐœô°(€¹•ÝÍ5•Ñ…I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄÀ°µ…É¥¹	½ÑÑ½´è€ÄÀô°(€¹•ÝÍ…Ñ•½Éäèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€¹•ÝÍ…Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€¹•ÝÍQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°±¥¹•!•¥¡Ðè€ÈÈô°(€¹•ÝÍQ¥Ñ±••…ÑÕÉ•èì½±½Èè½±½ÉÌ¹¥¹¬ô°(€¹•ÝÍMÕµµ…Éäèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€Ää°µ…É¥¹Q½Àè€àô°(€¹•ÝÍM½ÕÉ•I½Üèì…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°µ…É¥¹Q½Àè€ÄÐ°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Ôô°(€¹•ÝÍM½ÕÉ”èì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€…‘µ¥¹1½­•èì™±•àè€Ä°…±¥¹%Ñ•µÌè€™±•àµÍÑ…ÉÐœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Èà°Á…‘‘¥¹	½ÑÑ½´è€àÀ°µ…á]¥‘Ñ è€ÔÐÀô°(€…‘µ¥¹1½­%½¸èìÝ¥‘Ñ è€Ôà°¡•¥¡Ðè€Ôà°‰…­É½Õ¹‘½±½Èè€œåÔœ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÙØÐœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°‰½É‘•ÉI…‘¥ÕÌè€Ø°µ…É¥¹	½ÑÑ½´è€Äàô°(€…‘µ¥¹1½­•‘Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÔ°±¥¹•!•¥¡Ðè€ÈÈ°µ…É¥¹Q½Àè€ÄÀ°µ…á]¥‘Ñ è€ÌÐÀô°(€ÁÉ¥µ…Éå	ÕÑÑ½¸èìµ¥¹!•¥¡Ðè€ÐÌ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹…•¹Ð°‰½É‘•ÉI…‘¥ÕÌè€Ð°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÐ°…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€à°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°µ…É¥¹Q½Àè€ÈÀô°(€ÁÉ¥µ…Éå	ÕÑÑ½¹Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÄô°(€Í•ÕÉ¥Ñå!¥¹Ðèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°±¥¹•!•¥¡Ðè€Äà°µ…É¥¹Q½Àè€Äà°µ…á]¥‘Ñ è€ÌÐÀô°(€…‘µ¥¹!•…‘•Èèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ÄØ°µ…É¥¹	½ÑÑ½´è€Äàô°(€…‘µ¥¹=¹±¥¹”èì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Ø°Á…‘‘¥¹!½É¥é½¹Ñ…°è€à°Á…‘‘¥¹Y•ÉÑ¥…°è€Ø°‰…­É½Õ¹‘½±½Èè€œŒÈÀÉÈÀœ°‰½É‘•ÉI…‘¥ÕÌè€Ìô°(€½¹±¥¹•½Ðèì¡•¥¡Ðè€Ø°Ý¥‘Ñ è€Ø°‰½É‘•ÉI…‘¥ÕÌè€ää°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕ•ÍÌô°(€…‘µ¥¹=¹±¥¹•Q•áÐèì½±½Èè½±½ÉÌ¹ÍÕ•ÍÌ°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€¹½Ñ¥”èì‰…­É½Õ¹‘½±½Èè€œŒÅÉÅœ°‰½É‘•É½±½Èè€œŒÌàÕÌÔœ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•ÉI…‘¥ÕÌè€Ô°µ¥¹!•¥¡Ðè€ÐÈ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÈ°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€à°µ…É¥¹	½ÑÑ½´è€ÄÈô°(€¹½Ñ¥•Q•áÐèì½±½Èè€œäœ°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œÜÀÀœô°(€…‘µ¥¹…Éèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°Á…‘‘¥¹œè€ÄØ°µ…É¥¹	½ÑÑ½´è€ÄÌô°(€…‘µ¥¹…É‘Q¥Ñ±•I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄÈ°…±¥¹%Ñ•µÌè€™±•àµÍÑ…ÉÐœ°µ…É¥¹	½ÑÑ½´è€ÄÐô°(€…‘µ¥¹…É‘Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÜ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€…‘µ¥¹…É‘MÕ‰Ñ¥Ñ±”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°µ…É¥¹Q½Àè€Ì°±¥¹•!•¥¡Ðè€ÄÜô°(€Í½É•‘¥Ñ½Èèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ä°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ð°Á…‘‘¥¹Q½Àè€ÄÐô°(€Í½É•‘¥Ñ½ÉQ•…´èì™±•àè€Ä°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°µ¥¹]¥‘Ñ è€Àô°(€Í½É•‘¥Ñ½É9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œàÀÀœ°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€Í½É•‘¥Ñ½É9Õµ‰•Èèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€Ìà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹Y•ÉÑ¥…°è€Ôô°(€Í½É•‘¥Ñ½É¥Ù¥‘•Èèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÈÔ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°Á…‘‘¥¹	½ÑÑ½´è€Äàô°(€Í½É•‘¥Ñ	ÕÑÑ½¹Ìèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Øô°(€¥¹ÁÕÐèìµ¥¹!•¥¡Ðè€ÐÐ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰…­É½Õ¹‘½±½Èè€œÙœ°½±½Èè½±½ÉÌ¹¥¹¬°‰½É‘•ÉI…‘¥ÕÌè€Ð°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÈ°™½¹ÑM¥é”è€ÄÐ°µ…É¥¹Q½Àè€äô°(€Ñ•áÑ…É•„èìµ¥¹!•¥¡Ðè€äÈ°Á…‘‘¥¹Q½Àè€ÄÈ°Ñ•áÑ±¥¹Y•ÉÑ¥…°è€Ñ½Àœô°(€Í•½¹‘…Éå	ÕÑÑ½¸èìµ¥¹!•¥¡Ðè€ÐÄ°‰½É‘•É½±½Èè½±½ÉÌ¹¥¹¬°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•ÉI…‘¥ÕÌè€Ð°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°…Àè€à°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÌ°µ…É¥¹Q½Àè€Èô°(€Í•½¹‘…Éå	ÕÑÑ½¹Q•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÄô°(€Í•ÑÑ¥¹ÍI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄÐ°Á…‘‘¥¹Y•ÉÑ¥…°è€ÄÜ°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ä°‰½É‘•É	½ÑÑ½µ½±½Èè½±½ÉÌ¹‰½É‘•Èô°(€Í•ÑÑ¥¹ÍQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÐ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€Í•ÑÑ¥¹Í•ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°µ…É¥¹Q½Àè€Ìô°(€…‘µ¥¹½½Ñ•ÉI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ÄÈ°Á…‘‘¥¹Q½Àè€ÄØ°Á…‘‘¥¹	½ÑÑ½´è€Øô°(€ÕÁ‘…Ñ•‘Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°™±•àè€Äô°(€É•Í•ÑQ•áÐèì½±½Èè€œÉÉÔœ°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€µ½‘…±M…™”èì™±•àè€Ä°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•Èô°(€µ½‘…±!•…‘•Èèì¡•¥¡Ðè€ØØ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Äà°™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ä°‰½É‘•É	½ÑÑ½µ½±½Èè€œŒÅÕäÈœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬ô°(€µ½‘…±!•…‘•ÉQ¥Ñ±”èì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€µ½‘…±MÁ…•ÈèìÝ¥‘Ñ è€Ìàô°(€µ½‘…±½¹Ñ•¹ÐèìÁ…‘‘¥¹œè€ÈÐ°µ…á]¥‘Ñ è€ÜÈÀ°Ý¥‘Ñ è€œÄÀÀ”œ°…±¥¹M•±˜è€•¹Ñ•Èœô°(€µ½‘…±Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÌÀ°±¥¹•!•¥¡Ðè€ÌØ°µ…É¥¹Q½Àè€ÄÀô°(€µ½‘…±…Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°µ…É¥¹Q½Àè€ÄÈô°(€µ½‘…±IÕ±”èì¡•¥¡Ðè€Ì°Ý¥‘Ñ è€Ôà°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹…•¹Ð°µ…É¥¹Q½Àè€Èà°µ…É¥¹	½ÑÑ½´è€ÈÈô°(€µ½‘…±	½‘äèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÜ°±¥¹•!•¥¡Ðè€ÈÜô°(€µ½‘…±9½Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€ÈÀ°µ…É¥¹Q½Àè€ÈØô°)ô¤ì(
+function PlayersAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
+  const [name, setName] = useState(''); const [number, setNumber] = useState(''); const [role, setRole] = useState<Player['role']>('Attaccante'); const [age, setAge] = useState(''); const [imageUrl, setImageUrl] = useState('');
+  const add = () => { if (!name.trim() || !number.trim()) return; const player: Player = { id: makeId('player'), name: name.trim(), number: Number(number), role, age: age ? Number(age) : undefined, imageUrl: imageUrl.trim(), appearances: 0, goals: 0, source: 'Editoriale' }; void onChange({ ...content, players: [...content.players, player] }); setName(''); setNumber(''); setAge(''); setImageUrl(''); };
+  return <View style={styles.adminCard}><Text style={styles.adminTitle}>Aggiungi calciatore</Text><Input label="Nome e cognome" value={name} onChangeText={setName} /><View style={styles.row}><View style={styles.flex}><Input label="Numero" value={number} onChangeText={setNumber} keyboardType="numeric" /></View><View style={styles.flex}><Input label="EtÃ " value={age} onChangeText={setAge} keyboardType="numeric" /></View></View><Text style={styles.fieldLabel}>Ruolo</Text><View style={styles.choices}>{(['Portiere','Difensore','Centrocampista','Attaccante'] as Player['role'][]).map((item) => <Pressable key={item} onPress={() => setRole(item)} style={[styles.choice, role === item && styles.choiceActive]}><Text style={[styles.choiceText, role === item && styles.choiceTextActive]}>{item}</Text></Pressable>)}</View><Input label="URL foto giocatore" value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" /><PrimaryButton label="Aggiungi alla rosa" onPress={add} /><View style={styles.adminList}>{content.players.map((player) => <View key={player.id} style={styles.adminListRow}><Text style={styles.adminListText}>#{player.number} {player.name}</Text><Pressable onPress={() => void onChange({ ...content, players: content.players.filter((item) => item.id !== player.id) })}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable></View>)}</View></View>;
+}
+
+function NewsAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
+  const [title, setTitle] = useState(''); const [category, setCategory] = useState('SocietÃ '); const [summary, setSummary] = useState(''); const [body, setBody] = useState(''); const [imageUrl, setImageUrl] = useState(''); const [featured, setFeatured] = useState(false);
+  const add = () => { if (!title.trim() || !summary.trim()) return; const article: NewsArticle = { id: makeId('news'), title: title.trim(), category: category.trim() || 'News', summary: summary.trim(), body: body.trim() || summary.trim(), imageUrl: imageUrl.trim(), source: 'Redazione AC Prato', publishedAt: new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date()).toUpperCase(), featured }; const previous = featured ? content.news.map((item) => ({ ...item, featured: false })) : content.news; void onChange({ ...content, news: [article, ...previous] }); setTitle(''); setSummary(''); setBody(''); setImageUrl(''); setFeatured(false); };
+  return <View style={styles.adminCard}><Text style={styles.adminTitle}>Crea notizia</Text><Input label="Titolo" value={title} onChangeText={setTitle} /><Input label="Categoria" value={category} onChangeText={setCategory} /><Input label="Riassunto" value={summary} onChangeText={setSummary} multiline /><Input label="Testo completo" value={body} onChangeText={setBody} multiline /><Input label="URL foto" value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" /><View style={styles.switchRow}><Text style={styles.fieldLabel}>Notizia principale</Text><Switch value={featured} onValueChange={setFeatured} /></View><PrimaryButton label="Pubblica notizia" onPress={add} /><View style={styles.adminList}>{content.news.map((article) => <View key={article.id} style={styles.adminListRow}><Text numberOfLines={2} style={styles.adminListText}>{article.title}</Text><Pressable onPress={() => void onChange({ ...content, news: content.news.filter((item) => item.id !== article.id) })}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable></View>)}</View></View>;
+}
+
+function LiveAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
+  const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0]; const [scorer, setScorer] = useState(''); const [minute, setMinute] = useState(''); const [team, setTeam] = useState<'home' | 'away'>('home');
+  if (!fixture) return <Text>Nessuna partita disponibile.</Text>;
+  const updateFixture = (next: Fixture) => onChange({ ...content, fixtures: content.fixtures.map((item) => item.id === next.id ? next : item) });
+  const systemEvent = (type: LiveEvent['type'], label: string, phase: Fixture['livePhase'], status: Fixture['status'], eventMinute: number) => { const event: LiveEvent = { id: makeId('event'), type, label, minute: eventMinute, score: `${fixture.homeScore ?? 0}-${fixture.awayScore ?? 0}`, createdAt: new Date().toISOString() }; void updateFixture({ ...fixture, livePhase: phase, status, minute: eventMinute, liveEvents: [event, ...(fixture.liveEvents ?? [])] }); };
+  const goal = () => { if (!scorer.trim()) return; const homeScore = (fixture.homeScore ?? 0) + (team === 'home' ? 1 : 0); const awayScore = (fixture.awayScore ?? 0) + (team === 'away' ? 1 : 0); const teamName = team === 'home' ? fixture.home : fixture.away; const event: LiveEvent = { id: makeId('event'), type: 'goal', label: `Gol ${teamName}`, minute: minute ? Number(minute) : undefined, team: teamName, scorer: scorer.trim(), score: `${homeScore}-${awayScore}`, createdAt: new Date().toISOString() }; void updateFixture({ ...fixture, status: 'live', homeScore, awayScore, minute: minute ? Number(minute) : fixture.minute, liveEvents: [event, ...(fixture.liveEvents ?? [])] }); setScorer(''); setMinute(''); };
+  return <View style={styles.adminCard}><Text style={styles.adminTitle}>{fixture.home} - {fixture.away}</Text><Text style={styles.bigScore}>{fixture.homeScore ?? 0} - {fixture.awayScore ?? 0}</Text><View style={styles.liveActions}><PrimaryButton label="Inizio partita" onPress={() => systemEvent('kickoff','Inizio partita','first_half','live',1)} /><PrimaryButton label="Fine primo tempo" onPress={() => systemEvent('halftime','Fine primo tempo','halftime','live',45)} secondary /><PrimaryButton label="Inizio secondo tempo" onPress={() => systemEvent('second_half','Inizio secondo tempo','second_half','live',46)} /><PrimaryButton label="Fine partita" onPress={() => systemEvent('fulltime','Fine partita','finished','final',90)} secondary /></View><Text style={styles.adminTitle}>Aggiungi gol</Text><View style={styles.choices}><Pressable onPress={() => setTeam('home')} style={[styles.choice, team === 'home' && styles.choiceActive]}><Text style={[styles.choiceText, team === 'home' && styles.choiceTextActive]}>{fixture.home}</Text></Pressable><Pressable onPress={() => setTeam('away')} style={[styles.choice, team === 'away' && styles.choiceActive]}><Text style={[styles.choiceText, team === 'away' && styles.choiceTextActive]}>{fixture.away}</Text></Pressable></View><Input label="Marcatore" value={scorer} onChangeText={setScorer} /><Input label="Minuto" value={minute} onChangeText={setMinute} keyboardType="numeric" /><PrimaryButton label="Registra gol" onPress={goal} /><View style={styles.adminList}>{(fixture.liveEvents ?? []).map((event) => <View key={event.id} style={styles.adminListRow}><Text style={styles.adminListText}>{event.minute ? `${event.minute}' ` : ''}{event.label}{event.scorer ? ` Â· ${event.scorer}` : ''}</Text><Pressable onPress={() => void updateFixture({ ...fixture, liveEvents: (fixture.liveEvents ?? []).filter((item) => item.id !== event.id) })}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable></View>)}</View></View>;
+}
+
+function Input(props: React.ComponentProps<typeof TextInput> & { label: string }) { const { label, multiline, ...rest } = props; return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><TextInput {...rest} multiline={multiline} placeholderTextColor={colors.muted} style={[styles.input, multiline && styles.inputMultiline]} /></View>; }
+function PrimaryButton({ label, onPress, secondary }: { label: string; onPress: () => void; secondary?: boolean }) { return <Pressable onPress={onPress} style={[styles.primary, secondary && styles.secondary]}><Text style={[styles.primaryText, secondary && styles.secondaryText]}>{label}</Text></Pressable>; }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.canvas }, header: { backgroundColor: colors.ink, paddingHorizontal: 18, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, brand: { flexDirection: 'row', alignItems: 'center', gap: 10 }, logo: { width: 42, height: 42, resizeMode: 'contain' }, brandTop: { color: colors.paper, fontWeight: '900', letterSpacing: 1.4 }, brandBottom: { color: colors.accent, fontWeight: '900', fontSize: 12, letterSpacing: 2 }, adminButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.inkSoft, alignItems: 'center', justifyContent: 'center' }, content: { padding: 16, paddingBottom: 110 }, stack: { gap: 14 }, hero: { padding: 22, borderRadius: radii.lg, backgroundColor: colors.blue }, heroKicker: { color: colors.accent, fontSize: 12, fontWeight: '900', letterSpacing: 1.2 }, heroTitle: { color: colors.paper, fontSize: 30, lineHeight: 34, fontWeight: '900', marginTop: 8 }, heroCopy: { color: '#E7F3FF', marginTop: 10, fontSize: 16, lineHeight: 22 }, pageTitle: { color: colors.ink, fontSize: 30, fontWeight: '900', marginBottom: 16 }, sectionLabel: { color: colors.ink, fontSize: 21, fontWeight: '900', marginTop: 6 }, nav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.line, paddingBottom: 8, paddingTop: 8 }, navItem: { flex: 1, alignItems: 'center', paddingVertical: 5, gap: 2 }, navItemActive: { backgroundColor: colors.accentSoft, borderRadius: radii.md }, navText: { fontSize: 11, color: colors.muted, fontWeight: '700' }, navTextActive: { color: colors.ink }, modal: { flex: 1, backgroundColor: colors.paper }, close: { alignSelf: 'flex-end', margin: 16, width: 42, height: 42, borderRadius: 21, backgroundColor: colors.canvas, alignItems: 'center', justifyContent: 'center' }, article: { padding: 20, paddingBottom: 60 }, articleImage: { width: '100%', height: 230, borderRadius: radii.lg, marginBottom: 18, backgroundColor: colors.sky }, eyebrow: { color: colors.blue, fontWeight: '900', textTransform: 'uppercase' }, articleTitle: { color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900', marginTop: 8 }, articleBody: { color: colors.inkSoft, fontSize: 17, lineHeight: 27, marginTop: 18 }, adminIntro: { color: colors.inkSoft, lineHeight: 21, marginBottom: 14 }, segment: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radii.md, padding: 4, borderWidth: 1, borderColor: colors.line, marginBottom: 14 }, segmentButton: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12 }, segmentActive: { backgroundColor: colors.ink }, segmentText: { color: colors.muted, fontWeight: '800' }, segmentTextActive: { color: colors.paper }, adminCard: { padding: 16, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, gap: 12 }, adminTitle: { color: colors.ink, fontWeight: '900', fontSize: 20, marginTop: 4 }, field: { gap: 6 }, fieldLabel: { color: colors.inkSoft, fontWeight: '800', fontSize: 13 }, input: { borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: colors.canvas, paddingHorizontal: 13, paddingVertical: 12, color: colors.ink }, inputMultiline: { minHeight: 100, textAlignVertical: 'top' }, row: { flexDirection: 'row', gap: 10 }, flex: { flex: 1 }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, choice: { paddingHorizontal: 11, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: colors.canvas, borderWidth: 1, borderColor: colors.line }, choiceActive: { backgroundColor: colors.ink, borderColor: colors.ink }, choiceText: { color: colors.inkSoft, fontWeight: '800', fontSize: 12 }, choiceTextActive: { color: colors.paper }, primary: { backgroundColor: colors.accent, borderRadius: radii.md, padding: 14, alignItems: 'center' }, primaryText: { color: colors.ink, fontWeight: '900' }, secondary: { backgroundColor: colors.ink }, secondaryText: { color: colors.paper }, switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, adminList: { marginTop: 6, gap: 8 }, adminListRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radii.md, backgroundColor: colors.canvas }, adminListText: { flex: 1, color: colors.inkSoft, fontWeight: '700' }, reset: { marginTop: 16, padding: 14, alignItems: 'center' }, resetText: { color: colors.live, fontWeight: '800' }, bigScore: { fontSize: 42, color: colors.ink, fontWeight: '900', textAlign: 'center' }, liveActions: { gap: 8 },
+});
