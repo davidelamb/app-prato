@@ -2,6 +2,9 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "app-prato",
   "compatibility_date": "2026-07-20",
+  "build": {
+    "command": "npm install --no-package-lock --no-audit --no-fund && npm run build:web"
+  },
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
