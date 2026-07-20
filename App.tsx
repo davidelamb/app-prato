@@ -1,32 +1,40 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { AdminDashboard } from './src/components/AdminDashboard';
 import { LivePanel } from './src/components/LivePanel';
 import { NewsCard } from './src/components/NewsCard';
 import { PlayerCard } from './src/components/PlayerCard';
+import { PlayerProfileModal } from './src/components/PlayerProfileModal';
 import { seedContent } from './src/data/seed';
 import { loadContent, resetContent, saveContent } from './src/services/content-store';
 import { colors, radii } from './src/theme';
-import { AppContent, Fixture, LiveEvent, NewsArticle, Player } from './src/types';
+import { AppContent, NewsArticle, Player, PlayerRole } from './src/types';
 
 type Tab = 'home' | 'news' | 'live' | 'club' | 'admin';
-type AdminView = 'players' | 'news' | 'live';
-const tabs: Array<{ key: Tab; label: string; icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'] }> = [
-  { key: 'home', label: 'Home', icon: 'home-outline' },
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+const tabs: Array<{ key: Exclude<Tab, 'admin'>; label: string; icon: IconName }> = [
+  { key: 'home', label: 'Home', icon: 'home-variant-outline' },
   { key: 'news', label: 'News', icon: 'newspaper-variant-outline' },
   { key: 'live', label: 'Live', icon: 'broadcast' },
   { key: 'club', label: 'Rosa', icon: 'account-group-outline' },
 ];
+
+const roleOrder: PlayerRole[] = ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
-const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 export default function App() {
   const [content, setContent] = useState<AppContent>(seedContent);
   const [tab, setTab] = useState<Tab>('home');
-  const [adminView, setAdminView] = useState<AdminView>('players');
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const { width } = useWindowDimensions();
+  const wide = width >= 820;
+
   useEffect(() => { loadContent().then(setContent); }, []);
   const commit = async (next: AppContent) => { const stamped = { ...next, updatedAt: stamp() }; setContent(stamped); await saveContent(stamped); };
   const liveFixture = useMemo(() => content.fixtures.find((fixture) => fixture.status === 'live') ?? content.fixtures[0], [content.fixtures]);
@@ -35,57 +43,114 @@ export default function App() {
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <View style={styles.brand}><Image source={require('./assets/ac-prato-crest.png')} style={styles.logo} /><View><Text style={styles.brandTop}>AC PRATO</Text><Text style={styles.brandBottom}>SPORT</Text></View></View>
-        <Pressable style={styles.adminButton} onPress={() => setTab(tab === 'admin' ? 'home' : 'admin')}><MaterialCommunityIcons name="cog-outline" size={21} color={colors.paper} /></Pressable>
+        <View style={styles.headerInner}>
+          <Pressable onPress={() => setTab('home')} style={styles.brand}>
+            <Image source={require('./assets/ac-prato-crest.png')} resizeMode="contain" style={styles.logo} />
+            <View><Text style={styles.brandName}>AC PRATO</Text><Text style={styles.brandTag}>1908 · APP UFFICIALE DEMO</Text></View>
+          </Pressable>
+          <View style={styles.headerActions}>
+            <View style={styles.seasonPill}><View style={styles.seasonDot} /><Text style={styles.seasonText}>2026/27</Text></View>
+            <Pressable accessibilityLabel="Apri pannello admin" onPress={() => setTab(tab === 'admin' ? 'home' : 'admin')} style={[styles.adminButton, tab === 'admin' && styles.adminButtonActive]}><MaterialCommunityIcons name={tab === 'admin' ? 'close' : 'tune-variant'} size={21} color={colors.ink} /></Pressable>
+          </View>
+        </View>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        {tab === 'home' ? <Home content={content} onNews={setSelectedNews} onTab={setTab} /> : null}
-        {tab === 'news' ? <Screen title="News"><View style={styles.stack}>{content.news.map((article) => <NewsCard key={article.id} article={article} onPress={() => setSelectedNews(article)} />)}</View></Screen> : null}
-        {tab === 'live' && liveFixture ? <Screen title="Live"><LivePanel fixture={liveFixture} /></Screen> : null}
-        {tab === 'club' ? <Screen title="Rosa"><View style={styles.stack}>{content.players.map((player) => <PlayerCard key={player.id} player={player} />)}</View></Screen> : null}
-        {tab === 'admin' ? <Admin content={content} view={adminView} setView={setAdminView} onChange={commit} onReset={async () => setContent(await resetContent())} /> : null}
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <View style={[styles.container, wide && styles.containerWide]}>
+          {tab === 'home' ? <Home content={content} wide={wide} onTab={setTab} onNews={setSelectedNews} onPlayer={setSelectedPlayer} /> : null}
+          {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
+          {tab === 'live' && liveFixture ? <PageHeader eyebrow="MATCH CENTER" title="Diretta" copy="Risultato, marcatori e cronaca essenziale della partita." /> : null}
+          {tab === 'live' && liveFixture ? <LivePanel fixture={liveFixture} /> : null}
+          {tab === 'club' ? <RosterScreen content={content} wide={wide} onPlayer={setSelectedPlayer} /> : null}
+          {tab === 'admin' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('home')} /> : null}
+        </View>
       </ScrollView>
-      {tab !== 'admin' ? <View style={styles.nav}>{tabs.map((item) => <Pressable key={item.key} onPress={() => setTab(item.key)} style={[styles.navItem, tab === item.key && styles.navItemActive]}><MaterialCommunityIcons name={item.icon} size={22} color={tab === item.key ? colors.ink : colors.muted} /><Text style={[styles.navText, tab === item.key && styles.navTextActive]}>{item.label}</Text></Pressable>)}</View> : null}
-      <Modal visible={!!selectedNews} animationType="slide" onRequestClose={() => setSelectedNews(null)}><SafeAreaView style={styles.modal}><Pressable onPress={() => setSelectedNews(null)} style={styles.close}><MaterialCommunityIcons name="close" size={24} color={colors.ink} /></Pressable><ScrollView contentContainerStyle={styles.article}>{selectedNews?.imageUrl ? <Image source={{ uri: selectedNews.imageUrl }} style={styles.articleImage} /> : null}<Text style={styles.eyebrow}>{selectedNews?.category}</Text><Text style={styles.articleTitle}>{selectedNews?.title}</Text><Text style={styles.articleBody}>{selectedNews?.body ?? selectedNews?.summary}</Text></ScrollView></SafeAreaView></Modal>
+
+      {tab !== 'admin' ? <View style={styles.nav}><View style={styles.navInner}>{tabs.map((item) => <Pressable key={item.key} onPress={() => setTab(item.key)} style={[styles.navItem, tab === item.key && styles.navItemActive]}><MaterialCommunityIcons name={item.icon} size={22} color={tab === item.key ? colors.canvas : colors.muted} /><Text style={[styles.navText, tab === item.key && styles.navTextActive]}>{item.label}</Text></Pressable>)}</View></View> : null}
+
+      <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+      <ArticleModal article={selectedNews} onClose={() => setSelectedNews(null)} />
     </SafeAreaView>
   );
 }
 
-function Home({ content, onNews, onTab }: { content: AppContent; onNews: (item: NewsArticle) => void; onTab: (tab: Tab) => void }) {
+function Home({ content, wide, onTab, onNews, onPlayer }: { content: AppContent; wide: boolean; onTab: (tab: Tab) => void; onNews: (item: NewsArticle) => void; onPlayer: (item: Player) => void }) {
   const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0];
   const article = content.news.find((item) => item.featured) ?? content.news[0];
-  return <View style={styles.stack}><View style={styles.hero}><Text style={styles.heroKicker}>STAGIONE 2026/27</Text><Text style={styles.heroTitle}>Tutto il Prato, sempre con te.</Text><Text style={styles.heroCopy}>Notizie, rosa e aggiornamenti live in un’unica app.</Text></View>{fixture ? <Pressable onPress={() => onTab('live')}><LivePanel fixture={{ ...fixture, liveEvents: [] }} /></Pressable> : null}{article ? <><Text style={styles.sectionLabel}>Ultime notizie</Text><NewsCard article={article} onPress={() => onNews(article)} /></> : null}</View>;
-}
-function Screen({ title, children }: { title: string; children: React.ReactNode }) { return <View><Text style={styles.pageTitle}>{title}</Text>{children}</View>; }
+  const featuredPlayer = content.players.find((item) => !!item.imageUrl) ?? content.players[0];
+  return <View style={styles.stack}>
+    <LinearGradient colors={['#164B70', '#0C2A43', '#071827']} style={styles.hero}>
+      <View style={styles.heroGlow} />
+      <View style={styles.heroContent}>
+        <Text style={styles.heroKicker}>LA CITTÀ · LA MAGLIA · LA PASSIONE</Text>
+        <Text style={styles.heroTitle}>Il Prato, sempre con te.</Text>
+        <Text style={styles.heroCopy}>News, squadra e match center in un'esperienza più moderna, veloce e biancazzurra.</Text>
+        <View style={styles.heroActions}><Pressable onPress={() => onTab('live')} style={styles.primaryCta}><MaterialCommunityIcons name="broadcast" size={19} color={colors.canvas} /><Text style={styles.primaryCtaText}>Apri la diretta</Text></Pressable><Pressable onPress={() => onTab('club')} style={styles.secondaryCta}><Text style={styles.secondaryCtaText}>Scopri la rosa</Text><MaterialCommunityIcons name="arrow-right" size={18} color={colors.ink} /></Pressable></View>
+      </View>
+      <Image source={require('./assets/ac-prato-crest.png')} resizeMode="contain" style={styles.heroCrest} />
+    </LinearGradient>
 
-function Admin({ content, view, setView, onChange, onReset }: { content: AppContent; view: AdminView; setView: (view: AdminView) => void; onChange: (next: AppContent) => Promise<void>; onReset: () => Promise<void> }) {
-  return <View><Text style={styles.pageTitle}>Pannello admin</Text><Text style={styles.adminIntro}>Gestisci contenuti, rosa e diretta. Al momento i dati restano sul dispositivo.</Text><View style={styles.segment}>{(['players','news','live'] as AdminView[]).map((item) => <Pressable key={item} onPress={() => setView(item)} style={[styles.segmentButton, view === item && styles.segmentActive]}><Text style={[styles.segmentText, view === item && styles.segmentTextActive]}>{item === 'players' ? 'Rosa' : item === 'news' ? 'News' : 'Live'}</Text></Pressable>)}</View>{view === 'players' ? <PlayersAdmin content={content} onChange={onChange} /> : null}{view === 'news' ? <NewsAdmin content={content} onChange={onChange} /> : null}{view === 'live' ? <LiveAdmin content={content} onChange={onChange} /> : null}<Pressable onPress={onReset} style={styles.reset}><Text style={styles.resetText}>Ripristina dati demo</Text></Pressable></View>;
-}
-
-function PlayersAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  const [name, setName] = useState(''); const [number, setNumber] = useState(''); const [role, setRole] = useState<Player['role']>('Attaccante'); const [age, setAge] = useState(''); const [imageUrl, setImageUrl] = useState('');
-  const add = () => { if (!name.trim() || !number.trim()) return; const player: Player = { id: makeId('player'), name: name.trim(), number: Number(number), role, age: age ? Number(age) : undefined, imageUrl: imageUrl.trim(), appearances: 0, goals: 0, source: 'Editoriale' }; void onChange({ ...content, players: [...content.players, player] }); setName(''); setNumber(''); setAge(''); setImageUrl(''); };
-  return <View style={styles.adminCard}><Text style={styles.adminTitle}>Aggiungi calciatore</Text><Input label="Nome e cognome" value={name} onChangeText={setName} /><View style={styles.row}><View style={styles.flex}><Input label="Numero" value={number} onChangeText={setNumber} keyboardType="numeric" /></View><View style={styles.flex}><Input label="Età" value={age} onChangeText={setAge} keyboardType="numeric" /></View></View><Text style={styles.fieldLabel}>Ruolo</Text><View style={styles.choices}>{(['Portiere','Difensore','Centrocampista','Attaccante'] as Player['role'][]).map((item) => <Pressable key={item} onPress={() => setRole(item)} style={[styles.choice, role === item && styles.choiceActive]}><Text style={[styles.choiceText, role === item && styles.choiceTextActive]}>{item}</Text></Pressable>)}</View><Input label="URL foto giocatore" value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" /><PrimaryButton label="Aggiungi alla rosa" onPress={add} /><View style={styles.adminList}>{content.players.map((player) => <View key={player.id} style={styles.adminListRow}><Text style={styles.adminListText}>#{player.number} {player.name}</Text><Pressable onPress={() => void onChange({ ...content, players: content.players.filter((item) => item.id !== player.id) })}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable></View>)}</View></View>;
-}
-
-function NewsAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  const [title, setTitle] = useState(''); const [category, setCategory] = useState('Società'); const [summary, setSummary] = useState(''); const [body, setBody] = useState(''); const [imageUrl, setImageUrl] = useState(''); const [featured, setFeatured] = useState(false);
-  const add = () => { if (!title.trim() || !summary.trim()) return; const article: NewsArticle = { id: makeId('news'), title: title.trim(), category: category.trim() || 'News', summary: summary.trim(), body: body.trim() || summary.trim(), imageUrl: imageUrl.trim(), source: 'Redazione AC Prato', publishedAt: new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date()).toUpperCase(), featured }; const previous = featured ? content.news.map((item) => ({ ...item, featured: false })) : content.news; void onChange({ ...content, news: [article, ...previous] }); setTitle(''); setSummary(''); setBody(''); setImageUrl(''); setFeatured(false); };
-  return <View style={styles.adminCard}><Text style={styles.adminTitle}>Crea notizia</Text><Input label="Titolo" value={title} onChangeText={setTitle} /><Input label="Categoria" value={category} onChangeText={setCategory} /><Input label="Riassunto" value={summary} onChangeText={setSummary} multiline /><Input label="Testo completo" value={body} onChangeText={setBody} multiline /><Input label="URL foto" value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" /><View style={styles.switchRow}><Text style={styles.fieldLabel}>Notizia principale</Text><Switch value={featured} onValueChange={setFeatured} /></View><PrimaryButton label="Pubblica notizia" onPress={add} /><View style={styles.adminList}>{content.news.map((article) => <View key={article.id} style={styles.adminListRow}><Text numberOfLines={2} style={styles.adminListText}>{article.title}</Text><Pressable onPress={() => void onChange({ ...content, news: content.news.filter((item) => item.id !== article.id) })}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable></View>)}</View></View>;
-}
-
-function LiveAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0]; const [scorer, setScorer] = useState(''); const [minute, setMinute] = useState(''); const [team, setTeam] = useState<'home' | 'away'>('home');
-  if (!fixture) return <Text>Nessuna partita disponibile.</Text>;
-  const updateFixture = (next: Fixture) => onChange({ ...content, fixtures: content.fixtures.map((item) => item.id === next.id ? next : item) });
-  const systemEvent = (type: LiveEvent['type'], label: string, phase: Fixture['livePhase'], status: Fixture['status'], eventMinute: number) => { const event: LiveEvent = { id: makeId('event'), type, label, minute: eventMinute, score: `${fixture.homeScore ?? 0}-${fixture.awayScore ?? 0}`, createdAt: new Date().toISOString() }; void updateFixture({ ...fixture, livePhase: phase, status, minute: eventMinute, liveEvents: [event, ...(fixture.liveEvents ?? [])] }); };
-  const goal = () => { if (!scorer.trim()) return; const homeScore = (fixture.homeScore ?? 0) + (team === 'home' ? 1 : 0); const awayScore = (fixture.awayScore ?? 0) + (team === 'away' ? 1 : 0); const teamName = team === 'home' ? fixture.home : fixture.away; const event: LiveEvent = { id: makeId('event'), type: 'goal', label: `Gol ${teamName}`, minute: minute ? Number(minute) : undefined, team: teamName, scorer: scorer.trim(), score: `${homeScore}-${awayScore}`, createdAt: new Date().toISOString() }; void updateFixture({ ...fixture, status: 'live', homeScore, awayScore, minute: minute ? Number(minute) : fixture.minute, liveEvents: [event, ...(fixture.liveEvents ?? [])] }); setScorer(''); setMinute(''); };
-  return <View style={styles.adminCard}><Text style={styles.adminTitle}>{fixture.home} - {fixture.away}</Text><Text style={styles.bigScore}>{fixture.homeScore ?? 0} - {fixture.awayScore ?? 0}</Text><View style={styles.liveActions}><PrimaryButton label="Inizio partita" onPress={() => systemEvent('kickoff','Inizio partita','first_half','live',1)} /><PrimaryButton label="Fine primo tempo" onPress={() => systemEvent('halftime','Fine primo tempo','halftime','live',45)} secondary /><PrimaryButton label="Inizio secondo tempo" onPress={() => systemEvent('second_half','Inizio secondo tempo','second_half','live',46)} /><PrimaryButton label="Fine partita" onPress={() => systemEvent('fulltime','Fine partita','finished','final',90)} secondary /></View><Text style={styles.adminTitle}>Aggiungi gol</Text><View style={styles.choices}><Pressable onPress={() => setTeam('home')} style={[styles.choice, team === 'home' && styles.choiceActive]}><Text style={[styles.choiceText, team === 'home' && styles.choiceTextActive]}>{fixture.home}</Text></Pressable><Pressable onPress={() => setTeam('away')} style={[styles.choice, team === 'away' && styles.choiceActive]}><Text style={[styles.choiceText, team === 'away' && styles.choiceTextActive]}>{fixture.away}</Text></Pressable></View><Input label="Marcatore" value={scorer} onChangeText={setScorer} /><Input label="Minuto" value={minute} onChangeText={setMinute} keyboardType="numeric" /><PrimaryButton label="Registra gol" onPress={goal} /><View style={styles.adminList}>{(fixture.liveEvents ?? []).map((event) => <View key={event.id} style={styles.adminListRow}><Text style={styles.adminListText}>{event.minute ? `${event.minute}' ` : ''}{event.label}{event.scorer ? ` · ${event.scorer}` : ''}</Text><Pressable onPress={() => void updateFixture({ ...fixture, liveEvents: (fixture.liveEvents ?? []).filter((item) => item.id !== event.id) })}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable></View>)}</View></View>;
+    <View style={[styles.homeGrid, wide && styles.homeGridWide]}>
+      <View style={styles.homeMain}>
+        <SectionTitle eyebrow="PROSSIMA PARTITA" title={fixture?.status === 'live' ? 'In campo adesso' : 'Match center'} action="Apri" onAction={() => onTab('live')} />
+        {fixture ? <Pressable onPress={() => onTab('live')}><LivePanel fixture={fixture} compact /></Pressable> : null}
+        {article ? <View style={styles.sectionGap}><SectionTitle eyebrow="ULTIME DAL CLUB" title="In primo piano" action="Tutte" onAction={() => onTab('news')} /><NewsCard article={article} featured onPress={() => onNews(article)} /></View> : null}
+      </View>
+      <View style={styles.homeSide}>
+        {featuredPlayer ? <><SectionTitle eyebrow="SQUADRA" title="Protagonista" action="Rosa" onAction={() => onTab('club')} /><FeaturedPlayer player={featuredPlayer} onPress={() => onPlayer(featuredPlayer)} /></> : null}
+        <View style={styles.updateCard}><View style={styles.updateIcon}><MaterialCommunityIcons name="cloud-check-outline" size={24} color={colors.success} /></View><Text style={styles.updateTitle}>Contenuti aggiornati</Text><Text style={styles.updateCopy}>{content.updatedAt}</Text></View>
+      </View>
+    </View>
+  </View>;
 }
 
-function Input(props: React.ComponentProps<typeof TextInput> & { label: string }) { const { label, multiline, ...rest } = props; return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><TextInput {...rest} multiline={multiline} placeholderTextColor={colors.muted} style={[styles.input, multiline && styles.inputMultiline]} /></View>; }
-function PrimaryButton({ label, onPress, secondary }: { label: string; onPress: () => void; secondary?: boolean }) { return <Pressable onPress={onPress} style={[styles.primary, secondary && styles.secondary]}><Text style={[styles.primaryText, secondary && styles.secondaryText]}>{label}</Text></Pressable>; }
+function FeaturedPlayer({ player, onPress }: { player: Player; onPress: () => void }) {
+  return <Pressable onPress={onPress} style={styles.featuredPlayer}>
+    <LinearGradient colors={['#173F5F', '#0B2237']} style={StyleSheet.absoluteFillObject} />
+    <Text style={styles.featuredNumber}>{player.number ?? 'AC'}</Text>
+    {player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={styles.featuredImage} /> : null}
+    <View style={styles.featuredOverlay}><Text style={styles.featuredRole}>{player.role}</Text><Text style={styles.featuredName}>{player.name}</Text><View style={styles.featuredLink}><Text style={styles.featuredLinkText}>Vedi profilo</Text><MaterialCommunityIcons name="arrow-top-right" size={17} color={colors.accent} /></View></View>
+  </Pressable>;
+}
+
+function NewsScreen({ content, wide, onNews }: { content: AppContent; wide: boolean; onNews: (item: NewsArticle) => void }) {
+  return <View style={styles.stack}><PageHeader eyebrow="NEWSROOM" title="News" copy="Comunicati, squadra, stadio e tutto ciò che riguarda il mondo biancazzurro." /><View style={[styles.newsGrid, wide && styles.newsGridWide]}>{content.news.map((article, index) => <NewsCard key={article.id} article={article} featured={index === 0 && !wide} onPress={() => onNews(article)} style={wide ? styles.newsCardWide : undefined} />)}</View></View>;
+}
+
+function RosterScreen({ content, wide, onPlayer }: { content: AppContent; wide: boolean; onPlayer: (item: Player) => void }) {
+  return <View style={styles.stack}><PageHeader eyebrow="PRIMA SQUADRA" title="Rosa 2026/27" copy="Tocca un calciatore per aprire la scheda completa con informazioni e statistiche." />{roleOrder.map((role) => { const players = content.players.filter((player) => player.role === role); if (!players.length) return null; return <View key={role} style={styles.roleSection}><View style={styles.roleHeading}><Text style={styles.roleTitle}>{role === 'Portiere' ? 'Portieri' : role === 'Difensore' ? 'Difensori' : role === 'Centrocampista' ? 'Centrocampisti' : 'Attaccanti'}</Text><Text style={styles.roleCount}>{players.length}</Text></View><View style={[styles.playerGrid, wide && styles.playerGridWide]}>{players.map((player) => <PlayerCard key={player.id} player={player} onPress={() => onPlayer(player)} style={wide ? styles.playerCardWide : undefined} />)}</View></View>; })}</View>;
+}
+
+function PageHeader({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) {
+  return <View style={styles.pageHeader}><Text style={styles.pageEyebrow}>{eyebrow}</Text><Text style={styles.pageTitle}>{title}</Text><Text style={styles.pageCopy}>{copy}</Text></View>;
+}
+
+function SectionTitle({ eyebrow, title, action, onAction }: { eyebrow: string; title: string; action?: string; onAction?: () => void }) {
+  return <View style={styles.sectionTitleRow}><View><Text style={styles.sectionEyebrow}>{eyebrow}</Text><Text style={styles.sectionTitle}>{title}</Text></View>{action && onAction ? <Pressable onPress={onAction} style={styles.sectionAction}><Text style={styles.sectionActionText}>{action}</Text><MaterialCommunityIcons name="arrow-right" size={17} color={colors.accent} /></Pressable> : null}</View>;
+}
+
+function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClose: () => void }) {
+  return <Modal visible={!!article} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}><SafeAreaView style={styles.articleSafe}>{article ? <ScrollView contentContainerStyle={styles.articleContent}><View style={styles.articleHero}>{article.imageUrl ? <Image source={{ uri: article.imageUrl }} resizeMode="cover" style={styles.articleImage} /> : <LinearGradient colors={['#174A6F', '#0B263D']} style={styles.articlePlaceholder}><MaterialCommunityIcons name="newspaper-variant-outline" size={70} color={colors.accent} /></LinearGradient>}<Pressable onPress={onClose} style={styles.articleClose}><MaterialCommunityIcons name="close" size={23} color={colors.paper} /></Pressable></View><View style={styles.articleBody}><Text style={styles.articleCategory}>{article.category} · {article.publishedAt}</Text><Text style={styles.articleTitle}>{article.title}</Text><Text style={styles.articleLead}>{article.summary}</Text><View style={styles.articleDivider} /><Text style={styles.articleText}>{article.body ?? article.summary}</Text><Text style={styles.articleSource}>Fonte: {article.source}</Text></View></ScrollView> : null}</SafeAreaView></Modal>;
+}
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.canvas }, header: { backgroundColor: colors.ink, paddingHorizontal: 18, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, brand: { flexDirection: 'row', alignItems: 'center', gap: 10 }, logo: { width: 42, height: 42, resizeMode: 'contain' }, brandTop: { color: colors.paper, fontWeight: '900', letterSpacing: 1.4 }, brandBottom: { color: colors.accent, fontWeight: '900', fontSize: 12, letterSpacing: 2 }, adminButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.inkSoft, alignItems: 'center', justifyContent: 'center' }, content: { padding: 16, paddingBottom: 110 }, stack: { gap: 14 }, hero: { padding: 22, borderRadius: radii.lg, backgroundColor: colors.blue }, heroKicker: { color: colors.accent, fontSize: 12, fontWeight: '900', letterSpacing: 1.2 }, heroTitle: { color: colors.paper, fontSize: 30, lineHeight: 34, fontWeight: '900', marginTop: 8 }, heroCopy: { color: '#E7F3FF', marginTop: 10, fontSize: 16, lineHeight: 22 }, pageTitle: { color: colors.ink, fontSize: 30, fontWeight: '900', marginBottom: 16 }, sectionLabel: { color: colors.ink, fontSize: 21, fontWeight: '900', marginTop: 6 }, nav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.line, paddingBottom: 8, paddingTop: 8 }, navItem: { flex: 1, alignItems: 'center', paddingVertical: 5, gap: 2 }, navItemActive: { backgroundColor: colors.accentSoft, borderRadius: radii.md }, navText: { fontSize: 11, color: colors.muted, fontWeight: '700' }, navTextActive: { color: colors.ink }, modal: { flex: 1, backgroundColor: colors.paper }, close: { alignSelf: 'flex-end', margin: 16, width: 42, height: 42, borderRadius: 21, backgroundColor: colors.canvas, alignItems: 'center', justifyContent: 'center' }, article: { padding: 20, paddingBottom: 60 }, articleImage: { width: '100%', height: 230, borderRadius: radii.lg, marginBottom: 18, backgroundColor: colors.sky }, eyebrow: { color: colors.blue, fontWeight: '900', textTransform: 'uppercase' }, articleTitle: { color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900', marginTop: 8 }, articleBody: { color: colors.inkSoft, fontSize: 17, lineHeight: 27, marginTop: 18 }, adminIntro: { color: colors.inkSoft, lineHeight: 21, marginBottom: 14 }, segment: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radii.md, padding: 4, borderWidth: 1, borderColor: colors.line, marginBottom: 14 }, segmentButton: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12 }, segmentActive: { backgroundColor: colors.ink }, segmentText: { color: colors.muted, fontWeight: '800' }, segmentTextActive: { color: colors.paper }, adminCard: { padding: 16, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, gap: 12 }, adminTitle: { color: colors.ink, fontWeight: '900', fontSize: 20, marginTop: 4 }, field: { gap: 6 }, fieldLabel: { color: colors.inkSoft, fontWeight: '800', fontSize: 13 }, input: { borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: colors.canvas, paddingHorizontal: 13, paddingVertical: 12, color: colors.ink }, inputMultiline: { minHeight: 100, textAlignVertical: 'top' }, row: { flexDirection: 'row', gap: 10 }, flex: { flex: 1 }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, choice: { paddingHorizontal: 11, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: colors.canvas, borderWidth: 1, borderColor: colors.line }, choiceActive: { backgroundColor: colors.ink, borderColor: colors.ink }, choiceText: { color: colors.inkSoft, fontWeight: '800', fontSize: 12 }, choiceTextActive: { color: colors.paper }, primary: { backgroundColor: colors.accent, borderRadius: radii.md, padding: 14, alignItems: 'center' }, primaryText: { color: colors.ink, fontWeight: '900' }, secondary: { backgroundColor: colors.ink }, secondaryText: { color: colors.paper }, switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, adminList: { marginTop: 6, gap: 8 }, adminListRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radii.md, backgroundColor: colors.canvas }, adminListText: { flex: 1, color: colors.inkSoft, fontWeight: '700' }, reset: { marginTop: 16, padding: 14, alignItems: 'center' }, resetText: { color: colors.live, fontWeight: '800' }, bigScore: { fontSize: 42, color: colors.ink, fontWeight: '900', textAlign: 'center' }, liveActions: { gap: 8 },
+  safe: { flex: 1, backgroundColor: colors.canvas },
+  header: { backgroundColor: 'rgba(6,17,31,0.98)', borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  headerInner: { width: '100%', maxWidth: 1180, alignSelf: 'center', minHeight: 72, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  logo: { width: 42, height: 42 }, brandName: { color: colors.ink, fontSize: 16, fontWeight: '900', letterSpacing: 0.8 }, brandTag: { color: colors.muted, fontSize: 9, marginTop: 2, letterSpacing: 0.7 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  seasonPill: { display: 'none', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 8, borderRadius: radii.pill, backgroundColor: colors.surface }, seasonDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.success }, seasonText: { color: colors.inkSoft, fontSize: 11, fontWeight: '800' },
+  adminButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.lineSoft }, adminButtonActive: { backgroundColor: colors.surfaceRaised },
+  scroll: { flex: 1 }, scrollContent: { paddingBottom: 110 }, container: { width: '100%', padding: 16, gap: 22 }, containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 22 }, stack: { gap: 24 },
+  hero: { minHeight: 320, overflow: 'hidden', borderRadius: radii.xl, padding: 24, justifyContent: 'center', borderWidth: 1, borderColor: colors.line }, heroGlow: { position: 'absolute', width: 260, height: 260, borderRadius: 130, right: -60, top: -80, backgroundColor: 'rgba(86,199,255,0.13)' }, heroContent: { maxWidth: 650, zIndex: 2 }, heroKicker: { color: colors.accentSoft, fontSize: 11, fontWeight: '900', letterSpacing: 1.5 }, heroTitle: { color: colors.paper, fontSize: 40, lineHeight: 44, fontWeight: '900', letterSpacing: -1.3, marginTop: 11, maxWidth: 480 }, heroCopy: { color: colors.inkSoft, fontSize: 16, lineHeight: 24, maxWidth: 560, marginTop: 13 }, heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 24 }, primaryCta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 17, paddingVertical: 13, borderRadius: radii.md, backgroundColor: colors.accent }, primaryCtaText: { color: colors.canvas, fontWeight: '900' }, secondaryCta: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 17, paddingVertical: 13, borderRadius: radii.md, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: colors.line }, secondaryCtaText: { color: colors.ink, fontWeight: '900' }, heroCrest: { position: 'absolute', right: -8, bottom: -32, width: 250, height: 250, opacity: 0.13 },
+  homeGrid: { gap: 28 }, homeGridWide: { flexDirection: 'row', alignItems: 'flex-start' }, homeMain: { flex: 1.7, gap: 14 }, homeSide: { flex: 1, gap: 14 }, sectionGap: { marginTop: 16, gap: 14 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }, sectionEyebrow: { color: colors.accent, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 }, sectionTitle: { color: colors.ink, fontSize: 23, fontWeight: '900', marginTop: 3 }, sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5 }, sectionActionText: { color: colors.accent, fontSize: 12, fontWeight: '900' },
+  featuredPlayer: { height: 360, overflow: 'hidden', borderRadius: radii.xl, borderWidth: 1, borderColor: colors.line }, featuredNumber: { position: 'absolute', right: -4, top: -20, color: 'rgba(255,255,255,0.06)', fontSize: 170, lineHeight: 190, fontWeight: '900' }, featuredImage: { position: 'absolute', top: 10, alignSelf: 'center', width: 250, height: 270, borderRadius: radii.xl }, featuredOverlay: { marginTop: 'auto', padding: 18, paddingTop: 55, backgroundColor: 'rgba(3,14,24,0.74)' }, featuredRole: { color: colors.accent, fontSize: 10, fontWeight: '900', letterSpacing: 1.1, textTransform: 'uppercase' }, featuredName: { color: colors.paper, fontSize: 24, fontWeight: '900', marginTop: 5 }, featuredLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }, featuredLinkText: { color: colors.accent, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  updateCard: { padding: 18, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.lineSoft }, updateIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.successSoft }, updateTitle: { color: colors.ink, fontWeight: '900', marginTop: 13 }, updateCopy: { color: colors.muted, fontSize: 12, marginTop: 4 },
+  pageHeader: { paddingVertical: 10, maxWidth: 720 }, pageEyebrow: { color: colors.accent, fontSize: 11, fontWeight: '900', letterSpacing: 1.4 }, pageTitle: { color: colors.ink, fontSize: 38, lineHeight: 43, fontWeight: '900', letterSpacing: -1, marginTop: 6 }, pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 9 },
+  newsGrid: { gap: 14 }, newsGridWide: { flexDirection: 'row', flexWrap: 'wrap' }, newsCardWide: { width: '48.9%' },
+  roleSection: { gap: 12 }, roleHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 }, roleTitle: { color: colors.ink, fontSize: 22, fontWeight: '900' }, roleCount: { minWidth: 28, height: 28, paddingHorizontal: 8, borderRadius: 14, textAlign: 'center', textAlignVertical: 'center', color: colors.canvas, backgroundColor: colors.accent, fontSize: 12, fontWeight: '900', overflow: 'hidden' }, playerGrid: { gap: 12 }, playerGridWide: { flexDirection: 'row', flexWrap: 'wrap' }, playerCardWide: { width: '49.1%' },
+  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingBottom: 12 }, navInner: { maxWidth: 520, width: '100%', alignSelf: 'center', flexDirection: 'row', padding: 6, borderRadius: radii.xl, backgroundColor: 'rgba(9,24,39,0.98)', borderWidth: 1, borderColor: colors.line }, navItem: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: radii.lg }, navItemActive: { backgroundColor: colors.accent }, navText: { color: colors.muted, fontSize: 10, fontWeight: '800' }, navTextActive: { color: colors.canvas },
+  articleSafe: { flex: 1, backgroundColor: colors.canvas }, articleContent: { paddingBottom: 50 }, articleHero: { height: 300, backgroundColor: colors.canvasRaised }, articleImage: { width: '100%', height: '100%' }, articlePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' }, articleClose: { position: 'absolute', top: 16, right: 18, width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(4,16,27,0.76)' }, articleBody: { padding: 22, maxWidth: 760, width: '100%', alignSelf: 'center' }, articleCategory: { color: colors.accent, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' }, articleTitle: { color: colors.ink, fontSize: 34, lineHeight: 39, fontWeight: '900', letterSpacing: -0.7, marginTop: 10 }, articleLead: { color: colors.inkSoft, fontSize: 18, lineHeight: 27, marginTop: 16 }, articleDivider: { height: 1, backgroundColor: colors.lineSoft, marginVertical: 24 }, articleText: { color: colors.inkSoft, fontSize: 16, lineHeight: 27 }, articleSource: { color: colors.muted, fontSize: 11, marginTop: 28 },
 });
