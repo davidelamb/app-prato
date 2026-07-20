@@ -1,4 +1,17 @@
 export type FixtureStatus = 'scheduled' | 'live' | 'final';
+export type LivePhase = 'scheduled' | 'first_half' | 'halftime' | 'second_half' | 'finished';
+export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'fulltime';
+
+export type LiveEvent = {
+  id: string;
+  type: LiveEventType;
+  label: string;
+  minute?: number;
+  team?: string;
+  scorer?: string;
+  score?: string;
+  createdAt: string;
+};
 
 export type Fixture = {
   id: string;
@@ -14,6 +27,8 @@ export type Fixture = {
   minute?: number;
   venue: string;
   isDemo?: boolean;
+  livePhase?: LivePhase;
+  liveEvents?: LiveEvent[];
 };
 
 export type Standing = {
@@ -34,6 +49,7 @@ export type Player = {
   age?: number;
   marketValue?: string;
   source: 'Editoriale' | 'Transfermarkt';
+  imageUrl?: string;
 };
 
 export type NewsArticle = {
@@ -41,9 +57,11 @@ export type NewsArticle = {
   category: string;
   title: string;
   summary: string;
+  body?: string;
   publishedAt: string;
   source: string;
   featured?: boolean;
+  imageUrl?: string;
 };
 
 export type AppContent = {
