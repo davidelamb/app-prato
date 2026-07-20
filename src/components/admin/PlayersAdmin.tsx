@@ -51,8 +51,8 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
       <Button label="Carica foto" icon="image-plus" secondary onPress={() => void pick()} />
       <Field label="URL foto" value={draft.imageUrl?.startsWith('data:') ? '' : draft.imageUrl ?? ''} onChangeText={(value) => update('imageUrl', value)} keyboardType="url" />
       <View style={adminStyles.row}>
-        <Field label="Zoom foto" value={String(draft.imageScale ?? 1)} onChangeText={(value) => update('imageScale', Number(value.replace(',', '.')) || 1)} keyboardType="decimal-pad" />
-        <Field label="Posizione verticale" value={String(draft.imagePositionY ?? 0)} onChangeText={(value) => update('imagePositionY', Number(value) || 0)} keyboardType="numbers-and-punctuation" />
+        <Field label="Zoom foto" value={String(draft.imageScale ?? 1)} onChangeText={(value) => update('imageScale', Number(value.replace(',', '.')) || 1)} keyboardType="default" />
+        <Field label="Posizione verticale" value={String(draft.imagePositionY ?? 0)} onChangeText={(value) => update('imagePositionY', Number(value) || 0)} keyboardType="default" />
       </View>
       <View style={adminStyles.row}><Field label="Nome" value={draft.name} onChangeText={(value) => update('name', value)} /><Field label="Numero" value={draft.number ? String(draft.number) : ''} onChangeText={(value) => update('number', value ? Number(value) : undefined)} keyboardType="numeric" /></View>
       <View style={adminStyles.choices}>{roles.map((role) => <Pressable key={role} onPress={() => update('role', role)} style={[adminStyles.choice, draft.role === role && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, draft.role === role && adminStyles.choiceTextActive]}>{role}</Text></Pressable>)}</View>
