@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { seedContent } from '../data/seed';
-import { AppContent, Fixture, NewsArticle, Player } from '../types';
+import { AppContent, Fixture, MediaItem, NewsArticle, Player } from '../types';
 
-const STORAGE_KEY = '@ac-prato/content-v4';
-const LEGACY_KEYS = ['@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v5';
+const LEGACY_KEYS = ['@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
   return { ...fixture, livePhase: fixture.livePhase ?? (fixture.status === 'live' ? 'first_half' : fixture.status === 'final' ? 'finished' : 'scheduled'), liveEvents: fixture.liveEvents ?? [] };
@@ -18,12 +18,17 @@ function normalizeNews(article: NewsArticle): NewsArticle {
   return { ...article, body: article.body ?? article.summary, imageUrl: article.imageUrl ?? '' };
 }
 
+function normalizeMedia(item: MediaItem): MediaItem {
+  return { ...item, description: item.description ?? '', thumbnailUrl: item.thumbnailUrl ?? '', source: item.source ?? 'Redazione' };
+}
+
 export function normalizeContent(content: AppContent): AppContent {
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures,
     standings: Array.isArray(content.standings) ? content.standings : seedContent.standings,
     players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players,
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
+    media: Array.isArray(content.media) ? content.media.map(normalizeMedia) : seedContent.media,
     updatedAt: content.updatedAt || seedContent.updatedAt,
   };
 }
@@ -37,7 +42,7 @@ export async function loadContent(): Promise<AppContent> {
       const legacy = await AsyncStorage.getItem(key);
       if (legacy) {
         const parsed = normalizeContent(JSON.parse(legacy) as AppContent);
-        const migrated = normalizeContent({ ...parsed, players: seedContent.players });
+        const migrated = normalizeContent({ ...parsed, news: seedContent.news, media: seedContent.media });
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
         return migrated;
       }
