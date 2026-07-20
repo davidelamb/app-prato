@@ -7,7 +7,16 @@ const STORAGE_KEY = '@ac-prato/content-v6';
 const LEGACY_KEYS = ['@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
-  return { ...fixture, livePhase: fixture.livePhase ?? (fixture.status === 'live' ? 'first_half' : fixture.status === 'final' ? 'finished' : 'scheduled'), liveEvents: fixture.liveEvents ?? [] };
+  const demoMatchday = /demo|dimostrativa/i.test(fixture.matchday);
+  const demoDate = /demo|dimostrativa/i.test(fixture.dateLabel);
+  return {
+    ...fixture,
+    matchday: demoMatchday ? '1ª giornata' : fixture.matchday,
+    dateLabel: demoDate ? '' : fixture.dateLabel,
+    isDemo: false,
+    livePhase: fixture.livePhase ?? (fixture.status === 'live' ? 'first_half' : fixture.status === 'final' ? 'finished' : 'scheduled'),
+    liveEvents: fixture.liveEvents ?? [],
+  };
 }
 
 function normalizePlayer(player: Player): Player {
@@ -54,7 +63,7 @@ function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
 
 export function normalizeContent(content: AppContent): AppContent {
   return {
-    fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures,
+    fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
     standings: Array.isArray(content.standings) ? content.standings.map(normalizeStanding) : seedContent.standings.map(normalizeStanding),
     schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : undefined,
     players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players,
