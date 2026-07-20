@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PublicTab } from '../AppShell';
@@ -6,11 +7,19 @@ import { LivePanel } from '../components/LivePanel';
 import { NewsCard } from '../components/NewsCard';
 import { colors, radii } from '../theme';
 import { AppContent, NewsArticle, Player } from '../types';
+import { findHomeLiveFixture } from '../utils/match-time';
 import { playerImageStyle } from '../utils/player-image';
 
 export function HomeScreen({ content, wide, onTab, onNews, onPlayer }: { content: AppContent; wide: boolean; onTab: (tab: PublicTab | 'admin') => void; onNews: (item: NewsArticle) => void; onPlayer: (item: Player) => void }) {
-  const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0];
-  const nextFixture = content.fixtures.find((item) => item.status === 'scheduled') ?? fixture;
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const fixture = findHomeLiveFixture(content.fixtures, content.schedule ?? [], now);
+  const nextFixture = content.fixtures.find((item) => item.status === 'scheduled') ?? content.fixtures[0];
   const featuredNews = content.news.find((item) => item.featured) ?? content.news[0];
   const otherNews = content.news.filter((item) => item.id !== featuredNews?.id).slice(0, 2);
   const featuredMedia = content.media.find((item) => item.featured) ?? content.media[0];
