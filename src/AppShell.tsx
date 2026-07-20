@@ -5,6 +5,7 @@ import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindow
 
 import { AdminDashboard } from './components/AdminDashboard';
 import { ArticleModal } from './components/ArticleModal';
+import { LivePanel } from './components/LivePanel';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
 import { seedContent } from './data/seed';
 import { HomeScreen } from './screens/HomeScreen';
@@ -15,7 +16,6 @@ import { StatsScreen } from './screens/StatsScreen';
 import { loadContent, resetContent, saveContent } from './services/content-store';
 import { colors } from './theme';
 import { AppContent, NewsArticle, Player } from './types';
-import { LivePanel } from './components/LivePanel';
 
 export type PublicTab = 'home' | 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
@@ -48,8 +48,8 @@ export default function AppShell() {
   return <SafeAreaView style={styles.safe}>
     <StatusBar style="dark" />
     <View style={styles.header}><View style={styles.headerInner}>
-      <Pressable onPress={() => setTab('home')} style={styles.brand}>
-        <View style={styles.logoFrame}><Image source={require('../assets/ac-prato-crest.png')} resizeMode="contain" style={styles.logo} /></View>
+      <Pressable accessibilityLabel="Torna alla home di APPrato" onPress={() => setTab('home')} style={styles.brand}>
+        <View style={styles.logoFrame}><Image source={require('../assets/ac-prato-crest.png')} resizeMode="cover" style={styles.logo} /></View>
         <View style={styles.brandCopy}><Text style={styles.brandName}>APPrato</Text><Text style={styles.brandTag}>News, media, live e Serie D</Text></View>
       </Pressable>
       <Pressable accessibilityLabel="Apri amministrazione" onPress={() => setTab(tab === 'admin' ? 'home' : 'admin')} style={styles.onlineButton}>{tab === 'admin' ? <MaterialCommunityIcons name="close" size={23} color={colors.accentStrong} /> : <View style={styles.onlineDot} />}</Pressable>
@@ -82,10 +82,27 @@ const styles = StyleSheet.create({
   header: { backgroundColor: colors.paper, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   headerInner: { width: '100%', maxWidth: 1180, alignSelf: 'center', minHeight: 108, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  logoFrame: { width: 66, height: 66, borderRadius: 18, padding: 5, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  logo: { width: '100%', height: '100%' }, brandCopy: { flex: 1 }, brandName: { color: colors.ink, fontSize: 24, fontWeight: '900' }, brandTag: { color: colors.muted, fontSize: 13, fontWeight: '700', marginTop: 3 },
-  onlineButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }, onlineDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.success },
-  scroll: { flex: 1 }, scrollContent: { paddingBottom: 104 }, adminScroll: { paddingBottom: 30 }, container: { width: '100%', padding: 16 }, containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 22 }, stack: { gap: 20 },
-  eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' }, pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 }, pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 8 },
-  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft }, navInner: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', minHeight: 82, paddingHorizontal: 3 }, navItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: 7 }, navItemActive: { backgroundColor: colors.surfaceRaised }, navText: { color: colors.muted, fontSize: 9, fontWeight: '900' }, navTextActive: { color: colors.accentStrong }, navUnderline: { position: 'absolute', left: 7, right: 7, bottom: 0, height: 4, backgroundColor: colors.yellow, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  logoFrame: { width: 74, height: 74, borderRadius: 22, overflow: 'hidden', backgroundColor: colors.navy },
+  logo: { width: '100%', height: '100%' },
+  brandCopy: { flex: 1 },
+  brandName: { color: colors.ink, fontSize: 24, fontWeight: '900' },
+  brandTag: { color: colors.muted, fontSize: 13, fontWeight: '700', marginTop: 3 },
+  onlineButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  onlineDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.success },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 104 },
+  adminScroll: { paddingBottom: 30 },
+  container: { width: '100%', padding: 16 },
+  containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 22 },
+  stack: { gap: 20 },
+  eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
+  pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
+  pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 8 },
+  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft },
+  navInner: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', minHeight: 82, paddingHorizontal: 3 },
+  navItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: 7 },
+  navItemActive: { backgroundColor: colors.surfaceRaised },
+  navText: { color: colors.muted, fontSize: 9, fontWeight: '900' },
+  navTextActive: { color: colors.accentStrong },
+  navUnderline: { position: 'absolute', left: 7, right: 7, bottom: 0, height: 4, backgroundColor: colors.yellow, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
 });

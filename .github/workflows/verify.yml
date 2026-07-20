@@ -28,4 +28,13 @@ jobs:
           name: tsc-errors
           path: tsc-errors.txt
       - name: Export Expo web
-        run: npm run build:web
+        id: webbuild
+        run: |
+          npm run build:web > expo-errors.txt 2>&1
+          cat expo-errors.txt
+      - name: Upload Expo errors
+        if: failure() && steps.webbuild.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-errors
+          path: expo-errors.txt
