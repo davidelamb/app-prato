@@ -52,22 +52,24 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
 
   const importSchedule = () => {
     const rows = scheduleImport.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    const parsed = rows.map((line, index) => {
+    const parsed: SeasonMatch[] = [];
+    rows.forEach((line, index) => {
       const cells = line.split(/\t|;/).map((cell) => cell.trim());
-      if (cells.length < 5) return null;
-      const matchday = number(cells[0]);
-      return {
-        id: `calendar-import-${matchday || index + 1}`,
-        matchday: matchday || index + 1,
-        leg: (matchday || index + 1) <= 17 ? 'Andata' as const : 'Ritorno' as const,
+      if (cells.length < 5) return;
+      const matchday = number(cells[0]) || index + 1;
+      const match: SeasonMatch = {
+        id: `calendar-import-${matchday}`,
+        matchday,
+        leg: matchday <= 17 ? 'Andata' : 'Ritorno',
         dateLabel: cells[1],
         time: cells[2],
         home: cells[3],
         away: cells[4],
-        homeScore: cells[5] === '' || cells[5] === undefined ? undefined : number(cells[5]),
-        awayScore: cells[6] === '' || cells[6] === undefined ? undefined : number(cells[6]),
       };
-    }).filter((row): row is SeasonMatch => !!row);
+      if (cells[5] !== '' && cells[5] !== undefined) match.homeScore = number(cells[5]);
+      if (cells[6] !== '' && cells[6] !== undefined) match.awayScore = number(cells[6]);
+      parsed.push(match);
+    });
     if (!parsed.length) return Alert.alert('Formato non riconosciuto', 'Usa una riga per partita: giornata;data;ora;casa;trasferta;gol casa;gol trasferta.');
     setSchedule(parsed);
     setScheduleImport('');
