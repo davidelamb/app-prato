@@ -3,11 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { playerPhotoFallbacks } from '../data/player-photo-fallbacks';
 import { preseasonStandings } from '../data/season-2026-27';
 import { seedContent } from '../data/seed';
-import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch, Standing } from '../types';
-import { emptyStandingRows, normalizeStandingRow } from '../utils/standings';
+import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch } from '../types';
+import { completeStandingRows, emptyStandingRows, normalizeStandingRow, sortStandingRows } from '../utils/standings';
 
-const STORAGE_KEY = '@ac-prato/content-v8';
-const LEGACY_KEYS = ['@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v9';
+const LEGACY_KEYS = ['@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
   const demoMatchday = /demo|dimostrativa/i.test(fixture.matchday);
@@ -63,20 +63,15 @@ function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
   };
 }
 
-function normalizeStandingList(rows: Standing[] | undefined, fallback: Standing[]): Standing[] {
-  return Array.isArray(rows) && rows.length === fallback.length ? rows.map(normalizeStandingRow) : fallback.map(normalizeStandingRow);
-}
-
 export function normalizeContent(content: AppContent): AppContent {
-  const overallSource = Array.isArray(content.standings) && content.standings.length >= 18 ? content.standings : preseasonStandings;
-  const overall = overallSource.map(normalizeStandingRow);
-  const empty = emptyStandingRows(overall);
+  const master = preseasonStandings.map(normalizeStandingRow);
+  const emptyMaster = emptyStandingRows(master);
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
-    standings: overall,
-    homeStandings: normalizeStandingList(content.homeStandings, empty),
-    awayStandings: normalizeStandingList(content.awayStandings, empty),
-    formStandings: normalizeStandingList(content.formStandings, empty),
+    standings: sortStandingRows(completeStandingRows(content.standings, master)),
+    homeStandings: sortStandingRows(completeStandingRows(content.homeStandings, emptyMaster)),
+    awayStandings: sortStandingRows(completeStandingRows(content.awayStandings, emptyMaster)),
+    formStandings: sortStandingRows(completeStandingRows(content.formStandings, emptyMaster)),
     schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : seedContent.schedule?.map(normalizeSchedule),
     players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players.map(normalizePlayer),
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
