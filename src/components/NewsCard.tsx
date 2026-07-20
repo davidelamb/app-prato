@@ -9,34 +9,39 @@ export function NewsCard({ article, onPress, featured = false, style }: { articl
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, featured && styles.featured, style, pressed && styles.pressed]}>
       <View style={[styles.imageWrap, featured && styles.imageFeatured]}>
-        {article.imageUrl ? <Image source={{ uri: article.imageUrl }} resizeMode="cover" style={styles.image} /> : <LinearGradient colors={['#164466', '#0D2740', '#091827']} style={styles.placeholder}><MaterialCommunityIcons name="newspaper-variant-outline" size={42} color={colors.accent} /></LinearGradient>}
+        {article.imageUrl ? <Image source={{ uri: article.imageUrl }} resizeMode="cover" style={styles.image} /> : <LinearGradient colors={[colors.navy, '#123A64', colors.accentStrong]} style={styles.placeholder}><MaterialCommunityIcons name="newspaper-variant-outline" size={46} color={colors.paper} /></LinearGradient>}
+        {featured ? <LinearGradient colors={['transparent', 'rgba(7,20,38,0.94)']} style={styles.imageShade} /> : null}
         <View style={styles.categoryPill}><Text style={styles.category}>{article.category}</Text></View>
+        {featured ? <View style={styles.featuredCopy}><Text numberOfLines={3} style={styles.featuredTitle}>{article.title}</Text><Text style={styles.featuredDate}>{article.publishedAt}</Text></View> : null}
       </View>
-      <View style={styles.body}>
+      {!featured ? <View style={styles.body}>
         <Text style={styles.date}>{article.publishedAt}</Text>
-        <Text numberOfLines={featured ? 3 : 2} style={[styles.title, featured && styles.titleFeatured]}>{article.title}</Text>
-        <Text numberOfLines={featured ? 3 : 2} style={styles.summary}>{article.summary}</Text>
-        <View style={styles.readRow}><Text style={styles.readText}>Leggi la notizia</Text><MaterialCommunityIcons name="arrow-right" size={18} color={colors.accent} /></View>
-      </View>
+        <Text numberOfLines={3} style={styles.title}>{article.title}</Text>
+        <Text numberOfLines={2} style={styles.summary}>{article.summary}</Text>
+        <View style={styles.readRow}><Text style={styles.readText}>Apri articolo</Text><MaterialCommunityIcons name="arrow-right" size={18} color={colors.accentStrong} /></View>
+      </View> : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.lineSoft },
-  featured: { minHeight: 430 },
-  pressed: { opacity: 0.9 },
-  imageWrap: { height: 150, backgroundColor: colors.canvasRaised },
-  imageFeatured: { height: 220 },
+  card: { overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.lineSoft, shadowColor: colors.shadow, shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
+  featured: { minHeight: 430, backgroundColor: colors.navy },
+  pressed: { opacity: 0.91, transform: [{ scale: 0.995 }] },
+  imageWrap: { height: 168, backgroundColor: colors.canvasRaised },
+  imageFeatured: { height: 430 },
   image: { width: '100%', height: '100%' },
+  imageShade: { ...StyleSheet.absoluteFillObject },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  categoryPill: { position: 'absolute', left: 14, bottom: 14, paddingHorizontal: 11, paddingVertical: 6, borderRadius: radii.pill, backgroundColor: 'rgba(3,15,26,0.82)' },
-  category: { color: colors.accentSoft, fontWeight: '900', textTransform: 'uppercase', fontSize: 10, letterSpacing: 1 },
-  body: { padding: 17 },
-  date: { color: colors.muted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8 },
-  title: { color: colors.ink, fontSize: 19, lineHeight: 23, fontWeight: '900', marginTop: 7 },
-  titleFeatured: { fontSize: 25, lineHeight: 30 },
+  categoryPill: { position: 'absolute', left: 16, top: 16, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.xs, backgroundColor: colors.accentStrong },
+  category: { color: colors.paper, fontWeight: '900', textTransform: 'uppercase', fontSize: 10, letterSpacing: 1.1 },
+  featuredCopy: { position: 'absolute', left: 20, right: 20, bottom: 22 },
+  featuredTitle: { color: colors.paper, fontSize: 28, lineHeight: 32, fontWeight: '900', letterSpacing: -0.6 },
+  featuredDate: { color: colors.accentSoft, fontSize: 11, fontWeight: '800', marginTop: 10, textTransform: 'uppercase' },
+  body: { padding: 18 },
+  date: { color: colors.accentStrong, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.9 },
+  title: { color: colors.ink, fontSize: 20, lineHeight: 24, fontWeight: '900', marginTop: 7, letterSpacing: -0.25 },
   summary: { color: colors.inkSoft, lineHeight: 20, marginTop: 9 },
-  readRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 16 },
-  readText: { color: colors.accent, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  readRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 17, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.lineSoft },
+  readText: { color: colors.accentStrong, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
 });
