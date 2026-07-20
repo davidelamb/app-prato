@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PublicTab } from '../AppShell';
@@ -6,18 +7,32 @@ import { LivePanel } from '../components/LivePanel';
 import { NewsCard } from '../components/NewsCard';
 import { colors, radii } from '../theme';
 import { AppContent, NewsArticle, Player } from '../types';
+import { isHomeLiveVisible, kickoffTimestamp } from '../utils/fixture-time';
 import { playerImageStyle } from '../utils/player-image';
 
 export function HomeScreen({ content, wide, onTab, onNews, onPlayer }: { content: AppContent; wide: boolean; onTab: (tab: PublicTab | 'admin') => void; onNews: (item: NewsArticle) => void; onPlayer: (item: Player) => void }) {
-  const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0];
-  const nextFixture = content.fixtures.find((item) => item.status === 'scheduled') ?? fixture;
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const liveFixture = useMemo(() => content.fixtures
+    .filter((item) => isHomeLiveVisible(item, now))
+    .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER))[0], [content.fixtures, now]);
+
+  const nextFixture = useMemo(() => content.fixtures
+    .filter((item) => item.status === 'scheduled')
+    .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER))[0], [content.fixtures]);
+
   const featuredNews = content.news.find((item) => item.featured) ?? content.news[0];
   const otherNews = content.news.filter((item) => item.id !== featuredNews?.id).slice(0, 2);
   const featuredMedia = content.media.find((item) => item.featured) ?? content.media[0];
   const featuredPlayer = content.players.find((item) => !!item.imageUrl) ?? content.players[0];
 
   return <View style={styles.stack}>
-    {fixture ? <Pressable onPress={() => onTab('live')}><LivePanel fixture={fixture} compact /></Pressable> : null}
+    {liveFixture ? <Pressable onPress={() => onTab('live')}><LivePanel fixture={liveFixture} compact /></Pressable> : null}
     {featuredMedia ? <Pressable onPress={() => onTab('media')} style={styles.mediaBanner}>
       <Image source={{ uri: featuredMedia.thumbnailUrl }} resizeMode="cover" style={StyleSheet.absoluteFillObject} />
       <View style={styles.shade} /><View style={styles.play}><MaterialCommunityIcons name="play" size={28} color={colors.paper} /></View>
@@ -25,7 +40,7 @@ export function HomeScreen({ content, wide, onTab, onNews, onPlayer }: { content
       <MaterialCommunityIcons name="chevron-right" size={30} color={colors.paper} />
     </Pressable> : null}
 
-    <Pressable onPress={() => onTab('live')} style={styles.matchCard}><View style={styles.headingRow}><View><Text style={styles.eyebrow}>HOME</Text><Text style={styles.cardTitle}>Prossima partita</Text></View><MaterialCommunityIcons name="chevron-right" size={31} color={colors.accentStrong} /></View>{nextFixture ? <View style={styles.matchBody}><Text style={styles.matchTeams}>{nextFixture.home} – {nextFixture.away}</Text><Text style={styles.matchMeta}>{nextFixture.dateLabel} · {nextFixture.time} · {nextFixture.venue}</Text></View> : null}</Pressable>
+    <Pressable onPress={() => onTab('live')} style={styles.matchCard}><View style={styles.headingRow}><View><Text style={styles.eyebrow}>HOME</Text><Text style={styles.cardTitle}>Prossima partita</Text></View><MaterialCommunityIcons name="chevron-right" size={31} color={colors.accentStrong} /></View>{nextFixture ? <View style={styles.matchBody}><Text style={styles.matchTeams}>{nextFixture.home} – {nextFixture.away}</Text><Text style={styles.matchMeta}>{[nextFixture.dateLabel, nextFixture.time, nextFixture.venue].filter(Boolean).join(' · ')}</Text></View> : null}</Pressable>
 
     <View style={[styles.columns, wide && styles.columnsWide]}>
       <View style={styles.main}><SectionHeader eyebrow="REDAZIONE" title="Ultime notizie" action="Tutte" onPress={() => onTab('news')} />{featuredNews ? <NewsCard article={featuredNews} featured onPress={() => onNews(featuredNews)} /> : null}<View style={styles.list}>{otherNews.map((article) => <NewsCard key={article.id} article={article} onPress={() => onNews(article)} />)}</View></View>
