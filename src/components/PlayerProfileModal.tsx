@@ -1,5 +1,4 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii } from '../theme';
@@ -11,7 +10,12 @@ function Stat({ value, label }: { value: string | number; label: string }) {
 
 function Detail({ icon, label, value }: { icon: React.ComponentProps<typeof MaterialCommunityIcons>['name']; label: string; value?: string }) {
   if (!value) return null;
-  return <View style={styles.detail}><View style={styles.detailIcon}><MaterialCommunityIcons name={icon} size={18} color={colors.accent} /></View><View><Text style={styles.detailLabel}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View></View>;
+  return (
+    <View style={styles.detail}>
+      <View style={styles.detailIcon}><MaterialCommunityIcons name={icon} size={19} color={colors.accentStrong} /></View>
+      <View style={styles.detailBody}><Text style={styles.detailLabel}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>
+    </View>
+  );
 }
 
 export function PlayerProfileModal({ player, onClose }: { player: Player | null; onClose: () => void }) {
@@ -20,15 +24,21 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
       <SafeAreaView style={styles.safe}>
         {player ? (
           <ScrollView contentContainerStyle={styles.content}>
+            <View style={styles.topBar}>
+              <Pressable onPress={onClose} style={styles.back}><MaterialCommunityIcons name="chevron-left" size={30} color={colors.ink} /></Pressable>
+              <Text style={styles.topTitle}>Profilo giocatore</Text>
+              <View style={styles.topSpacer} />
+            </View>
+
             <View style={styles.hero}>
-              <LinearGradient colors={['#123A5B', '#071827', '#06111F']} style={StyleSheet.absoluteFillObject} />
-              <Text style={styles.watermark}>{player.number ?? 'AC'}</Text>
-              {player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={styles.heroImage} /> : <View style={styles.heroPlaceholder}><MaterialCommunityIcons name="account" size={110} color={colors.mutedDark} /></View>}
-              <Pressable accessibilityLabel="Chiudi profilo" onPress={onClose} style={styles.close}><MaterialCommunityIcons name="close" size={23} color={colors.paper} /></Pressable>
-              <View style={styles.heroText}>
+              <View style={styles.heroImageWrap}>
+                {player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={styles.heroImage} /> : <View style={styles.heroPlaceholder}><MaterialCommunityIcons name="account" size={110} color={colors.mutedDark} /></View>}
+                <View style={styles.numberBadge}><Text style={styles.numberText}>{player.number ? `#${player.number}` : 'AC'}</Text></View>
+              </View>
+              <View style={styles.heroBody}>
                 <Text style={styles.role}>{player.role}</Text>
                 <Text style={styles.name}>{player.name}</Text>
-                <Text style={styles.subline}>{player.number ? `Maglia #${player.number}` : 'AC Prato'}{player.nationality ? ` · ${player.nationality}` : ''}</Text>
+                <Text style={styles.subline}>{player.nationality ?? 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
               </View>
             </View>
 
@@ -39,9 +49,10 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
               <Stat value={player.minutes ?? 0} label="Minuti" />
             </View>
 
-            {player.bio ? <View style={styles.section}><Text style={styles.sectionTitle}>Profilo</Text><Text style={styles.bio}>{player.bio}</Text></View> : null}
+            {player.bio ? <View style={styles.sectionCard}><Text style={styles.sectionEyebrow}>PROFILO</Text><Text style={styles.sectionTitle}>Il giocatore</Text><Text style={styles.bio}>{player.bio}</Text></View> : null}
 
-            <View style={styles.section}>
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionEyebrow}>DATI PERSONALI</Text>
               <Text style={styles.sectionTitle}>Informazioni</Text>
               <View style={styles.detailsGrid}>
                 <Detail icon="cake-variant-outline" label="Età" value={player.age ? `${player.age} anni` : undefined} />
@@ -54,10 +65,10 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
             </View>
 
             <View style={styles.marketCard}>
-              <View><Text style={styles.marketLabel}>Valore indicativo</Text><Text style={styles.marketValue}>{player.marketValue ?? 'Non disponibile'}</Text></View>
-              <MaterialCommunityIcons name="chart-line" size={30} color={colors.accent} />
+              <View><Text style={styles.marketLabel}>VALORE INDICATIVO</Text><Text style={styles.marketValue}>{player.marketValue ?? 'Non disponibile'}</Text></View>
+              <View style={styles.marketIcon}><MaterialCommunityIcons name="chart-line" size={28} color={colors.accentStrong} /></View>
             </View>
-            <Text style={styles.sourceNote}>Dati e immagini del prototipo possono provenire da fonti pubbliche esterne e dovranno essere sostituiti con materiale autorizzato prima della pubblicazione.</Text>
+            <Text style={styles.sourceNote}>Dati e immagini del prototipo dovranno essere verificati e sostituiti con materiale autorizzato prima della pubblicazione definitiva.</Text>
           </ScrollView>
         ) : null}
       </SafeAreaView>
@@ -66,31 +77,39 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingBottom: 40 },
-  hero: { height: 430, overflow: 'hidden', justifyContent: 'flex-end' },
-  watermark: { position: 'absolute', right: -4, top: 34, color: 'rgba(255,255,255,0.055)', fontSize: 190, lineHeight: 210, fontWeight: '900' },
-  heroImage: { position: 'absolute', top: 26, alignSelf: 'center', width: 310, height: 330, borderRadius: radii.xl },
-  heroPlaceholder: { position: 'absolute', top: 42, alignSelf: 'center', width: 280, height: 300, alignItems: 'center', justifyContent: 'center' },
-  close: { position: 'absolute', right: 18, top: 16, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(4,17,29,0.7)', alignItems: 'center', justifyContent: 'center' },
-  heroText: { paddingHorizontal: 22, paddingBottom: 24, paddingTop: 58, backgroundColor: 'rgba(3,13,23,0.62)' },
-  role: { color: colors.accent, fontSize: 12, fontWeight: '900', letterSpacing: 1.4, textTransform: 'uppercase' },
-  name: { color: colors.paper, fontSize: 32, lineHeight: 36, fontWeight: '900', marginTop: 6 },
-  subline: { color: colors.inkSoft, fontSize: 14, marginTop: 7 },
-  statsGrid: { flexDirection: 'row', marginHorizontal: 16, paddingVertical: 18, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.lineSoft },
-  stat: { flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: colors.lineSoft },
-  statValue: { color: colors.ink, fontSize: 22, fontWeight: '900' },
-  statLabel: { color: colors.muted, fontSize: 10, textTransform: 'uppercase', marginTop: 3 },
-  section: { marginHorizontal: 18, marginTop: 26 },
-  sectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '900' },
+  safe: { flex: 1, backgroundColor: colors.canvasRaised },
+  content: { paddingBottom: 44 },
+  topBar: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, backgroundColor: colors.paper, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  back: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  topTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
+  topSpacer: { width: 42 },
+  hero: { margin: 16, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  heroImageWrap: { height: 360, backgroundColor: colors.surfaceSoft },
+  heroImage: { width: '100%', height: '100%' },
+  heroPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  numberBadge: { position: 'absolute', left: 16, bottom: 16, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.sm, backgroundColor: colors.navy },
+  numberText: { color: colors.paper, fontSize: 14, fontWeight: '900' },
+  heroBody: { padding: 20 },
+  role: { color: colors.accentStrong, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, textTransform: 'uppercase' },
+  name: { color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900', letterSpacing: -0.6, marginTop: 5 },
+  subline: { color: colors.muted, fontSize: 14, marginTop: 7 },
+  statsGrid: { flexDirection: 'row', marginHorizontal: 16, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  stat: { flex: 1, alignItems: 'center', paddingVertical: 17, borderRightWidth: 1, borderRightColor: colors.lineSoft },
+  statValue: { color: colors.ink, fontSize: 21, fontWeight: '900' },
+  statLabel: { color: colors.muted, fontSize: 9, fontWeight: '800', textTransform: 'uppercase', marginTop: 3 },
+  sectionCard: { marginHorizontal: 16, marginTop: 16, padding: 18, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  sectionEyebrow: { color: colors.yellow, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
+  sectionTitle: { color: colors.ink, fontSize: 22, fontWeight: '900', marginTop: 4 },
   bio: { color: colors.inkSoft, fontSize: 15, lineHeight: 23, marginTop: 10 },
-  detailsGrid: { gap: 10, marginTop: 12 },
-  detail: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.lineSoft },
-  detailIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft },
-  detailLabel: { color: colors.muted, fontSize: 11, textTransform: 'uppercase' },
-  detailValue: { color: colors.ink, fontSize: 15, fontWeight: '800', marginTop: 2 },
-  marketCard: { margin: 18, marginTop: 26, padding: 18, borderRadius: radii.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.line },
-  marketLabel: { color: colors.muted, fontSize: 11, textTransform: 'uppercase' },
-  marketValue: { color: colors.accentSoft, fontSize: 24, fontWeight: '900', marginTop: 3 },
-  sourceNote: { color: colors.mutedDark, fontSize: 11, lineHeight: 16, marginHorizontal: 20 },
+  detailsGrid: { gap: 10, marginTop: 14 },
+  detail: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: radii.md, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.lineSoft },
+  detailIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft },
+  detailBody: { flex: 1 },
+  detailLabel: { color: colors.muted, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  detailValue: { color: colors.ink, fontSize: 15, fontWeight: '900', marginTop: 2 },
+  marketCard: { margin: 16, padding: 18, borderRadius: radii.lg, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.yellowSoft, borderWidth: 1, borderColor: colors.yellow },
+  marketLabel: { color: colors.accentStrong, fontSize: 10, fontWeight: '900', letterSpacing: 0.9 },
+  marketValue: { color: colors.ink, fontSize: 24, fontWeight: '900', marginTop: 4 },
+  marketIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper },
+  sourceNote: { color: colors.muted, fontSize: 10, lineHeight: 15, marginHorizontal: 20 },
 });
