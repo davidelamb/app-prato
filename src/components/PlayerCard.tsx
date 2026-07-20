@@ -3,13 +3,14 @@ import { Image, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from '
 
 import { colors, radii } from '../theme';
 import { Player } from '../types';
+import { playerImageStyle } from '../utils/player-image';
 
 export function PlayerCard({ player, onPress, style }: { player: Player; onPress: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.card, style, pressed && styles.pressed]}>
       <View style={styles.photoWrap}>
         {player.imageUrl ? (
-          <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={styles.photo} />
+          <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={[styles.photo, playerImageStyle(player)]} />
         ) : (
           <View style={styles.placeholder}><MaterialCommunityIcons name="account" size={52} color={colors.mutedDark} /></View>
         )}
