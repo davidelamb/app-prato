@@ -3,9 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { playerPhotoFallbacks } from '../data/player-photo-fallbacks';
 import { seedContent } from '../data/seed';
 import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch, Standing } from '../types';
+import { emptyStandingRows, normalizeStandingRow } from '../utils/standings';
 
-const STORAGE_KEY = '@ac-prato/content-v7';
-const LEGACY_KEYS = ['@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v8';
+const LEGACY_KEYS = ['@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
   const demoMatchday = /demo|dimostrativa/i.test(fixture.matchday);
@@ -14,6 +15,7 @@ function normalizeFixture(fixture: Fixture): Fixture {
     ...fixture,
     matchday: demoMatchday ? '1ª giornata' : fixture.matchday,
     dateLabel: demoDate ? '' : fixture.dateLabel,
+    kickoffAt: fixture.kickoffAt || undefined,
     isDemo: false,
     livePhase: fixture.livePhase ?? (fixture.status === 'live' ? 'first_half' : fixture.status === 'final' ? 'finished' : 'scheduled'),
     liveEvents: fixture.liveEvents ?? [],
@@ -44,24 +46,6 @@ function normalizeMedia(item: MediaItem): MediaItem {
   return { ...item, description: item.description ?? '', thumbnailUrl: item.thumbnailUrl ?? '', source: item.source ?? 'Redazione' };
 }
 
-function normalizeStanding(row: Standing, index: number): Standing {
-  const goalsFor = Number(row.goalsFor) || 0;
-  const goalsAgainst = Number(row.goalsAgainst) || 0;
-  return {
-    ...row,
-    rank: Number(row.rank) || index + 1,
-    played: Number(row.played) || 0,
-    wins: Number(row.wins) || 0,
-    draws: Number(row.draws) || 0,
-    losses: Number(row.losses) || 0,
-    goalsFor,
-    goalsAgainst,
-    goalDifference: goalsFor - goalsAgainst,
-    points: Number(row.points) || 0,
-    form: row.form ?? [],
-  };
-}
-
 function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
   const matchday = Number(match.matchday) || undefined;
   return {
@@ -78,10 +62,19 @@ function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
   };
 }
 
+function normalizeStandingList(rows: Standing[] | undefined, fallback: Standing[]): Standing[] {
+  return Array.isArray(rows) && rows.length ? rows.map(normalizeStandingRow) : fallback.map(normalizeStandingRow);
+}
+
 export function normalizeContent(content: AppContent): AppContent {
+  const overall = normalizeStandingList(content.standings, seedContent.standings);
+  const empty = emptyStandingRows(overall);
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
-    standings: Array.isArray(content.standings) ? content.standings.map(normalizeStanding) : seedContent.standings.map(normalizeStanding),
+    standings: overall,
+    homeStandings: normalizeStandingList(content.homeStandings, empty),
+    awayStandings: normalizeStandingList(content.awayStandings, empty),
+    formStandings: normalizeStandingList(content.formStandings, empty),
     schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : seedContent.schedule?.map(normalizeSchedule),
     players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players.map(normalizePlayer),
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
