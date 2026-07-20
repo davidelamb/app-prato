@@ -15,8 +15,17 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --silent
       - name: TypeScript check
-        run: npm run typecheck
+        id: typecheck
+        run: |
+          npm run typecheck > tsc-errors.txt 2>&1
+          cat tsc-errors.txt
+      - name: Upload TypeScript errors
+        if: failure() && steps.typecheck.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tsc-errors
+          path: tsc-errors.txt
       - name: Export Expo web
         run: npm run build:web

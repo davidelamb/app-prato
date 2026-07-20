@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { seedContent } from '../data/seed';
-import { AppContent, Fixture, MediaItem, NewsArticle, Player } from '../types';
+import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch, Standing } from '../types';
 
-const STORAGE_KEY = '@ac-prato/content-v5';
-const LEGACY_KEYS = ['@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v6';
+const LEGACY_KEYS = ['@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
   return { ...fixture, livePhase: fixture.livePhase ?? (fixture.status === 'live' ? 'first_half' : fixture.status === 'final' ? 'finished' : 'scheduled'), liveEvents: fixture.liveEvents ?? [] };
@@ -22,10 +22,41 @@ function normalizeMedia(item: MediaItem): MediaItem {
   return { ...item, description: item.description ?? '', thumbnailUrl: item.thumbnailUrl ?? '', source: item.source ?? 'Redazione' };
 }
 
+function normalizeStanding(row: Standing, index: number): Standing {
+  const goalsFor = Number(row.goalsFor) || 0;
+  const goalsAgainst = Number(row.goalsAgainst) || 0;
+  return {
+    ...row,
+    rank: Number(row.rank) || index + 1,
+    played: Number(row.played) || 0,
+    wins: Number(row.wins) || 0,
+    draws: Number(row.draws) || 0,
+    losses: Number(row.losses) || 0,
+    goalsFor,
+    goalsAgainst,
+    goalDifference: goalsFor - goalsAgainst,
+    points: Number(row.points) || 0,
+    form: row.form ?? [],
+  };
+}
+
+function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
+  const matchday = Number(match.matchday) || index + 1;
+  return {
+    ...match,
+    id: match.id || `season-match-${matchday}`,
+    matchday,
+    leg: match.leg ?? (matchday <= 17 ? 'Andata' : 'Ritorno'),
+    dateLabel: match.dateLabel ?? '',
+    time: match.time ?? '',
+  };
+}
+
 export function normalizeContent(content: AppContent): AppContent {
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures,
-    standings: Array.isArray(content.standings) ? content.standings : seedContent.standings,
+    standings: Array.isArray(content.standings) ? content.standings.map(normalizeStanding) : seedContent.standings.map(normalizeStanding),
+    schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : undefined,
     players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players,
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
     media: Array.isArray(content.media) ? content.media.map(normalizeMedia) : seedContent.media,

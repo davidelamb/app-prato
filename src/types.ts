@@ -33,12 +33,30 @@ export type Fixture = {
   liveEvents?: LiveEvent[];
 };
 
+export type SeasonMatch = {
+  id: string;
+  matchday: number;
+  leg: 'Andata' | 'Ritorno';
+  home: string;
+  away: string;
+  dateLabel: string;
+  time: string;
+  homeScore?: number;
+  awayScore?: number;
+};
+
 export type Standing = {
   rank: number;
   club: string;
   played: number;
+  wins?: number;
+  draws?: number;
+  losses?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  goalDifference?: number;
   points: number;
-  form: Array<'W' | 'D' | 'L'>;
+  form?: Array<'W' | 'D' | 'L'>;
 };
 
 export type Player = {
@@ -95,6 +113,7 @@ export type MediaItem = {
 export type AppContent = {
   fixtures: Fixture[];
   standings: Standing[];
+  schedule?: SeasonMatch[];
   players: Player[];
   news: NewsArticle[];
   media: MediaItem[];
