@@ -27,6 +27,16 @@ export function normalizeStandingRow(row: Standing, index: number): Standing {
   };
 }
 
+function clubKey(value: string): string {
+  return value
+    .toLocaleLowerCase('it')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(ac|asd|us|gsd|fc|calcio)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 export function emptyStandingRows(rows: Standing[]): Standing[] {
   return rows.map((row, index) => ({
     rank: index + 1,
@@ -43,6 +53,20 @@ export function emptyStandingRows(rows: Standing[]): Standing[] {
   }));
 }
 
+export function completeStandingRows(rows: Standing[] | undefined, masterRows: Standing[]): Standing[] {
+  const normalizedRows = (rows ?? []).filter((row) => !!row?.club).map(normalizeStandingRow);
+  const byClub = new Map(normalizedRows.map((row) => [clubKey(row.club), row]));
+
+  return masterRows.map((master, index) => {
+    const existing = byClub.get(clubKey(master.club));
+    return normalizeStandingRow({
+      ...(existing ?? master),
+      club: master.club,
+      rank: existing?.rank ?? master.rank ?? index + 1,
+    }, index);
+  });
+}
+
 export function sortStandingRows(rows: Standing[]): Standing[] {
   return rows
     .map(normalizeStandingRow)
@@ -54,10 +78,10 @@ export function sortStandingRows(rows: Standing[]): Standing[] {
 }
 
 export function standingRows(content: AppContent, scope: StandingScope): Standing[] {
-  if (scope === 'home') return content.homeStandings?.length ? content.homeStandings : emptyStandingRows(content.standings);
-  if (scope === 'away') return content.awayStandings?.length ? content.awayStandings : emptyStandingRows(content.standings);
-  if (scope === 'form') return content.formStandings?.length ? content.formStandings : emptyStandingRows(content.standings);
-  return content.standings;
+  if (scope === 'home') return content.homeStandings ?? [];
+  if (scope === 'away') return content.awayStandings ?? [];
+  if (scope === 'form') return content.formStandings ?? [];
+  return content.standings ?? [];
 }
 
 export function setStandingRows(content: AppContent, scope: StandingScope, rows: Standing[]): AppContent {
