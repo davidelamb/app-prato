@@ -1,7 +1,8 @@
-import { AppContent, Player } from '../types';
+import { AppContent, MediaItem, Player } from '../types';
 
 const tm = (path: string) => `https://img.a.transfermarkt.technology/portrait/medium/${path}?lm=1`;
 const source = 'https://www.transfermarkt.com/ac-prato/kader/verein/2250/saison_id/2026';
+const ytThumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
 const players: Player[] = [
   { id: 'furghieri', number: 12, name: 'Gabriel Furghieri', role: 'Portiere', age: 19, birthDate: '01/11/2006', birthplace: 'Modena', nationality: 'Italia', foot: 'Entrambi', contractUntil: '30/06/2027', marketValue: '€100 mila', appearances: 0, goals: 0, assists: 0, source: 'Transfermarkt', imageUrl: tm('1058885-1762528318.png'), imageSourceUrl: source, bio: 'Portiere giovane, reattivo e moderno, confermato nel progetto biancazzurro.' },
@@ -21,8 +22,16 @@ const players: Player[] = [
   { id: 'benedetti', name: 'Lorenzo Benedetti', role: 'Attaccante', age: 34, nationality: 'Italia', contractUntil: '30/06/2027', marketValue: '€50 mila', appearances: 0, goals: 0, assists: 0, source: 'Transfermarkt', imageUrl: tm('195291-1477575354.jpg'), imageSourceUrl: source },
 ];
 
+const media: MediaItem[] = [
+  { id: 'media-ghiviborgo', kind: 'Highlights', title: 'Ghiviborgo – Prato 0-3: gli highlights', description: 'La vittoria esterna dei biancazzurri con il rigore di Rossetti e la doppietta di Verde.', publishedAt: '29 MAR 2026', source: 'TV Prato', thumbnailUrl: ytThumb('ec3d9oX2qTI'), url: 'https://www.youtube.com/watch?v=ec3d9oX2qTI', featured: true },
+  { id: 'media-prato-channel', kind: 'Video', title: 'AC Prato su Prato Channel', description: 'Contenuti e aggiornamenti video dal canale ufficiale biancazzurro.', publishedAt: '22 FEB 2026', source: 'Prato Channel', thumbnailUrl: ytThumb('E_JAeMd4ajA'), url: 'https://www.youtube.com/watch?v=E_JAeMd4ajA' },
+  { id: 'media-politano', kind: 'Intervista', title: 'Politano: «Costruiamo una squadra ambiziosa»', description: 'Il presidente parla di mercato, stadio e prospettive per la nuova stagione.', publishedAt: '27 GIU 2026', source: 'TV Prato', thumbnailUrl: 'https://www.acprato.it/site/wp-content/uploads/2021/07/poster-video.png', url: 'https://www.tvprato.it/ac-prato-il-presidente-politano-sara-una-squadra-da-serie-c-ho-scritto-ad-abete-siamo-disponibili-per-il-ripescaggio/' },
+  { id: 'media-zanon', kind: 'Intervista', title: 'Zanon racconta il lavoro della squadra', description: 'L’esterno biancazzurro parla dell’organizzazione tattica e del gruppo.', publishedAt: '12 FEB 2026', source: 'TV Prato', thumbnailUrl: tm('280044-1567145368.jpg'), url: 'https://www.tvprato.it/ac-prato-zanon-mister-dal-canto-ci-ha-dato-ordine-in-campo/' },
+  { id: 'media-limberti', kind: 'Intervista', title: 'Limberti: «Ogni partita sarà una finale»', description: 'L’intervista all’esterno cresciuto nel vivaio del Prato.', publishedAt: '12 MAR 2026', source: 'TV Prato', thumbnailUrl: 'https://www.lanazione.it/image-service/view/acePublic/alias/contentid/MTQ1ZmQ1NjQtNWViZS00/0/prato-zero-alibi-prendiamoci-tre-punti-concentrazione-la-ricetta-anti-ghiviborgo.webp?f=16%3A9&q=0.75&w=1280', url: 'https://www.tvprato.it/ac-prato-limberti-ci-aspettano-otto-finali/' },
+];
+
 export const seedContent: AppContent = {
-  updatedAt: 'Rosa 2026/27 · aggiornamento prototipo',
+  updatedAt: '20 lug 2026 · contenuti demo online',
   fixtures: [
     { id: 'fixture-1', competition: 'Serie D · Girone E', matchday: 'Diretta dimostrativa', dateLabel: 'LIVE DEMO', time: "67'", home: 'AC Prato', away: 'Tau Altopascio', homeScore: 1, awayScore: 1, status: 'live', minute: 67, venue: 'Stadio Lungobisenzio', isDemo: true, livePhase: 'second_half', liveEvents: [
       { id: 'demo-goal-2', type: 'goal', label: 'Gol Tau Altopascio', minute: 54, team: 'Tau Altopascio', scorer: 'Rossi', score: '1-1', createdAt: new Date().toISOString() },
@@ -39,9 +48,11 @@ export const seedContent: AppContent = {
     { rank: 3, club: 'Seravezza Pozzi', played: 0, points: 0, form: ['W', 'D', 'L', 'W', 'W'] },
   ],
   players,
+  media,
   news: [
-    { id: 'news-1', category: 'Società', title: 'AC Prato si dà le regole per la nuova stagione', summary: 'Codice etico, safeguarding e modello organizzativo nel percorso verso il nuovo campionato.', body: 'Il club prepara la nuova stagione lavorando su struttura, identità e organizzazione. Questa notizia è un contenuto dimostrativo modificabile dal pannello admin.', publishedAt: '19 GIU 2026', source: 'acprato.it', featured: true },
-    { id: 'news-2', category: 'Società', title: 'Jacopo Falanga entra nel consiglio di amministrazione', summary: 'Il club amplia la propria struttura in vista della prossima stagione.', body: 'La società rafforza la propria struttura dirigenziale. Il testo completo può essere aggiornato dall’area amministrativa.', publishedAt: '04 GIU 2026', source: 'acprato.it' },
-    { id: 'news-3', category: 'Stadio', title: 'Il Lungobisenzio al centro delle nuove prospettive', summary: 'Aggiornamenti sul futuro della casa dei biancazzurri.', body: 'Il Lungobisenzio resta il cuore del progetto sportivo e della comunità biancazzurra.', publishedAt: '25 MAR 2026', source: 'acprato.it' },
+    { id: 'news-furghieri', category: 'Mercato', title: 'Furghieri resta al Prato: rinnovo fino al 2027', summary: 'Il giovane portiere prosegue il proprio percorso in biancazzurro dopo una stagione da protagonista.', body: 'Gabriel Furghieri ha prolungato il proprio rapporto con l’AC Prato fino al 30 giugno 2027. Il portiere classe 2006 si è conquistato il posto da titolare nel corso della stagione e rappresenta uno dei punti fermi del nuovo progetto tecnico.', publishedAt: '03 LUG 2026', source: 'NotiziarioCalcio', sourceUrl: 'https://www.notiziariocalcio.com/serie-d/rinnovo-casa-prato-confermata-esclusiva-370939', imageUrl: 'https://net-storage-auto.tcccdn.com/storage/notiziariocalcio.com/img_notizie/thumb3/eb/eb796f3a86f449447d093970a323226f-87825-oooz0000.jpeg', featured: true },
+    { id: 'news-regole', category: 'Società', title: 'AC Prato si dà le regole per la nuova stagione', summary: 'Codice etico, safeguarding e modello organizzativo nel percorso verso il nuovo campionato.', body: 'Il club ha avviato il percorso per dotarsi di codice etico, codice di condotta safeguarding e modello organizzativo. L’obiettivo è costruire una società più moderna, trasparente e attenta alla tutela di atleti e famiglie.', publishedAt: '19 GIU 2026', source: 'AC Prato', sourceUrl: 'https://www.acprato.it/site/ac-prato-si-da-le-regole-codice-etico-safeguarding-e-modello-organizzativo-in-arrivo-prima-del-via-alla-nuova-stagione/', imageUrl: 'https://www.acprato.it/site/wp-content/uploads/Com_Uff.png' },
+    { id: 'news-ritiro', category: 'Prima squadra', title: 'Il Prato torna al lavoro in vista della nuova stagione', summary: 'Allenamenti, intensità e preparazione atletica al centro del programma biancazzurro.', body: 'La squadra è tornata sul campo per iniziare la preparazione. Lo staff sta lavorando su condizione atletica, organizzazione e identità di gioco in vista dei primi appuntamenti ufficiali.', publishedAt: '13 LUG 2026', source: 'La Nazione', sourceUrl: 'https://www.lanazione.it/prato/cronaca/prato-parla-il-preparatore-atletico-f97987d4', imageUrl: 'https://www.lanazione.it/image-service/view/acePublic/alias/contentid/ZjlhNjhjMWUtZTg2Ni00/0/prato-parla-il-preparatore-atletico-chiatto-ragazzi-seri-e-motivati-non-si-risparmiano.webp?f=16%3A9&q=0.75&w=1280' },
+    { id: 'news-squadra', category: 'Campionato', title: 'Il gruppo biancazzurro prepara le prossime sfide', summary: 'Concentrazione, unità e lavoro quotidiano per costruire la nuova stagione.', body: 'Il gruppo prosegue la preparazione con sedute dedicate alla parte atletica e tattica. L’obiettivo è arrivare pronto ai primi impegni ufficiali mantenendo forte il legame con la città e i tifosi.', publishedAt: '20 LUG 2026', source: 'La Nazione', sourceUrl: 'https://www.lanazione.it/prato/cronaca/prato-zero-alibi-prendiamoci-tre-3bba275c', imageUrl: 'https://www.lanazione.it/image-service/view/acePublic/alias/contentid/MTQ1ZmQ1NjQtNWViZS00/0/prato-zero-alibi-prendiamoci-tre-punti-concentrazione-la-ricetta-anti-ghiviborgo.webp?f=16%3A9&q=0.75&w=1280' },
   ],
 };
