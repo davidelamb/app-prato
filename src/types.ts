@@ -3,6 +3,7 @@ export type LivePhase = 'scheduled' | 'first_half' | 'halftime' | 'second_half' 
 export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'fulltime';
 export type PlayerRole = 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
 export type MediaKind = 'Highlights' | 'Intervista' | 'Video' | 'Podcast';
+export type MatchCompetition = 'Campionato' | 'Coppa Italia' | 'Amichevole';
 
 export type LiveEvent = {
   id: string;
@@ -35,14 +36,18 @@ export type Fixture = {
 
 export type SeasonMatch = {
   id: string;
-  matchday: number;
-  leg: 'Andata' | 'Ritorno';
+  matchday?: number;
+  leg?: 'Andata' | 'Ritorno';
+  competition?: MatchCompetition;
+  roundLabel?: string;
   home: string;
   away: string;
   dateLabel: string;
   time: string;
+  venue?: string;
   homeScore?: number;
   awayScore?: number;
+  sortOrder?: number;
 };
 
 export type Standing = {
@@ -83,6 +88,8 @@ export type Player = {
   source: 'Editoriale' | 'Transfermarkt';
   imageUrl?: string;
   imageSourceUrl?: string;
+  imageScale?: number;
+  imagePositionY?: number;
 };
 
 export type NewsArticle = {
