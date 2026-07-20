@@ -4,14 +4,22 @@ import { Alert, Pressable, Text, View } from 'react-native';
 
 import { preseasonStandings, provisionalPratoSchedule } from '../../data/season-2026-27';
 import { colors } from '../../theme';
-import { AppContent, MatchCompetition, SeasonMatch, Standing } from '../../types';
+import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope } from '../../types';
 import { Button, Field, adminStyles } from './Primitives';
 
 const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia', 'Amichevole'];
+const standingScopes: Array<{ value: StandingScope; label: string }> = [
+  { value: 'overall', label: 'Generale' },
+  { value: 'home', label: 'Casa' },
+  { value: 'away', label: 'Trasferta' },
+  { value: 'form', label: 'Forma' },
+];
 const number = (value: string | number | undefined) => Number(value) || 0;
 const cleanDate = (value: string) => value === 'Data da definire' ? '' : value;
 const cleanTime = (value: string) => value === '—' ? '' : value;
 const newMatch = (): SeasonMatch => ({ id: '', competition: 'Campionato', roundLabel: '', dateLabel: '', time: '', home: 'AC Prato', away: '', venue: '', sortOrder: Date.now() });
+
+type StandingTables = Record<StandingScope, Standing[]>;
 
 function normalizeStanding(row: Standing, index: number): Standing {
   const goalsFor = number(row.goalsFor);
@@ -27,8 +35,16 @@ function normalizeStanding(row: Standing, index: number): Standing {
     goalsAgainst,
     goalDifference: goalsFor - goalsAgainst,
     points: number(row.points),
-    form: row.form ?? [],
+    form: (row.form ?? []).slice(-5),
   };
+}
+
+function blankStandings(): Standing[] {
+  return preseasonStandings.map((row, index) => normalizeStanding({ ...row, rank: index + 1, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, form: [] }, index));
+}
+
+function tableOrBlank(value?: Standing[]): Standing[] {
+  return value?.length ? value.map(normalizeStanding) : blankStandings();
 }
 
 function normalizeMatch(match: SeasonMatch, index: number): SeasonMatch {
@@ -58,18 +74,46 @@ function competitionFrom(value: string): MatchCompetition | null {
   return null;
 }
 
+function parseForm(value: string): Array<'W' | 'D' | 'L'> {
+  return value
+    .toUpperCase()
+    .replace(/[^WDLVNP]/g, '')
+    .split('')
+    .map((result) => result === 'V' ? 'W' : result === 'N' ? 'D' : result === 'P' ? 'L' : result)
+    .filter((result): result is 'W' | 'D' | 'L' => result === 'W' || result === 'D' || result === 'L')
+    .slice(-5);
+}
+
+function formText(form?: Array<'W' | 'D' | 'L'>): string {
+  return (form ?? []).map((result) => result === 'W' ? 'V' : result === 'D' ? 'N' : 'P').join('');
+}
+
+function withStandingTable(content: AppContent, scope: StandingScope, table: Standing[]): AppContent {
+  if (scope === 'home') return { ...content, standingsHome: table };
+  if (scope === 'away') return { ...content, standingsAway: table };
+  if (scope === 'form') return { ...content, standingsForm: table };
+  return { ...content, standings: table };
+}
+
 export function CompetitionAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
   const initialSchedule = useMemo<SeasonMatch[]>(() => (content.schedule?.length ? content.schedule : provisionalPratoSchedule).map(normalizeMatch), [content.schedule]);
-  const initialStandings = useMemo<Standing[]>(() => (content.standings.length >= 18 ? content.standings : preseasonStandings).map((row, index) => normalizeStanding(row, index)), [content.standings]);
+  const initialTables = useMemo<StandingTables>(() => ({
+    overall: content.standings.length >= 18 ? content.standings.map(normalizeStanding) : preseasonStandings.map(normalizeStanding),
+    home: tableOrBlank(content.standingsHome),
+    away: tableOrBlank(content.standingsAway),
+    form: tableOrBlank(content.standingsForm),
+  }), [content.standings, content.standingsAway, content.standingsForm, content.standingsHome]);
   const [schedule, setSchedule] = useState<SeasonMatch[]>(initialSchedule);
   const [draft, setDraft] = useState<SeasonMatch>(newMatch());
-  const [standings, setStandings] = useState<Standing[]>(initialStandings);
+  const [standingScope, setStandingScope] = useState<StandingScope>('overall');
+  const [standingTables, setStandingTables] = useState<StandingTables>(initialTables);
   const [scheduleImport, setScheduleImport] = useState('');
   const [standingsImport, setStandingsImport] = useState('');
+  const standings = standingTables[standingScope];
 
   const updateDraft = <K extends keyof SeasonMatch>(key: K, value: SeasonMatch[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const updateMatch = (id: string, patch: Partial<SeasonMatch>) => setSchedule((current) => current.map((match) => match.id === id ? { ...match, ...patch } : match));
-  const updateStanding = (club: string, patch: Partial<Standing>) => setStandings((current) => current.map((row) => row.club === club ? normalizeStanding({ ...row, ...patch }, row.rank - 1) : row));
+  const updateStanding = (club: string, patch: Partial<Standing>) => setStandingTables((current) => ({ ...current, [standingScope]: current[standingScope].map((row) => row.club === club ? normalizeStanding({ ...row, ...patch }, row.rank - 1) : row) }));
 
   const addMatch = () => {
     if (!draft.home.trim() || !draft.away.trim()) return Alert.alert('Squadre mancanti', 'Inserisci squadra di casa e squadra ospite.');
@@ -92,8 +136,8 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
       .map((row, index) => normalizeStanding(row, index))
       .sort((a, b) => b.points - a.points || number(b.goalDifference) - number(a.goalDifference) || number(b.goalsFor) - number(a.goalsFor) || a.club.localeCompare(b.club, 'it'))
       .map((row, index) => ({ ...row, rank: index + 1 }));
-    setStandings(sorted);
-    void onChange({ ...content, standings: sorted });
+    setStandingTables((current) => ({ ...current, [standingScope]: sorted }));
+    void onChange(withStandingTable(content, standingScope, sorted));
   };
 
   const importSchedule = () => {
@@ -104,17 +148,7 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
       const competition = competitionFrom(cells[0] ?? '');
       if (competition) {
         if (cells.length < 6) return;
-        const match: SeasonMatch = {
-          id: `calendar-import-${Date.now()}-${index}`,
-          competition,
-          roundLabel: cells[1] ?? '',
-          dateLabel: cells[2] ?? '',
-          time: cells[3] ?? '',
-          home: cells[4] ?? '',
-          away: cells[5] ?? '',
-          venue: cells[6] ?? '',
-          sortOrder: index,
-        };
+        const match: SeasonMatch = { id: `calendar-import-${Date.now()}-${index}`, competition, roundLabel: cells[1] ?? '', dateLabel: cells[2] ?? '', time: cells[3] ?? '', home: cells[4] ?? '', away: cells[5] ?? '', venue: cells[6] ?? '', sortOrder: index };
         if (cells[7] !== '' && cells[7] !== undefined) match.homeScore = number(cells[7]);
         if (cells[8] !== '' && cells[8] !== undefined) match.awayScore = number(cells[8]);
         if (match.home && match.away) parsed.push(match);
@@ -123,19 +157,7 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
 
       if (cells.length < 5) return;
       const matchday = number(cells[0]) || index + 1;
-      const match: SeasonMatch = {
-        id: `calendar-import-${Date.now()}-${index}`,
-        matchday,
-        leg: matchday <= 17 ? 'Andata' : 'Ritorno',
-        competition: 'Campionato',
-        roundLabel: `${matchday}ª giornata`,
-        dateLabel: cells[1],
-        time: cells[2],
-        home: cells[3],
-        away: cells[4],
-        venue: '',
-        sortOrder: index,
-      };
+      const match: SeasonMatch = { id: `calendar-import-${Date.now()}-${index}`, matchday, leg: matchday <= 17 ? 'Andata' : 'Ritorno', competition: 'Campionato', roundLabel: `${matchday}ª giornata`, dateLabel: cells[1], time: cells[2], home: cells[3], away: cells[4], venue: '', sortOrder: index };
       if (cells[5] !== '' && cells[5] !== undefined) match.homeScore = number(cells[5]);
       if (cells[6] !== '' && cells[6] !== undefined) match.awayScore = number(cells[6]);
       parsed.push(match);
@@ -152,12 +174,14 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
       if (cells.length < 9) return null;
       const goalsFor = number(cells[6]);
       const goalsAgainst = number(cells[7]);
-      return normalizeStanding({ rank: number(cells[0]) || index + 1, club: cells[1], played: number(cells[2]), wins: number(cells[3]), draws: number(cells[4]), losses: number(cells[5]), goalsFor, goalsAgainst, goalDifference: goalsFor - goalsAgainst, points: number(cells[8]), form: [] }, index);
+      return normalizeStanding({ rank: number(cells[0]) || index + 1, club: cells[1], played: number(cells[2]), wins: number(cells[3]), draws: number(cells[4]), losses: number(cells[5]), goalsFor, goalsAgainst, goalDifference: goalsFor - goalsAgainst, points: number(cells[8]), form: parseForm(cells[9] ?? '') }, index);
     }).filter((row): row is Standing => !!row && !!row.club);
-    if (!parsed.length) return Alert.alert('Formato non riconosciuto', 'Usa una riga per squadra: posizione;squadra;G;V;N;P;GF;GS;PT.');
-    setStandings(parsed);
+    if (!parsed.length) return Alert.alert('Formato non riconosciuto', 'Usa: posizione;squadra;G;V;N;P;GF;GS;PT;forma.');
+    setStandingTables((current) => ({ ...current, [standingScope]: parsed }));
     setStandingsImport('');
   };
+
+  const scopeLabel = standingScopes.find((item) => item.value === standingScope)?.label ?? 'Generale';
 
   return <View style={{ gap: 14 }}>
     <View style={adminStyles.panel}>
@@ -172,8 +196,9 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
       <Text style={adminStyles.title}>Importa dati</Text>
       <Field label="Calendario" value={scheduleImport} onChangeText={setScheduleImport} multiline placeholder="Coppa Italia;Turno preliminare;30/08/2026;16:00;AC Prato;Sangiovannese;Lungobisenzio;;" />
       <Button label="Importa calendario" icon="calendar-import" secondary onPress={importSchedule} />
-      <Field label="Classifica" value={standingsImport} onChangeText={setStandingsImport} multiline placeholder="1;AC Prato;1;1;0;0;2;0;3" />
-      <Button label="Importa classifica" icon="table-arrow-down" secondary onPress={importStandings} />
+      <StandingChoices value={standingScope} onChange={setStandingScope} />
+      <Field label={`Classifica ${scopeLabel}`} value={standingsImport} onChangeText={setStandingsImport} multiline placeholder="1;AC Prato;5;3;1;1;8;4;10;VVNPV" />
+      <Button label={`Importa classifica ${scopeLabel}`} icon="table-arrow-down" secondary onPress={importStandings} />
     </View>
 
     <View style={adminStyles.panel}>
@@ -193,7 +218,8 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
     </View>
 
     <View style={adminStyles.panel}>
-      <Text style={adminStyles.title}>Classifica</Text>
+      <Text style={adminStyles.title}>Classifica {scopeLabel}</Text>
+      <StandingChoices value={standingScope} onChange={setStandingScope} />
       <View style={adminStyles.list}>{standings.map((row) => <View key={row.club} style={adminStyles.listRow}>
         <View style={{ width: 32, alignItems: 'center' }}><Text style={{ color: colors.accentStrong, fontWeight: '900' }}>{row.rank}</Text></View>
         <View style={adminStyles.listBody}>
@@ -206,14 +232,19 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
             <Field label="GF" value={String(number(row.goalsFor))} onChangeText={(value) => updateStanding(row.club, { goalsFor: number(value) })} keyboardType="numeric" />
             <Field label="GS" value={String(number(row.goalsAgainst))} onChangeText={(value) => updateStanding(row.club, { goalsAgainst: number(value) })} keyboardType="numeric" />
             <Field label="PT" value={String(row.points)} onChangeText={(value) => updateStanding(row.club, { points: number(value) })} keyboardType="numeric" />
+            {standingScope === 'form' ? <Field label="Ultime 5" value={formText(row.form)} onChangeText={(value) => updateStanding(row.club, { form: parseForm(value) })} placeholder="VVNPV" /> : null}
           </View>
         </View>
       </View>)}</View>
-      <Button label="Salva classifica" icon="content-save-outline" onPress={saveStandings} />
+      <Button label={`Salva classifica ${scopeLabel}`} icon="content-save-outline" onPress={saveStandings} />
     </View>
   </View>;
 }
 
 function CompetitionChoices({ value, onChange, compact = false }: { value: MatchCompetition; onChange: (value: MatchCompetition) => void; compact?: boolean }) {
-  return <View style={[adminStyles.choices, compact && { marginTop: 8 }]}>{competitions.map((competition) => <Pressable key={competition} onPress={() => onChange(competition)} style={[adminStyles.choice, compact && { paddingVertical: 7 }, value === competition && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, value === competition && adminStyles.choiceTextActive]}>{competition === 'Amichevole' ? 'Amichevole' : competition}</Text></Pressable>)}</View>;
+  return <View style={[adminStyles.choices, compact && { marginTop: 8 }]}>{competitions.map((competition) => <Pressable key={competition} onPress={() => onChange(competition)} style={[adminStyles.choice, compact && { paddingVertical: 7 }, value === competition && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, value === competition && adminStyles.choiceTextActive]}>{competition}</Text></Pressable>)}</View>;
+}
+
+function StandingChoices({ value, onChange }: { value: StandingScope; onChange: (value: StandingScope) => void }) {
+  return <View style={adminStyles.choices}>{standingScopes.map((scope) => <Pressable key={scope.value} onPress={() => onChange(scope.value)} style={[adminStyles.choice, value === scope.value && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, value === scope.value && adminStyles.choiceTextActive]}>{scope.label}</Text></Pressable>)}</View>;
 }
