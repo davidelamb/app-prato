@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "AC Prato",
+    "name": "APPrato",
     "slug": "ac-prato",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#06111F",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -19,15 +19,16 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#F1F8FC"
     },
     "plugins": [
       "expo-font",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Consenti ad AC Prato di scegliere le foto dei calciatori e delle notizie.",
-          "cameraPermission": "Consenti ad AC Prato di scattare foto per i contenuti.",
+          "photosPermission": "Consenti ad APPrato di scegliere le foto dei calciatori e delle notizie.",
+          "cameraPermission": "Consenti ad APPrato di scattare foto per i contenuti.",
           "microphonePermission": false
         }
       ]
