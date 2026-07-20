@@ -1,16 +1,78 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
+
 import { colors } from '../../theme';
 import { AppContent, Fixture, LiveEvent } from '../../types';
 import { Button, Field, adminStyles } from './Primitives';
 
 const id = () => `event-${Date.now()}`;
+
 export function LiveAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0]; const [scorer, setScorer] = useState(''); const [minute, setMinute] = useState('');
+  const fixture = content.fixtures.find((item) => item.status === 'live') ?? content.fixtures.find((item) => item.status === 'scheduled') ?? content.fixtures[0];
+  const [scorer, setScorer] = useState('');
+  const [minute, setMinute] = useState('');
+
   if (!fixture) return <Text style={adminStyles.copy}>Nessuna partita disponibile.</Text>;
+
   const update = (next: Fixture) => onChange({ ...content, fixtures: content.fixtures.map((item) => item.id === next.id ? next : item) });
-  const phase = (type: LiveEvent['type'], label: string, livePhase: Fixture['livePhase'], status: Fixture['status'], eventMinute: number) => { const event: LiveEvent = { id: id(), type, label, minute: eventMinute, score: `${fixture.homeScore ?? 0}-${fixture.awayScore ?? 0}`, createdAt: new Date().toISOString() }; void update({ ...fixture, livePhase, status, minute: eventMinute, liveEvents: [event, ...(fixture.liveEvents ?? [])] }); };
-  const goal = () => { if (!scorer.trim()) return Alert.alert('Marcatore mancante', 'Inserisci il nome.'); const score = (fixture.homeScore ?? 0) + 1; const event: LiveEvent = { id: id(), type: 'goal', label: `Gol ${fixture.home}`, minute: Number(minute) || undefined, team: fixture.home, scorer: scorer.trim(), score: `${score}-${fixture.awayScore ?? 0}`, createdAt: new Date().toISOString() }; void update({ ...fixture, status: 'live', homeScore: score, minute: Number(minute) || fixture.minute, liveEvents: [event, ...(fixture.liveEvents ?? [])] }); setScorer(''); setMinute(''); };
-  return <View style={{ gap: 14 }}><View style={[adminStyles.panel, { backgroundColor: colors.accentStrong }]}><Text style={{ color: colors.accentSoft, fontWeight: '900' }}>CONTROLLO PARTITA</Text><Text style={{ color: colors.paper, fontSize: 21, fontWeight: '900', marginTop: 7 }}>{fixture.home} – {fixture.away}</Text><Text style={{ color: colors.paper, fontSize: 46, fontWeight: '900', marginTop: 5 }}>{fixture.homeScore ?? 0} - {fixture.awayScore ?? 0}</Text></View><View style={adminStyles.panel}><Text style={adminStyles.title}>Fasi partita</Text><Button label="Inizio partita" icon="play" onPress={() => phase('kickoff', 'Inizio partita', 'first_half', 'live', 1)} /><Button label="Intervallo" icon="pause" secondary onPress={() => phase('halftime', 'Fine primo tempo', 'halftime', 'live', 45)} /><Button label="Secondo tempo" icon="play" onPress={() => phase('second_half', 'Inizio secondo tempo', 'second_half', 'live', 46)} /><Button label="Fine partita" icon="flag-checkered" secondary onPress={() => phase('fulltime', 'Fine partita', 'finished', 'final', 90)} /></View><View style={adminStyles.panel}><Text style={adminStyles.title}>Registra gol AC Prato</Text><View style={adminStyles.row}><Field label="Marcatore" value={scorer} onChangeText={setScorer} /><Field label="Minuto" value={minute} onChangeText={setMinute} keyboardType="numeric" /></View><Button label="Aggiungi gol" icon="soccer" onPress={goal} /></View><View style={adminStyles.panel}><Text style={adminStyles.title}>Ultimi eventi</Text><View style={adminStyles.list}>{(fixture.liveEvents ?? []).map((event) => <View key={event.id} style={adminStyles.listRow}><MaterialCommunityIcons name={event.type === 'goal' ? 'soccer' : 'circle-medium'} size={21} color={event.type === 'goal' ? colors.success : colors.accentStrong} /><View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{event.label}</Text><Text style={adminStyles.listMeta}>{event.minute ? `${event.minute}' · ` : ''}{event.scorer ?? event.score}</Text></View></View>)}</View></View></View>;
+  const patch = (value: Partial<Fixture>) => void update({ ...fixture, ...value });
+
+  const phase = (type: LiveEvent['type'], label: string, livePhase: Fixture['livePhase'], status: Fixture['status'], eventMinute: number) => {
+    const event: LiveEvent = { id: id(), type, label, minute: eventMinute, score: `${fixture.homeScore ?? 0}-${fixture.awayScore ?? 0}`, createdAt: new Date().toISOString() };
+    void update({ ...fixture, livePhase, status, minute: eventMinute, liveEvents: [event, ...(fixture.liveEvents ?? [])] });
+  };
+
+  const goal = () => {
+    if (!scorer.trim()) return Alert.alert('Marcatore mancante', 'Inserisci il nome.');
+    const score = (fixture.homeScore ?? 0) + 1;
+    const event: LiveEvent = { id: id(), type: 'goal', label: `Gol ${fixture.home}`, minute: Number(minute) || undefined, team: fixture.home, scorer: scorer.trim(), score: `${score}-${fixture.awayScore ?? 0}`, createdAt: new Date().toISOString() };
+    void update({ ...fixture, status: 'live', homeScore: score, minute: Number(minute) || fixture.minute, liveEvents: [event, ...(fixture.liveEvents ?? [])] });
+    setScorer('');
+    setMinute('');
+  };
+
+  return <View style={{ gap: 14 }}>
+    <View style={[adminStyles.panel, { backgroundColor: colors.accentStrong }]}>
+      <Text style={{ color: colors.accentSoft, fontWeight: '900' }}>CONTROLLO PARTITA</Text>
+      <Text style={{ color: colors.paper, fontSize: 21, fontWeight: '900', marginTop: 7 }}>{fixture.home} – {fixture.away}</Text>
+      <Text style={{ color: colors.paper, fontSize: 46, fontWeight: '900', marginTop: 5 }}>{fixture.homeScore ?? 0} - {fixture.awayScore ?? 0}</Text>
+    </View>
+
+    <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Partita e orario ufficiale</Text>
+      <View style={adminStyles.row}>
+        <Field label="Casa" value={fixture.home} onChangeText={(value) => patch({ home: value })} />
+        <Field label="Trasferta" value={fixture.away} onChangeText={(value) => patch({ away: value })} />
+      </View>
+      <View style={adminStyles.row}>
+        <Field label="Data" value={fixture.dateLabel} onChangeText={(value) => patch({ dateLabel: value, kickoffAt: undefined })} placeholder="30/08/2026" />
+        <Field label="Ora" value={fixture.time} onChangeText={(value) => patch({ time: value, kickoffAt: undefined })} placeholder="16:00" />
+        <Field label="Stadio" value={fixture.venue} onChangeText={(value) => patch({ venue: value })} />
+      </View>
+      <Field label="Competizione / turno" value={fixture.matchday} onChangeText={(value) => patch({ matchday: value })} />
+    </View>
+
+    <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Fasi partita</Text>
+      <Button label="Inizio partita" icon="play" onPress={() => phase('kickoff', 'Inizio partita', 'first_half', 'live', 1)} />
+      <Button label="Intervallo" icon="pause" secondary onPress={() => phase('halftime', 'Fine primo tempo', 'halftime', 'live', 45)} />
+      <Button label="Secondo tempo" icon="play" onPress={() => phase('second_half', 'Inizio secondo tempo', 'second_half', 'live', 46)} />
+      <Button label="Fine partita" icon="flag-checkered" secondary onPress={() => phase('fulltime', 'Fine partita', 'finished', 'final', 90)} />
+    </View>
+
+    <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Registra gol AC Prato</Text>
+      <View style={adminStyles.row}><Field label="Marcatore" value={scorer} onChangeText={setScorer} /><Field label="Minuto" value={minute} onChangeText={setMinute} keyboardType="numeric" /></View>
+      <Button label="Aggiungi gol" icon="soccer" onPress={goal} />
+    </View>
+
+    <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Ultimi eventi</Text>
+      <View style={adminStyles.list}>{(fixture.liveEvents ?? []).map((event) => <View key={event.id} style={adminStyles.listRow}>
+        <MaterialCommunityIcons name={event.type === 'goal' ? 'soccer' : 'circle-medium'} size={21} color={event.type === 'goal' ? colors.success : colors.accentStrong} />
+        <View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{event.label}</Text><Text style={adminStyles.listMeta}>{event.minute ? `${event.minute}' · ` : ''}{event.scorer ?? event.score}</Text></View>
+      </View>)}</View>
+    </View>
+  </View>;
 }
