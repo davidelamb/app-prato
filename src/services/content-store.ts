@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { playerPhotoFallbacks } from '../data/player-photo-fallbacks';
+import { preseasonStandings } from '../data/season-2026-27';
 import { seedContent } from '../data/seed';
 import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch, Standing } from '../types';
 import { emptyStandingRows, normalizeStandingRow } from '../utils/standings';
@@ -63,11 +64,12 @@ function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
 }
 
 function normalizeStandingList(rows: Standing[] | undefined, fallback: Standing[]): Standing[] {
-  return Array.isArray(rows) && rows.length ? rows.map(normalizeStandingRow) : fallback.map(normalizeStandingRow);
+  return Array.isArray(rows) && rows.length === fallback.length ? rows.map(normalizeStandingRow) : fallback.map(normalizeStandingRow);
 }
 
 export function normalizeContent(content: AppContent): AppContent {
-  const overall = normalizeStandingList(content.standings, seedContent.standings);
+  const overallSource = Array.isArray(content.standings) && content.standings.length >= 18 ? content.standings : preseasonStandings;
+  const overall = overallSource.map(normalizeStandingRow);
   const empty = emptyStandingRows(overall);
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
@@ -87,7 +89,6 @@ export async function loadContent(): Promise<AppContent> {
   try {
     const current = await AsyncStorage.getItem(STORAGE_KEY);
     if (current) return normalizeContent(JSON.parse(current) as AppContent);
-
     for (const key of LEGACY_KEYS) {
       const legacy = await AsyncStorage.getItem(key);
       if (legacy) {
@@ -96,7 +97,6 @@ export async function loadContent(): Promise<AppContent> {
         return migrated;
       }
     }
-
     return normalizeContent(seedContent);
   } catch (error) {
     console.warn('Impossibile caricare i contenuti salvati', error);
