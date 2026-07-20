@@ -4,16 +4,23 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
-import { AppContent, MatchCompetition, SeasonMatch, Standing } from '../types';
+import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope } from '../types';
 
 type StatsView = 'calendar' | 'standings';
 type CalendarFilter = 'Tutte' | MatchCompetition;
 
-const filters: Array<{ value: CalendarFilter; label: string }> = [
+const calendarFilters: Array<{ value: CalendarFilter; label: string }> = [
   { value: 'Tutte', label: 'Tutte' },
   { value: 'Campionato', label: 'Campionato' },
   { value: 'Coppa Italia', label: 'Coppa Italia' },
   { value: 'Amichevole', label: 'Amichevoli' },
+];
+
+const standingFilters: Array<{ value: StandingScope; label: string }> = [
+  { value: 'overall', label: 'Generale' },
+  { value: 'home', label: 'Casa' },
+  { value: 'away', label: 'Trasferta' },
+  { value: 'form', label: 'Forma' },
 ];
 
 const number = (value: number | undefined) => Number(value) || 0;
@@ -35,15 +42,26 @@ function calendarKey(match: SeasonMatch): number {
   return 9_000_000_000_000 + (match.sortOrder ?? 0);
 }
 
+function blankStandings(): Standing[] {
+  return preseasonStandings.map((row) => ({ ...row, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, form: [] }));
+}
+
+function standingsFor(content: AppContent, scope: StandingScope): Standing[] {
+  if (scope === 'overall') return content.standings.length >= 18 ? content.standings : preseasonStandings;
+  const selected = scope === 'home' ? content.standingsHome : scope === 'away' ? content.standingsAway : content.standingsForm;
+  return selected?.length ? selected : blankStandings();
+}
+
 export function StatsScreen({ content }: { content: AppContent; wide: boolean }) {
   const [view, setView] = useState<StatsView>('calendar');
-  const [filter, setFilter] = useState<CalendarFilter>('Tutte');
-  const standings = content.standings.length >= 18 ? content.standings : preseasonStandings;
+  const [calendarFilter, setCalendarFilter] = useState<CalendarFilter>('Tutte');
+  const [standingScope, setStandingScope] = useState<StandingScope>('overall');
+  const standings = standingsFor(content, standingScope);
   const schedule = useMemo(() => {
     const source = content.schedule?.length ? content.schedule : provisionalPratoSchedule;
     return source.map(normalizedMatch).sort((a, b) => calendarKey(a) - calendarKey(b));
   }, [content.schedule]);
-  const visibleSchedule = useMemo(() => filter === 'Tutte' ? schedule : schedule.filter((match) => match.competition === filter), [filter, schedule]);
+  const visibleSchedule = useMemo(() => calendarFilter === 'Tutte' ? schedule : schedule.filter((match) => match.competition === calendarFilter), [calendarFilter, schedule]);
 
   return <View style={styles.stack}>
     <View>
@@ -64,12 +82,17 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
 
     {view === 'calendar' ? <View style={styles.calendarStack}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {filters.map((item) => <Pressable key={item.value} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterActive]}><Text style={[styles.filterText, filter === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
+        {calendarFilters.map((item) => <Pressable key={item.value} onPress={() => setCalendarFilter(item.value)} style={[styles.filter, calendarFilter === item.value && styles.filterActive]}><Text style={[styles.filterText, calendarFilter === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
       </ScrollView>
       <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Partite</Text><Text style={styles.sectionCount}>{visibleSchedule.length}</Text></View>
       <View style={styles.matchList}>{visibleSchedule.map((match) => <MatchRow key={match.id} match={match} />)}</View>
       {!visibleSchedule.length ? <View style={styles.empty}><MaterialCommunityIcons name="calendar-blank-outline" size={32} color={colors.muted} /><Text style={styles.emptyText}>Nessuna partita in questa categoria.</Text></View> : null}
-    </View> : <StandingsTable standings={standings} />}
+    </View> : <View style={styles.standingsStack}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {standingFilters.map((item) => <Pressable key={item.value} onPress={() => setStandingScope(item.value)} style={[styles.filter, standingScope === item.value && styles.filterActive]}><Text style={[styles.filterText, standingScope === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
+      </ScrollView>
+      <StandingsTable standings={standings} scope={standingScope} />
+    </View>}
   </View>;
 }
 
@@ -98,32 +121,41 @@ function MatchRow({ match }: { match: SeasonMatch }) {
   </View>;
 }
 
-function StandingsTable({ standings }: { standings: Standing[] }) {
+function StandingsTable({ standings, scope }: { standings: Standing[]; scope: StandingScope }) {
   const ordered = [...standings].sort((a, b) => a.rank - b.rank);
+  const title = standingFilters.find((item) => item.value === scope)?.label ?? 'Generale';
+  const showForm = scope === 'form';
   return <View style={styles.tableCard}>
-    <Text style={styles.tableTitle}>Serie D Girone E</Text>
+    <Text style={styles.tableTitle}>Serie D Girone E · {title}</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tableScroll}>
-      <View style={styles.table}>
+      <View style={[styles.table, showForm && styles.formTable]}>
         <View style={styles.tableHeader}>
           <Cell text="#" style={styles.posCell} header />
           <Cell text="Squadra" style={styles.clubCell} header align="left" />
           <Cell text="G" header /><Cell text="V" header /><Cell text="N" header /><Cell text="P" header />
           <Cell text="GF" header /><Cell text="GS" header /><Cell text="DR" header /><Cell text="PT" header strong />
+          {showForm ? <Cell text="Ultime 5" style={styles.formCell} header /> : null}
         </View>
-        {ordered.map((row) => <StandingRow key={row.club} row={row} />)}
+        {ordered.map((row) => <StandingRow key={row.club} row={row} showForm={showForm} />)}
       </View>
     </ScrollView>
   </View>;
 }
 
-function StandingRow({ row }: { row: Standing }) {
+function StandingRow({ row, showForm }: { row: Standing; showForm: boolean }) {
   const isPrato = /^(AC )?Prato$/i.test(row.club);
   return <View style={[styles.tableRow, isPrato && styles.pratoRow]}>
     <Cell text={String(row.rank)} style={styles.posCell} strong={isPrato} />
     <View style={[styles.cell, styles.clubCell]}><Text numberOfLines={1} style={[styles.cellText, styles.clubText, isPrato && styles.pratoText]}>{row.club}</Text></View>
     <Cell text={String(row.played)} /><Cell text={String(number(row.wins))} /><Cell text={String(number(row.draws))} /><Cell text={String(number(row.losses))} />
     <Cell text={String(number(row.goalsFor))} /><Cell text={String(number(row.goalsAgainst))} /><Cell text={String(number(row.goalDifference))} /><Cell text={String(row.points)} strong />
+    {showForm ? <FormCell form={row.form ?? []} /> : null}
   </View>;
+}
+
+function FormCell({ form }: { form: Array<'W' | 'D' | 'L'> }) {
+  const recent = form.slice(-5);
+  return <View style={[styles.cell, styles.formCell]}>{recent.length ? recent.map((result, index) => <View key={`${result}-${index}`} style={[styles.formBadge, result === 'W' ? styles.formWin : result === 'D' ? styles.formDraw : styles.formLoss]}><Text style={styles.formBadgeText}>{result === 'W' ? 'V' : result === 'D' ? 'N' : 'P'}</Text></View>) : <Text style={styles.cellText}>—</Text>}</View>;
 }
 
 function Cell({ text, style, header = false, strong = false, align = 'center' }: { text: string; style?: object; header?: boolean; strong?: boolean; align?: 'left' | 'center' }) {
@@ -140,6 +172,7 @@ const styles = StyleSheet.create({
   segmentText: { color: colors.accentStrong, fontSize: 12, fontWeight: '900' },
   segmentTextActive: { color: colors.paper },
   calendarStack: { gap: 14 },
+  standingsStack: { gap: 12 },
   filters: { gap: 8, paddingRight: 10 },
   filter: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 20, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   filterActive: { backgroundColor: colors.navy, borderColor: colors.navy },
@@ -167,19 +200,26 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: 8, padding: 30, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   emptyText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
   tableCard: { overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  tableTitle: { color: colors.ink, fontSize: 24, fontWeight: '900', padding: 18, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  tableTitle: { color: colors.ink, fontSize: 22, fontWeight: '900', padding: 18, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   tableScroll: { paddingBottom: 2 },
   table: { minWidth: 760 },
+  formTable: { minWidth: 920 },
   tableHeader: { flexDirection: 'row', minHeight: 44, alignItems: 'center', backgroundColor: colors.navy },
   tableRow: { flexDirection: 'row', minHeight: 49, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   pratoRow: { backgroundColor: colors.surfaceRaised },
   cell: { width: 52, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   posCell: { width: 44 },
   clubCell: { width: 250, alignItems: 'flex-start' },
+  formCell: { width: 160, flexDirection: 'row', gap: 5 },
   cellText: { color: colors.inkSoft, fontSize: 12, fontWeight: '700', textAlign: 'center' },
   cellLeft: { textAlign: 'left' },
   headerText: { color: colors.paper, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
   strongText: { color: colors.ink, fontWeight: '900' },
   clubText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
   pratoText: { color: colors.accentStrong, fontWeight: '900' },
+  formBadge: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  formWin: { backgroundColor: colors.success },
+  formDraw: { backgroundColor: colors.mutedDark },
+  formLoss: { backgroundColor: colors.live },
+  formBadgeText: { color: colors.paper, fontSize: 9, fontWeight: '900' },
 });
