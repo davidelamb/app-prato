@@ -4,6 +4,7 @@ export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'f
 export type PlayerRole = 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
 export type MediaKind = 'Highlights' | 'Intervista' | 'Video' | 'Podcast';
 export type MatchCompetition = 'Campionato' | 'Coppa Italia' | 'Amichevole';
+export type StandingScope = 'overall' | 'home' | 'away' | 'form';
 
 export type LiveEvent = {
   id: string;
@@ -22,6 +23,7 @@ export type Fixture = {
   matchday: string;
   dateLabel: string;
   time: string;
+  kickoffAt?: string;
   home: string;
   away: string;
   homeScore?: number;
@@ -120,6 +122,9 @@ export type MediaItem = {
 export type AppContent = {
   fixtures: Fixture[];
   standings: Standing[];
+  homeStandings?: Standing[];
+  awayStandings?: Standing[];
+  formStandings?: Standing[];
   schedule?: SeasonMatch[];
   players: Player[];
   news: NewsArticle[];
