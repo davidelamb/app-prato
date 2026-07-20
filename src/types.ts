@@ -1,6 +1,7 @@
 export type FixtureStatus = 'scheduled' | 'live' | 'final';
 export type LivePhase = 'scheduled' | 'first_half' | 'halftime' | 'second_half' | 'finished';
 export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'fulltime';
+export type PlayerRole = 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
 
 export type LiveEvent = {
   id: string;
@@ -41,15 +42,28 @@ export type Standing = {
 
 export type Player = {
   id: string;
-  number: number;
+  number?: number;
   name: string;
-  role: 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
+  role: PlayerRole;
   appearances: number;
+  starts?: number;
+  minutes?: number;
   goals: number;
+  assists?: number;
+  yellowCards?: number;
+  redCards?: number;
   age?: number;
+  birthDate?: string;
+  birthplace?: string;
+  nationality?: string;
+  height?: string;
+  foot?: string;
+  contractUntil?: string;
   marketValue?: string;
+  bio?: string;
   source: 'Editoriale' | 'Transfermarkt';
   imageUrl?: string;
+  imageSourceUrl?: string;
 };
 
 export type NewsArticle = {
