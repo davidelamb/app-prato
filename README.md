@@ -18,7 +18,9 @@ Prototipo Expo per iOS, Android e web, con palette blu, giallo e bianco ispirata
 2. Collega telefono e PC alla stessa rete Wi-Fi.
 3. Nel terminale che esegue Expo comparira un QR code: scansionalo con Expo Go su Android oppure con la fotocamera su iPhone.
 
-Per riavviarlo dalla cartella del progetto:
+Per la sessione attuale, l'indirizzo LAN e `exp://192.168.1.84:8081`. L'indirizzo puo cambiare quando cambia la rete Wi-Fi: controlla il valore mostrato da Expo al riavvio.
+
+Il server di sviluppo e gia avviato. Per riavviarlo dalla cartella del progetto:
 
 ```powershell
 npx.cmd expo start --lan
@@ -29,6 +31,10 @@ Per provare la versione web:
 ```powershell
 npx.cmd expo start --web
 ```
+
+## Test iPhone
+
+Il bundle iOS e stato compilato con Metro senza errori. Per aprirlo su iPhone installa Expo Go dall'App Store, usa la stessa rete Wi-Fi del PC e scansiona il QR che compare con `npx.cmd expo start --lan`. In questa sessione l'URL e `exp://192.168.1.84:8081`.
 
 ## Dati e pubblicazione
 

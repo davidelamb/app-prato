@@ -167,7 +167,7 @@ function LiveScoreCard({ fixture, onPress }: { fixture: Fixture; onPress?: () =>
   return (
     <Pressable accessibilityRole={onPress ? 'button' : undefined} onPress={onPress} style={styles.liveScoreCard}>
       <View style={styles.liveScoreTop}>
-        <Text style={styles.liveScoreCompetition}>{fixture.competition.toUpperCase()} Ã‚Â· {fixture.matchday.toUpperCase()}</Text>
+        <Text style={styles.liveScoreCompetition}>{fixture.competition.toUpperCase()} Â· {fixture.matchday.toUpperCase()}</Text>
         <View style={styles.liveBadge}><View style={styles.liveBadgeDot} /><Text style={styles.liveBadgeText}>{fixture.isDemo ? 'DEMO LIVE' : "LIVE"}</Text></View>
       </View>
       <View style={styles.liveTeamsRow}>
@@ -252,269 +252,11 @@ function LiveScreen({ content }: { content: AppContent }) {
       </View>
       {view === 'diretta' ? <View style={styles.liveEventStack}>{liveEvents.map((event) => <View key={`${event.minute}-${event.title}`} style={styles.liveEventCard}><View style={styles.eventMinute}><Text style={styles.eventMinuteText}>{event.minute}'</Text></View><View style={styles.eventIcon}><MaterialCommunityIcons name={event.icon} size={20} color={event.icon === 'soccer' ? colors.success : colors.inkSoft} /></View><View style={styles.eventContent}><Text style={styles.eventTitle}>{event.title}</Text><Text style={styles.eventTeam}>{event.team}</Text><Text style={styles.eventDescription}>{event.description}</Text>{event.score ? <View style={styles.eventScore}><Text style={styles.eventScoreText}>{event.score}</Text></View> : null}</View></View>)}</View> : null}
       {view === 'formazioni' ? <View style={styles.formationPanel}><View style={styles.formationTitleRow}><Text style={styles.formationTitle}>AC Prato</Text><View style={styles.formationPill}><Text style={styles.formationPillText}>3-5-2</Text></View></View><View style={styles.pitch}><View style={styles.pitchBoxTop} /><View style={styles.pitchMidLine} /><View style={styles.pitchCircle} />{lineup.map((player, index) => <View key={player} style={[styles.pitchPlayer, pitchPositions[index]]}><Text numberOfLines={1} style={styles.pitchPlayerText}>{player}</Text></View>)}</View><Text style={styles.formationNote}>Formazione dimostrativa. Il pannello admin potra confermare titolari e panchina.</Text></View> : null}
-      {view === 'tabellino' ? <View style={styles.matchSheet}><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Modulo</Text><Text style={styles.matchSheetValue}>3-5-2</Text></View><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Stadio</Text><Text style={styles.matchSheetValue}>Lungobisenzio</Text></View><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Marcatori</Text><Text style={styles.matchSheetValue}>18' AC Prato Ã‚Â· 54' Tau</Text></View><Text style={styles.matchSheetNote}>I dati di questa partita sono dimostrativi.</Text></View> : null}
+      {view === 'tabellino' ? <View style={styles.matchSheet}><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Modulo</Text><Text style={styles.matchSheetValue}>3-5-2</Text></View><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Stadio</Text><Text style={styles.matchSheetValue}>Lungobisenzio</Text></View><View style={styles.matchSheetRow}><Text style={styles.matchSheetLabel}>Marcatori</Text><Text style={styles.matchSheetValue}>18' AC Prato Â· 54' Tau</Text></View><Text style={styles.matchSheetNote}>I dati di questa partita sono dimostrativi.</Text></View> : null}
     </View>
   );
 }
 
 function StatsScreen({ content }: { content: AppContent }) {
   const [filter, setFilter] = useState<'all' | FixtureStatus>('all');
-  const visibleFixtures = content.fixtures.filter((fixture) => filter === 'all' || fixture.status === filter);
-  const filters: Array<{ key: 'all' | FixtureStatus; label: string }> = [
-    { key: 'all', label: 'Tutte' },
-    { key: 'scheduled', label: 'Prossime' },
-    { key: 'final', label: 'Risultati' },
-  ];
-
-  return (
-    <View style={styles.pageSection}>
-      <Text style={styles.pageEyebrow}>SERIE D - GIRONE E</Text>
-      <Text style={styles.pageTitle}>Statistiche</Text>
-      <View style={styles.filterRow}>
-        {filters.map((item) => (
-          <Pressable key={item.key} accessibilityRole="button" onPress={() => setFilter(item.key)} style={[styles.filterButton, filter === item.key && styles.filterButtonActive]}>
-            <Text style={[styles.filterText, filter === item.key && styles.filterTextActive]}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={styles.stack}>
-        {visibleFixtures.map((fixture) => <FixtureCard key={fixture.id} fixture={fixture} />)}
-      </View>
-      <SectionTitle title="Classifica" />
-      <StandingsTable content={content} />
-    </View>
-  );
-}
-
-function ClubScreen({ content, onAdmin }: { content: AppContent; onAdmin: () => void }) {
-  const [role, setRole] = useState<Player['role'] | 'Tutti'>('Tutti');
-  const [section, setSection] = useState<'rosa' | 'media' | 'tifosi' | 'stadio'>('rosa');
-  const roles: Array<Player['role'] | 'Tutti'> = ['Tutti', 'Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
-  const players = content.players.filter((player) => role === 'Tutti' || player.role === role);
-
-  return (
-    <View style={styles.pageSection}>
-      <Text style={styles.pageEyebrow}>IL MONDO AC PRATO</Text>
-      <Text style={styles.pageTitle}>Club</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clubTabs}>
-        {([
-          ['rosa', 'account-group-outline', 'Rosa'],
-          ['media', 'image-multiple-outline', 'Media'],
-          ['tifosi', 'heart-outline', 'Tifosi'],
-          ['stadio', 'ticket-outline', 'Stadio'],
-        ] as Array<[typeof section, IconName, string]>).map(([key, icon, label]) => (
-          <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: section === key }} onPress={() => setSection(key)} style={[styles.clubTab, section === key && styles.clubTabActive]}>
-            <MaterialCommunityIcons name={icon} size={18} color={section === key ? colors.paper : colors.inkSoft} />
-            <Text style={[styles.clubTabText, section === key && styles.clubTabTextActive]}>{label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      {section === 'rosa' ? <><View style={styles.rosterSource}><MaterialCommunityIcons name="database-check-outline" size={17} color={colors.inkSoft} /><Text style={styles.rosterSourceText}>Rosa 2025/26 Ã‚Â· dati pubblici Transfermarkt</Text></View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalFilters}>{roles.map((item) => (<Pressable key={item} accessibilityRole="button" onPress={() => setRole(item)} style={[styles.filterButton, role === item && styles.filterButtonActive]}><Text style={[styles.filterText, role === item && styles.filterTextActive]}>{item}</Text></Pressable>))}</ScrollView><View style={styles.playerGrid}>{players.map((player) => (<View key={player.id} style={styles.playerCard}><View style={styles.playerNumber}><Text style={styles.playerNumberText}>{player.number}</Text></View><View style={styles.playerBody}><View style={styles.playerRoleRow}><MaterialCommunityIcons name={roleIcon[player.role]} size={15} color={colors.inkSoft} /><Text style={styles.playerRole}>{player.role}</Text></View><Text style={styles.playerName}>{player.name}</Text><Text style={styles.playerStat}>{player.age ? `${player.age} anni` : 'Eta da confermare'}  |  {player.marketValue ?? 'Valore non disponibile'}</Text></View><View style={styles.playerSource}><Text style={styles.playerSourceText}>TM</Text></View></View>))}</View></> : null}
-      {section === 'media' ? <View style={styles.clubContent}><Text style={styles.clubContentTitle}>Media</Text><View style={styles.mediaRow}><View style={styles.mediaThumb}><MaterialCommunityIcons name="image-outline" size={30} color={colors.inkSoft} /></View><View style={styles.mediaCopy}><Text style={styles.mediaTitle}>Allenamento al Lungobisenzio</Text><Text style={styles.mediaDescription}>Galleria e contenuti pubblicati dal club.</Text></View></View><View style={styles.mediaRow}><View style={styles.mediaThumb}><MaterialCommunityIcons name="play-circle-outline" size={30} color={colors.inkSoft} /></View><View style={styles.mediaCopy}><Text style={styles.mediaTitle}>Highlights e interviste</Text><Text style={styles.mediaDescription}>Video collegabili dall'area editoriale.</Text></View></View></View> : null}
-      {section === 'tifosi' ? <View style={styles.clubContent}><Text style={styles.clubContentTitle}>Spazio tifosi</Text><Text style={styles.clubBody}>Votazioni, commenti moderati, quiz e iniziative â€¦4038 tokens truncatedâ€¦00', letterSpacing: 0, marginTop: 2 },
-  sidebarBrandName: { color: colors.paper, fontWeight: '900', fontSize: 17, letterSpacing: 0 },
-  sidebarBrandSubline: { color: '#A5C2D9', fontSize: 9, fontWeight: '700', letterSpacing: 0, marginTop: 2 },
-  sidebarTabs: { gap: 8, marginTop: 44 },
-  sidebarFoot: { borderTopWidth: 1, borderTopColor: '#1C5B92', paddingTop: 16 },
-  sidebarFootText: { color: colors.paper, fontSize: 11, fontWeight: '800', letterSpacing: 0 },
-  sidebarFootMeta: { color: colors.muted, fontSize: 11, marginTop: 4 },
-  mainPanel: { flex: 1, minWidth: 0, backgroundColor: colors.surfaceLight },
-  topBar: { minHeight: 76, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.paper, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  topBarTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' },
-  topBarActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerOnlineDot: { width: 13, height: 13, borderRadius: 99, backgroundColor: '#1FA675' },
-  iconButton: { width: 38, height: 38, borderWidth: 1, borderColor: '#3775A9', backgroundColor: '#0D4C83', alignItems: 'center', justifyContent: 'center', borderRadius: 5 },
-  iconButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  scrollArea: { flex: 1 },
-  scrollContent: { paddingBottom: 112 },
-  scrollContentWide: { width: '100%', maxWidth: 1120, alignSelf: 'center', paddingHorizontal: 32, paddingTop: 28, paddingBottom: 40 },
-  bottomNav: { height: 72, flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.paper, paddingHorizontal: 4, paddingTop: 7 },
-  tabButton: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 43, paddingHorizontal: 11, borderRadius: 5 },
-  tabButtonCompact: { flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 3, paddingHorizontal: 2, minWidth: 0 },
-  tabButtonActive: { backgroundColor: '#E5F4FE' },
-  tabButtonCompactActive: { borderBottomWidth: 3, borderBottomColor: colors.accent },
-  tabLabel: { color: colors.muted, fontSize: 13, fontWeight: '700', letterSpacing: 0 },
-  tabLabelActive: { color: colors.ink },
-  homeIntro: { paddingHorizontal: 20, paddingTop: 27 },
-  homeTitle: { color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900' },
-  homeDescription: { color: colors.muted, marginTop: 6, fontSize: 14, lineHeight: 20, maxWidth: 360 },
-  homeFixtureWrap: { paddingHorizontal: 20, paddingTop: 24 },
-  contentSection: { paddingHorizontal: 20, paddingTop: 28 },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  sectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '900', lineHeight: 24 },
-  sectionAction: { color: colors.inkSoft, fontWeight: '800', fontSize: 12 },
-  liveScoreCard: { backgroundColor: colors.inkSoft, borderRadius: 9, padding: 16, borderWidth: 1, borderColor: '#0B72B8' },
-  liveScoreTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  liveScoreCompetition: { color: colors.accent, fontSize: 10, fontWeight: '900', flex: 1 },
-  liveBadge: { minHeight: 23, paddingHorizontal: 8, borderRadius: 12, backgroundColor: '#FFF5F5', flexDirection: 'row', alignItems: 'center', gap: 5 },
-  liveBadgeDot: { width: 6, height: 6, borderRadius: 99, backgroundColor: colors.live },
-  liveBadgeText: { color: colors.live, fontSize: 9, fontWeight: '900' },
-  liveTeamsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, gap: 8 },
-  liveTeam: { width: '30%', alignItems: 'center', gap: 7 },
-  liveTeamName: { color: colors.paper, fontSize: 12, fontWeight: '900', textAlign: 'center' },
-  opponentBadge: { width: 36, height: 42, borderRadius: 5, backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center' },
-  opponentBadgeText: { color: colors.inkSoft, fontSize: 20, fontWeight: '900' },
-  liveScoreCenter: { width: '35%', alignItems: 'center' },
-  liveScoreValue: { color: colors.paper, fontSize: 30, fontWeight: '900' },
-  liveMinute: { color: colors.accent, fontSize: 18, fontWeight: '900', marginTop: 2 },
-  fixtureCard: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 6, padding: 16 },
-  fixtureCardFeatured: { borderColor: '#8AB6D5', backgroundColor: '#F5FAFE' },
-  fixtureTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  fixtureCompetition: { color: colors.ink, fontSize: 11, fontWeight: '800', flex: 1 },
-  statusPill: { minHeight: 22, paddingHorizontal: 7, borderRadius: 3, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 },
-  statusPillText: { color: colors.ink, fontSize: 9, fontWeight: '900' },
-  liveDot: { width: 5, height: 5, borderRadius: 99, backgroundColor: colors.ink },
-  fixtureMatchday: { color: colors.muted, fontSize: 11, marginTop: 6 },
-  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 },
-  teamName: { color: colors.ink, fontSize: 16, fontWeight: '800', flex: 1, minWidth: 0 },
-  teamAway: { textAlign: 'right' },
-  scoreBlock: { minWidth: 64, alignItems: 'center' },
-  scoreText: { color: colors.inkSoft, fontSize: 24, fontWeight: '900' },
-  kickoffText: { color: colors.ink, fontSize: 18, fontWeight: '900' },
-  fixtureFooter: { marginTop: 22, paddingTop: 11, borderTopWidth: 1, borderTopColor: colors.borderLight },
-  fixtureFooterText: { color: colors.muted, fontSize: 11 },
-  standingsTable: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 6, overflow: 'hidden' },
-  standingsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, height: 32, backgroundColor: colors.ink },
-  standingsHeaderText: { color: colors.paper, fontSize: 10, fontWeight: '800', textAlign: 'center', width: 28 },
-  rankColumn: { width: 28, textAlign: 'left' },
-  clubColumn: { flex: 1, minWidth: 0 },
-  standingRow: { flexDirection: 'row', alignItems: 'center', minHeight: 57, paddingHorizontal: 13, borderTopWidth: 1, borderTopColor: colors.borderLight },
-  standingRowPrato: { backgroundColor: '#FFF9D5' },
-  rankText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  clubText: { color: colors.ink, fontSize: 13, fontWeight: '700' },
-  clubTextPrato: { color: colors.ink, fontWeight: '900' },
-  formRow: { flexDirection: 'row', gap: 4, marginTop: 5 },
-  formDot: { width: 6, height: 6, borderRadius: 99 },
-  formWin: { backgroundColor: colors.success },
-  formDraw: { backgroundColor: colors.muted },
-  formLoss: { backgroundColor: colors.live },
-  playedText: { color: colors.ink, width: 28, fontSize: 13, textAlign: 'center' },
-  pointsText: { color: colors.ink, width: 28, fontWeight: '900', fontSize: 13, textAlign: 'center' },
-  pointsTextPrato: { color: colors.inkSoft },
-  pageSection: { paddingHorizontal: 20, paddingTop: 27 },
-  pageEyebrow: { color: colors.inkSoft, fontSize: 11, fontWeight: '900', marginBottom: 7 },
-  pageTitle: { color: colors.ink, fontSize: 30, lineHeight: 35, fontWeight: '900' },
-  pageDescription: { color: colors.muted, marginTop: 8, lineHeight: 20, fontSize: 14, maxWidth: 580 },
-  liveTabs: { height: 51, flexDirection: 'row', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border, borderRadius: 7, marginTop: 14, overflow: 'hidden' },
-  liveTab: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5, borderBottomWidth: 3, borderBottomColor: 'transparent' },
-  liveTabActive: { backgroundColor: '#F5FAFE', borderBottomColor: colors.accent },
-  liveTabText: { color: colors.muted, fontSize: 11, fontWeight: '900' },
-  liveTabTextActive: { color: colors.inkSoft },
-  liveEventStack: { gap: 10, paddingTop: 14 },
-  liveEventCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border, padding: 13, borderRadius: 7, gap: 9 },
-  eventMinute: { minWidth: 45, height: 33, borderRadius: 6, backgroundColor: '#FFF5C8', alignItems: 'center', justifyContent: 'center' },
-  eventMinuteText: { color: colors.ink, fontWeight: '900', fontSize: 14 },
-  eventIcon: { height: 33, width: 33, borderRadius: 99, backgroundColor: '#E8F5FF', alignItems: 'center', justifyContent: 'center' },
-  eventContent: { flex: 1, minWidth: 0 },
-  eventTitle: { color: colors.ink, fontWeight: '900', fontSize: 14 },
-  eventTeam: { color: colors.muted, fontWeight: '900', fontSize: 10, marginTop: 2 },
-  eventDescription: { color: colors.ink, fontSize: 13, lineHeight: 18, marginTop: 6 },
-  eventScore: { alignSelf: 'flex-start', backgroundColor: colors.inkSoft, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5, marginTop: 8 },
-  eventScoreText: { color: colors.paper, fontSize: 13, fontWeight: '900' },
-  formationPanel: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border, borderRadius: 7, marginTop: 14, padding: 10 },
-  formationTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4, paddingBottom: 9 },
-  formationTitle: { color: colors.ink, fontSize: 16, fontWeight: '900' },
-  formationPill: { backgroundColor: '#E5F4FE', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-  formationPillText: { color: colors.inkSoft, fontSize: 11, fontWeight: '900' },
-  pitch: { height: 430, backgroundColor: '#197542', borderRadius: 6, overflow: 'hidden', borderColor: '#54A879', borderWidth: 1, position: 'relative' },
-  pitchBoxTop: { position: 'absolute', width: '38%', height: '12%', borderWidth: 1, borderColor: '#B7E4C7', borderTopWidth: 0, top: 0, left: '31%' },
-  pitchMidLine: { position: 'absolute', top: '50%', width: '100%', borderTopWidth: 1, borderColor: '#B7E4C7' },
-  pitchCircle: { position: 'absolute', top: '40%', left: '37%', height: 86, width: 86, borderRadius: 99, borderWidth: 1, borderColor: '#B7E4C7' },
-  pitchPlayer: { position: 'absolute', width: 82, minHeight: 34, backgroundColor: '#0B2D24', paddingHorizontal: 5, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
-  pitchPlayerText: { color: colors.paper, fontWeight: '800', fontSize: 9, textAlign: 'center' },
-  formationNote: { color: colors.muted, fontSize: 11, lineHeight: 16, paddingHorizontal: 4, paddingTop: 10, paddingBottom: 2 },
-  matchSheet: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border, borderRadius: 7, marginTop: 14, paddingHorizontal: 15 },
-  matchSheetRow: { minHeight: 52, borderBottomWidth: 1, borderBottomColor: colors.borderLight, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-  matchSheetLabel: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  matchSheetValue: { color: colors.ink, fontSize: 13, fontWeight: '900', flex: 1, textAlign: 'right' },
-  matchSheetNote: { color: colors.muted, fontSize: 11, paddingVertical: 13 },
-  filterRow: { flexDirection: 'row', gap: 8, marginVertical: 20, flexWrap: 'wrap' },
-  horizontalFilters: { gap: 8, paddingVertical: 20, paddingRight: 20 },
-  filterButton: { minHeight: 34, paddingHorizontal: 11, justifyContent: 'center', borderColor: colors.border, borderWidth: 1, borderRadius: 4, backgroundColor: colors.surface },
-  filterButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  filterText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
-  filterTextActive: { color: colors.ink },
-  stack: { gap: 10, marginBottom: 28 },
-  clubTabs: { gap: 8, paddingTop: 18, paddingBottom: 14, paddingRight: 20 },
-  clubTab: { minHeight: 44, paddingHorizontal: 14, borderRadius: 7, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.paper, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  clubTabActive: { backgroundColor: colors.inkSoft, borderColor: colors.inkSoft },
-  clubTabText: { color: colors.inkSoft, fontSize: 13, fontWeight: '900' },
-  clubTabTextActive: { color: colors.paper },
-  rosterSource: { flexDirection: 'row', gap: 7, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 6, backgroundColor: '#EAF6FF', alignSelf: 'flex-start' },
-  rosterSourceText: { color: colors.inkSoft, fontSize: 11, fontWeight: '800' },
-  playerGrid: { gap: 10 },
-  playerCard: { flexDirection: 'row', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 6, overflow: 'hidden', minHeight: 95 },
-  playerNumber: { width: 63, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  playerNumberText: { color: colors.accent, fontSize: 29, fontWeight: '900' },
-  playerBody: { flex: 1, padding: 13, justifyContent: 'center' },
-  playerRoleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  playerRole: { color: colors.muted, fontSize: 11, fontWeight: '700' },
-  playerName: { color: colors.ink, fontSize: 16, fontWeight: '900', marginTop: 4 },
-  playerStat: { color: colors.muted, fontSize: 11, marginTop: 5 },
-  playerSource: { width: 36, alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: colors.borderLight },
-  playerSourceText: { color: colors.inkSoft, fontSize: 10, fontWeight: '900' },
-  clubContent: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 16, marginTop: 2 },
-  clubContentTitle: { color: colors.ink, fontSize: 22, fontWeight: '900', marginBottom: 14 },
-  clubBody: { color: colors.muted, fontSize: 15, lineHeight: 22, maxWidth: 480 },
-  mediaRow: { flexDirection: 'row', gap: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.borderLight, paddingVertical: 12 },
-  mediaThumb: { width: 76, height: 62, backgroundColor: '#EAF6FF', borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  mediaCopy: { flex: 1, minWidth: 0 },
-  mediaTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
-  mediaDescription: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 4 },
-  stadiumName: { color: colors.ink, fontSize: 18, fontWeight: '900', marginBottom: 8 },
-  ticketInfo: { marginTop: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 13 },
-  ticketLabel: { color: colors.ink, fontSize: 12, fontWeight: '900' },
-  ticketPrice: { color: colors.inkSoft, fontSize: 18, fontWeight: '900' },
-  newsCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, borderRadius: 6 },
-  newsCardFeatured: { backgroundColor: '#FFF9D5', borderColor: '#F6DC64' },
-  newsMetaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 10 },
-  newsCategory: { color: colors.inkSoft, fontSize: 10, fontWeight: '900' },
-  newsDate: { color: colors.muted, fontSize: 10, fontWeight: '800' },
-  newsTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', lineHeight: 22 },
-  newsTitleFeatured: { color: colors.ink },
-  newsSummary: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8 },
-  newsSourceRow: { alignSelf: 'flex-start', marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  newsSource: { color: colors.inkSoft, fontSize: 11, fontWeight: '800' },
-  adminLocked: { flex: 1, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 28, paddingBottom: 80, maxWidth: 540 },
-  adminLockIcon: { width: 58, height: 58, backgroundColor: '#FFF9D5', borderWidth: 1, borderColor: '#F6DC64', alignItems: 'center', justifyContent: 'center', borderRadius: 6, marginBottom: 18 },
-  adminLockedText: { color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 10, maxWidth: 340 },
-  primaryButton: { minHeight: 43, backgroundColor: colors.accent, borderRadius: 4, paddingHorizontal: 14, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 20 },
-  primaryButtonText: { color: colors.ink, fontWeight: '900', fontSize: 11 },
-  securityHint: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 18, maxWidth: 340 },
-  adminHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 18 },
-  adminOnline: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#202B20', borderRadius: 3 },
-  onlineDot: { height: 6, width: 6, borderRadius: 99, backgroundColor: colors.success },
-  adminOnlineText: { color: colors.success, fontSize: 10, fontWeight: '900' },
-  notice: { backgroundColor: '#1D2A1B', borderColor: '#385E35', borderWidth: 1, borderRadius: 5, minHeight: 42, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  noticeText: { color: '#DDEAD9', fontSize: 13, fontWeight: '700' },
-  adminCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 6, padding: 16, marginBottom: 13 },
-  adminCardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 14 },
-  adminCardTitle: { color: colors.ink, fontSize: 17, fontWeight: '900' },
-  adminCardSubtitle: { color: colors.muted, fontSize: 12, marginTop: 3, lineHeight: 17 },
-  scoreEditor: { flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 14 },
-  scoreEditorTeam: { flex: 1, alignItems: 'center', minWidth: 0 },
-  scoreEditorName: { color: colors.ink, fontSize: 13, fontWeight: '800', textAlign: 'center' },
-  scoreEditorNumber: { color: colors.inkSoft, fontSize: 38, fontWeight: '900', marginVertical: 5 },
-  scoreEditorDivider: { color: colors.muted, fontSize: 25, fontWeight: '900', paddingBottom: 18 },
-  scoreEditButtons: { flexDirection: 'row', gap: 6 },
-  input: { minHeight: 44, borderWidth: 1, borderColor: colors.border, backgroundColor: '#F6FAFD', color: colors.ink, borderRadius: 4, paddingHorizontal: 12, fontSize: 14, marginTop: 9 },
-  textarea: { minHeight: 92, paddingTop: 12, textAlignVertical: 'top' },
-  secondaryButton: { minHeight: 41, borderColor: colors.ink, backgroundColor: colors.ink, borderWidth: 1, borderRadius: 4, flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 13, marginTop: 2 },
-  secondaryButtonText: { color: colors.paper, fontWeight: '900', fontSize: 11 },
-  settingsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, paddingVertical: 17, borderBottomWidth: 1, borderBottomColor: colors.border },
-  settingsTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' },
-  settingsDescription: { color: colors.muted, fontSize: 12, marginTop: 3 },
-  adminFooterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingTop: 16, paddingBottom: 6 },
-  updatedText: { color: colors.muted, fontSize: 11, flex: 1 },
-  resetText: { color: '#F2A2A5', fontSize: 12, fontWeight: '800' },
-  modalSafe: { flex: 1, backgroundColor: colors.paper },
-  modalHeader: { height: 66, paddingHorizontal: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1C5B92', backgroundColor: colors.ink },
-  modalHeaderTitle: { color: colors.paper, fontSize: 12, fontWeight: '900' },
-  modalSpacer: { width: 38 },
-  modalContent: { padding: 24, maxWidth: 720, width: '100%', alignSelf: 'center' },
-  modalTitle: { color: colors.ink, fontWeight: '900', fontSize: 30, lineHeight: 36, marginTop: 10 },
-  modalDate: { color: colors.muted, fontSize: 12, marginTop: 12 },
-  modalRule: { height: 3, width: 58, backgroundColor: colors.accent, marginTop: 28, marginBottom: 22 },
-  modalBody: { color: colors.ink, fontSize: 17, lineHeight: 27 },
-  modalNote: { color: colors.muted, fontSize: 13, lineHeight: 20, marginTop: 26 },
-});
+  const visibleFixtures = content.fixtures.filter((fixture) => filter === 'all' || fixture.stató½z¶‰žËkºwµçI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ÄÀ°µ…É¥¹Q½Àè€ÈÐô°(€Ñ•…µ9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄØ°™½¹Ñ]•¥¡Ðè€œàÀÀœ°™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€Ñ•…µÝ…äèìÑ•áÑ±¥¸è€É¥¡Ðœô°(€Í½É•	±½¬èìµ¥¹]¥‘Ñ è€ØÐ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœô°(€Í½É•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÈÐ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€­¥­½™™Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™¥áÑÕÉ•½½Ñ•Èèìµ…É¥¹Q½Àè€ÈÈ°Á…‘‘¥¹Q½Àè€ÄÄ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ðô°(€™¥áÑÕÉ•½½Ñ•ÉQ•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄô°(€ÍÑ…¹‘¥¹ÍQ…‰±”èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°½Ù•É™±½Üè€¡¥‘‘•¸œô°(€ÍÑ…¹‘¥¹Í!•…‘•Èèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÌ°¡•¥¡Ðè€ÌÈ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬ô°(€ÍÑ…¹‘¥¹Í!•…‘•ÉQ•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œàÀÀœ°Ñ•áÑ±¥¸è€•¹Ñ•Èœ°Ý¥‘Ñ è€Èàô°(€É…¹­½±Õµ¸èìÝ¥‘Ñ è€Èà°Ñ•áÑ±¥¸è€±•™Ðœô°(€±Õ‰½±Õµ¸èì™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€ÍÑ…¹‘¥¹I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°µ¥¹!•¥¡Ðè€ÔÜ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÌ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ðô°(€ÍÑ…¹‘¥¹I½ÝAÉ…Ñ¼èì‰…­É½Õ¹‘½±½Èè€œåÔœô°(€É…¹­Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€±Õ‰Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œÜÀÀœô°(€±Õ‰Q•áÑAÉ…Ñ¼èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™½ÉµI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Ð°µ…É¥¹Q½Àè€Ôô°(€™½Éµ½ÐèìÝ¥‘Ñ è€Ø°¡•¥¡Ðè€Ø°‰½É‘•ÉI…‘¥ÕÌè€ääô°(€™½Éµ]¥¸èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕ•ÍÌô°(€™½ÉµÉ…Üèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹µÕÑ•ô°(€™½Éµ1½ÍÌèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹±¥Ù”ô°(€Á±…å•‘Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°Ý¥‘Ñ è€Èà°™½¹ÑM¥é”è€ÄÌ°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€Á½¥¹ÑÍQ•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°Ý¥‘Ñ è€Èà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÌ°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€Á½¥¹ÑÍQ•áÑAÉ…Ñ¼èì½±½Èè½±½ÉÌ¹¥¹­M½™Ðô°(€Á…•M•Ñ¥½¸èìÁ…‘‘¥¹!½É¥é½¹Ñ…°è€ÈÀ°Á…‘‘¥¹Q½Àè€ÈÜô°(€Á…•å•‰É½Üèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹	½ÑÑ½´è€Üô°(€Á…•Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÌÀ°±¥¹•!•¥¡Ðè€ÌÔ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Á…••ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹µÕÑ•°µ…É¥¹Q½Àè€à°±¥¹•!•¥¡Ðè€ÈÀ°™½¹ÑM¥é”è€ÄÐ°µ…á]¥‘Ñ è€ÔàÀô°(€±¥Ù•Q…‰Ìèì¡•¥¡Ðè€ÔÄ°™±•á¥É•Ñ¥½¸è€É½Üœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ü°µ…É¥¹Q½Àè€ÄÐ°½Ù•É™±½Üè€¡¥‘‘•¸œô°(€±¥Ù•Q…ˆèì™±•àè€Ä°µ¥¹]¥‘Ñ è€À°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Ô°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ì°‰½É‘•É	½ÑÑ½µ½±½Èè€ÑÉ…¹ÍÁ…É•¹Ðœô°(€±¥Ù•Q…‰Ñ¥Ù”èì‰…­É½Õ¹‘½±½Èè€œÕœ°‰½É‘•É	½ÑÑ½µ½±½Èè½±½ÉÌ¹…•¹Ðô°(€±¥Ù•Q…‰Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€±¥Ù•Q…‰Q•áÑÑ¥Ù”èì½±½Èè½±½ÉÌ¹¥¹­M½™Ðô°(€±¥Ù•Ù•¹ÑMÑ…¬èì…Àè€ÄÀ°Á…‘‘¥¹Q½Àè€ÄÐô°(€±¥Ù•Ù•¹Ñ…Éèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€™±•àµÍÑ…ÉÐœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°Á…‘‘¥¹œè€ÄÌ°‰½É‘•ÉI…‘¥ÕÌè€Ü°…Àè€äô°(€•Ù•¹Ñ5¥¹ÕÑ”èìµ¥¹]¥‘Ñ è€ÐÔ°¡•¥¡Ðè€ÌÌ°‰½É‘•ÉI…‘¥ÕÌè€Ø°‰…­É½Õ¹‘½±½Èè€œÕàœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€•Ù•¹Ñ5¥¹ÕÑ•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÐô°(€•Ù•¹Ñ%½¸èì¡•¥¡Ðè€ÌÌ°Ý¥‘Ñ è€ÌÌ°‰½É‘•ÉI…‘¥ÕÌè€ää°‰…­É½Õ¹‘½±½Èè€œáÕœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€•Ù•¹Ñ½¹Ñ•¹Ðèì™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€•Ù•¹ÑQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÐô°(€•Ù•¹ÑQ•…´èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÀ°µ…É¥¹Q½Àè€Èô°(€•Ù•¹Ñ•ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€Äà°µ…É¥¹Q½Àè€Øô°(€•Ù•¹ÑM½É”èì…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹­M½™Ð°Á…‘‘¥¹!½É¥é½¹Ñ…°è€à°Á…‘‘¥¹Y•ÉÑ¥…°è€Ð°‰½É‘•ÉI…‘¥ÕÌè€Ô°µ…É¥¹Q½Àè€àô°(€•Ù•¹ÑM½É•Q•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™½Éµ…Ñ¥½¹A…¹•°èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ü°µ…É¥¹Q½Àè€ÄÐ°Á…‘‘¥¹œè€ÄÀô°(€™½Éµ…Ñ¥½¹Q¥Ñ±•I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Ð°Á…‘‘¥¹	½ÑÑ½´è€äô°(€™½Éµ…Ñ¥½¹Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄØ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€™½Éµ…Ñ¥½¹A¥±°èì‰…­É½Õ¹‘½±½Èè€œÕÑœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€à°Á…‘‘¥¹Y•ÉÑ¥…°è€Ð°‰½É‘•ÉI…‘¥ÕÌè€Ðô°(€™½Éµ…Ñ¥½¹A¥±±Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Á¥Ñ èì¡•¥¡Ðè€ÐÌÀ°‰…­É½Õ¹‘½±½Èè€œŒÄäÜÔÐÈœ°‰½É‘•ÉI…‘¥ÕÌè€Ø°½Ù•É™±½Üè€¡¥‘‘•¸œ°‰½É‘•É½±½Èè€œŒÔÑàÜäœ°‰½É‘•É]¥‘Ñ è€Ä°Á½Í¥Ñ¥½¸è€É•±…Ñ¥Ù”œô°(€Á¥Ñ¡	½áQ½ÀèìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ý¥‘Ñ è€œÌà”œ°¡•¥¡Ðè€œÄÈ”œ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÝÑÜœ°‰½É‘•ÉQ½Á]¥‘Ñ è€À°Ñ½Àè€À°±•™Ðè€œÌÄ”œô°(€Á¥Ñ¡5¥‘1¥¹”èìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ñ½Àè€œÔÀ”œ°Ý¥‘Ñ è€œÄÀÀ”œ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÝÑÜœô°(€Á¥Ñ¡¥É±”èìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ñ½Àè€œÐÀ”œ°±•™Ðè€œÌÜ”œ°¡•¥¡Ðè€àØ°Ý¥‘Ñ è€àØ°‰½É‘•ÉI…‘¥ÕÌè€ää°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÝÑÜœô°(€Á¥Ñ¡A±…å•ÈèìÁ½Í¥Ñ¥½¸è€…‰Í½±ÕÑ”œ°Ý¥‘Ñ è€àÈ°µ¥¹!•¥¡Ðè€ÌÐ°‰…­É½Õ¹‘½±½Èè€œŒÁÉÈÐœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Ô°‰½É‘•ÉI…‘¥ÕÌè€Ø°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœô°(€Á¥Ñ¡A±…å•ÉQ•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹Ñ]•¥¡Ðè€œàÀÀœ°™½¹ÑM¥é”è€ä°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€™½Éµ…Ñ¥½¹9½Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°±¥¹•!•¥¡Ðè€ÄØ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Ð°Á…‘‘¥¹Q½Àè€ÄÀ°Á…‘‘¥¹	½ÑÑ½´è€Èô°(€µ…Ñ¡M¡••Ðèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ü°µ…É¥¹Q½Àè€ÄÐ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÔô°(€µ…Ñ¡M¡••ÑI½Üèìµ¥¹!•¥¡Ðè€ÔÈ°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ä°‰½É‘•É	½ÑÑ½µ½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ð°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄØô°(€µ…Ñ¡M¡••Ñ1…‰•°èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€µ…Ñ¡M¡••ÑY…±Õ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™±•àè€Ä°Ñ•áÑ±¥¸è€É¥¡Ðœô°(€µ…Ñ¡M¡••Ñ9½Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°Á…‘‘¥¹Y•ÉÑ¥…°è€ÄÌô°(€™¥±Ñ•ÉI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€à°µ…É¥¹Y•ÉÑ¥…°è€ÈÀ°™±•á]É…Àè€ÝÉ…Àœô°(€¡½É¥é½¹Ñ…±¥±Ñ•ÉÌèì…Àè€à°Á…‘‘¥¹Y•ÉÑ¥…°è€ÈÀ°Á…‘‘¥¹I¥¡Ðè€ÈÀô°(€™¥±Ñ•É	ÕÑÑ½¸èìµ¥¹!•¥¡Ðè€ÌÐ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÄ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•ÉI…‘¥ÕÌè€Ð°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”ô°(€™¥±Ñ•É	ÕÑÑ½¹Ñ¥Ù”èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹…•¹Ð°‰½É‘•É½±½Èè½±½ÉÌ¹…•¹Ðô°(€™¥±Ñ•ÉQ•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€™¥±Ñ•ÉQ•áÑÑ¥Ù”èì½±½Èè½±½ÉÌ¹¥¹¬ô°(€ÍÑ…¬èì…Àè€ÄÀ°µ…É¥¹	½ÑÑ½´è€Èàô°(€±Õ‰Q…‰Ìèì…Àè€à°Á…‘‘¥¹Q½Àè€Äà°Á…‘‘¥¹	½ÑÑ½´è€ÄÐ°Á…‘‘¥¹I¥¡Ðè€ÈÀô°(€±Õ‰Q…ˆèìµ¥¹!•¥¡Ðè€ÐÐ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÐ°‰½É‘•ÉI…‘¥ÕÌè€Ü°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Üô°(€±Õ‰Q…‰Ñ¥Ù”èì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹­M½™Ð°‰½É‘•É½±½Èè½±½ÉÌ¹¥¹­M½™Ðô°(€±Õ‰Q…‰Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€±Õ‰Q…‰Q•áÑÑ¥Ù”èì½±½Èè½±½ÉÌ¹Á…Á•Èô°(€É½ÍÑ•ÉM½ÕÉ”èì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Ü°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°Á…‘‘¥¹Y•ÉÑ¥…°è€à°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÀ°‰½É‘•ÉI…‘¥ÕÌè€Ø°‰…­É½Õ¹‘½±½Èè€œÙœ°…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœô°(€É½ÍÑ•ÉM½ÕÉ•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€Á±…å•ÉÉ¥èì…Àè€ÄÀô°(€Á±…å•É…Éèì™±•á¥É•Ñ¥½¸è€É½Üœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°½Ù•É™±½Üè€¡¥‘‘•¸œ°µ¥¹!•¥¡Ðè€äÔô°(€Á±…å•É9Õµ‰•ÈèìÝ¥‘Ñ è€ØÌ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€Á±…å•É9Õµ‰•ÉQ•áÐèì½±½Èè½±½ÉÌ¹…•¹Ð°™½¹ÑM¥é”è€Èä°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Á±…å•É	½‘äèì™±•àè€Ä°Á…‘‘¥¹œè€ÄÌ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€Á±…å•ÉI½±•I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Ôô°(€Á±…å•ÉI½±”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œÜÀÀœô°(€Á±…å•É9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄØ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹Q½Àè€Ðô°(€Á±…å•ÉMÑ…Ðèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°µ…É¥¹Q½Àè€Ôô°(€Á±…å•ÉM½ÕÉ”èìÝ¥‘Ñ è€ÌØ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°‰½É‘•É1•™Ñ]¥‘Ñ è€Ä°‰½É‘•É1•™Ñ½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ðô°(€Á±…å•ÉM½ÕÉ•Q•áÐèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€±Õ‰½¹Ñ•¹Ðèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•È°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€à°Á…‘‘¥¹œè€ÄØ°µ…É¥¹Q½Àè€Èô°(€±Õ‰½¹Ñ•¹ÑQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÈÈ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹	½ÑÑ½´è€ÄÐô°(€±Õ‰	½‘äèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÔ°±¥¹•!•¥¡Ðè€ÈÈ°µ…á]¥‘Ñ è€ÐàÀô°(€µ•‘¥…I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€ÄÈ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ð°Á…‘‘¥¹Y•ÉÑ¥…°è€ÄÈô°(€µ•‘¥…Q¡ÕµˆèìÝ¥‘Ñ è€ÜØ°¡•¥¡Ðè€ØÈ°‰…­É½Õ¹‘½±½Èè€œÙœ°‰½É‘•ÉI…‘¥ÕÌè€Ø°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœô°(€µ•‘¥…½Áäèì™±•àè€Ä°µ¥¹]¥‘Ñ è€Àô°(€µ•‘¥…Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÔ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€µ•‘¥…•ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€Äà°µ…É¥¹Q½Àè€Ðô°(€ÍÑ…‘¥Õµ9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹	½ÑÑ½´è€àô°(€Ñ¥­•Ñ%¹™¼èìµ…É¥¹Q½Àè€Äà°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°Á…‘‘¥¹œè€ÄÌô°(€Ñ¥­•Ñ1…‰•°èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€Ñ¥­•ÑAÉ¥”èì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€¹•ÝÍ…Éèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°Á…‘‘¥¹œè€ÄØ°‰½É‘•ÉI…‘¥ÕÌè€Øô°(€¹•ÝÍ…É‘•…ÑÕÉ•èì‰…­É½Õ¹‘½±½Èè€œåÔœ°‰½É‘•É½±½Èè€œÙØÐœô°(€¹•ÝÍ5•Ñ…I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄÀ°µ…É¥¹	½ÑÑ½´è€ÄÀô°(€¹•ÝÍ…Ñ•½Éäèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€¹•ÝÍ…Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€¹•ÝÍQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€Äà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°±¥¹•!•¥¡Ðè€ÈÈô°(€¹•ÝÍQ¥Ñ±••…ÑÕÉ•èì½±½Èè½±½ÉÌ¹¥¹¬ô°(€¹•ÝÍMÕµµ…Éäèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€Ää°µ…É¥¹Q½Àè€àô°(€¹•ÝÍM½ÕÉ•I½Üèì…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°µ…É¥¹Q½Àè€ÄÐ°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Ôô°(€¹•ÝÍM½ÕÉ”èì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€ÄÄ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€…‘µ¥¹1½­•èì™±•àè€Ä°…±¥¹%Ñ•µÌè€™±•àµÍÑ…ÉÐœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Èà°Á…‘‘¥¹	½ÑÑ½´è€àÀ°µ…á]¥‘Ñ è€ÔÐÀô°(€…‘µ¥¹1½­%½¸èìÝ¥‘Ñ è€Ôà°¡•¥¡Ðè€Ôà°‰…­É½Õ¹‘½±½Èè€œåÔœ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè€œÙØÐœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°‰½É‘•ÉI…‘¥ÕÌè€Ø°µ…É¥¹	½ÑÑ½´è€Äàô°(€…‘µ¥¹1½­•‘Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÔ°±¥¹•!•¥¡Ðè€ÈÈ°µ…É¥¹Q½Àè€ÄÀ°µ…á]¥‘Ñ è€ÌÐÀô°(€ÁÉ¥µ…Éå	ÕÑÑ½¸èìµ¥¹!•¥¡Ðè€ÐÌ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹…•¹Ð°‰½É‘•ÉI…‘¥ÕÌè€Ð°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÐ°…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€à°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°µ…É¥¹Q½Àè€ÈÀô°(€ÁÉ¥µ…Éå	ÕÑÑ½¹Q•áÐèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÄô°(€Í•ÕÉ¥Ñå!¥¹Ðèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°±¥¹•!•¥¡Ðè€Äà°µ…É¥¹Q½Àè€Äà°µ…á]¥‘Ñ è€ÌÐÀô°(€…‘µ¥¹!•…‘•Èèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ÄØ°µ…É¥¹	½ÑÑ½´è€Äàô°(€…‘µ¥¹=¹±¥¹”èì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€Ø°Á…‘‘¥¹!½É¥é½¹Ñ…°è€à°Á…‘‘¥¹Y•ÉÑ¥…°è€Ø°‰…­É½Õ¹‘½±½Èè€œŒÈÀÉÈÀœ°‰½É‘•ÉI…‘¥ÕÌè€Ìô°(€½¹±¥¹•½Ðèì¡•¥¡Ðè€Ø°Ý¥‘Ñ è€Ø°‰½É‘•ÉI…‘¥ÕÌè€ää°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕ•ÍÌô°(€…‘µ¥¹=¹±¥¹•Q•áÐèì½±½Èè½±½ÉÌ¹ÍÕ•ÍÌ°™½¹ÑM¥é”è€ÄÀ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€¹½Ñ¥”èì‰…­É½Õ¹‘½±½Èè€œŒÅÉÅœ°‰½É‘•É½±½Èè€œŒÌàÕÌÔœ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•ÉI…‘¥ÕÌè€Ô°µ¥¹!•¥¡Ðè€ÐÈ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÈ°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€à°µ…É¥¹	½ÑÑ½´è€ÄÈô°(€¹½Ñ¥•Q•áÐèì½±½Èè€œäœ°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œÜÀÀœô°(€…‘µ¥¹…Éèì‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹ÍÕÉ™…”°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰½É‘•ÉI…‘¥ÕÌè€Ø°Á…‘‘¥¹œè€ÄØ°µ…É¥¹	½ÑÑ½´è€ÄÌô°(€…‘µ¥¹…É‘Q¥Ñ±•I½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄÈ°…±¥¹%Ñ•µÌè€™±•àµÍÑ…ÉÐœ°µ…É¥¹	½ÑÑ½´è€ÄÐô°(€…‘µ¥¹…É‘Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÜ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€…‘µ¥¹…É‘MÕ‰Ñ¥Ñ±”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°µ…É¥¹Q½Àè€Ì°±¥¹•!•¥¡Ðè€ÄÜô°(€Í½É•‘¥Ñ½Èèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ä°‰½É‘•ÉQ½Á]¥‘Ñ è€Ä°‰½É‘•ÉQ½Á½±½Èè½±½ÉÌ¹‰½É‘•É1¥¡Ð°Á…‘‘¥¹Q½Àè€ÄÐô°(€Í½É•‘¥Ñ½ÉQ•…´èì™±•àè€Ä°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°µ¥¹]¥‘Ñ è€Àô°(€Í½É•‘¥Ñ½É9…µ”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÌ°™½¹Ñ]•¥¡Ðè€œàÀÀœ°Ñ•áÑ±¥¸è€•¹Ñ•Èœô°(€Í½É•‘¥Ñ½É9Õµ‰•Èèì½±½Èè½±½ÉÌ¹¥¹­M½™Ð°™½¹ÑM¥é”è€Ìà°™½¹Ñ]•¥¡Ðè€œäÀÀœ°µ…É¥¹Y•ÉÑ¥…°è€Ôô°(€Í½É•‘¥Ñ½É¥Ù¥‘•Èèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÈÔ°™½¹Ñ]•¥¡Ðè€œäÀÀœ°Á…‘‘¥¹	½ÑÑ½´è€Äàô°(€Í½É•‘¥Ñ	ÕÑÑ½¹Ìèì™±•á¥É•Ñ¥½¸è€É½Üœ°…Àè€Øô°(€¥¹ÁÕÐèìµ¥¹!•¥¡Ðè€ÐÐ°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•É½±½Èè½±½ÉÌ¹‰½É‘•È°‰…­É½Õ¹‘½±½Èè€œÙœ°½±½Èè½±½ÉÌ¹¥¹¬°‰½É‘•ÉI…‘¥ÕÌè€Ð°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÈ°™½¹ÑM¥é”è€ÄÐ°µ…É¥¹Q½Àè€äô°(€Ñ•áÑ…É•„èìµ¥¹!•¥¡Ðè€äÈ°Á…‘‘¥¹Q½Àè€ÄÈ°Ñ•áÑ±¥¹Y•ÉÑ¥…°è€Ñ½Àœô°(€Í•½¹‘…Éå	ÕÑÑ½¸èìµ¥¹!•¥¡Ðè€ÐÄ°‰½É‘•É½±½Èè½±½ÉÌ¹¥¹¬°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬°‰½É‘•É]¥‘Ñ è€Ä°‰½É‘•ÉI…‘¥ÕÌè€Ð°™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹M•±˜è€™±•àµÍÑ…ÉÐœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€•¹Ñ•Èœ°…Àè€à°Á…‘‘¥¹!½É¥é½¹Ñ…°è€ÄÌ°µ…É¥¹Q½Àè€Èô°(€Í•½¹‘…Éå	ÕÑÑ½¹Q•áÐèì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÄÄô°(€Í•ÑÑ¥¹ÍI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…Àè€ÄÐ°Á…‘‘¥¹Y•ÉÑ¥…°è€ÄÜ°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ä°‰½É‘•É	½ÑÑ½µ½±½Èè½±½ÉÌ¹‰½É‘•Èô°(€Í•ÑÑ¥¹ÍQ¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÐ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€Í•ÑÑ¥¹Í•ÍÉ¥ÁÑ¥½¸èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°µ…É¥¹Q½Àè€Ìô°(€…‘µ¥¹½½Ñ•ÉI½Üèì™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°…Àè€ÄÈ°Á…‘‘¥¹Q½Àè€ÄØ°Á…‘‘¥¹	½ÑÑ½´è€Øô°(€ÕÁ‘…Ñ•‘Q•áÐèì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÄ°™±•àè€Äô°(€É•Í•ÑQ•áÐèì½±½Èè€œÉÉÔœ°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œàÀÀœô°(€µ½‘…±M…™”èì™±•àè€Ä°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹Á…Á•Èô°(€µ½‘…±!•…‘•Èèì¡•¥¡Ðè€ØØ°Á…‘‘¥¹!½É¥é½¹Ñ…°è€Äà°™±•á¥É•Ñ¥½¸è€É½Üœ°©ÕÍÑ¥™å½¹Ñ•¹Ðè€ÍÁ…”µ‰•ÑÝ••¸œ°…±¥¹%Ñ•µÌè€•¹Ñ•Èœ°‰½É‘•É	½ÑÑ½µ]¥‘Ñ è€Ä°‰½É‘•É	½ÑÑ½µ½±½Èè€œŒÅÕäÈœ°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹¥¹¬ô°(€µ½‘…±!•…‘•ÉQ¥Ñ±”èì½±½Èè½±½ÉÌ¹Á…Á•È°™½¹ÑM¥é”è€ÄÈ°™½¹Ñ]•¥¡Ðè€œäÀÀœô°(€µ½‘…±MÁ…•ÈèìÝ¥‘Ñ è€Ìàô°(€µ½‘…±½¹Ñ•¹ÐèìÁ…‘‘¥¹œè€ÈÐ°µ…á]¥‘Ñ è€ÜÈÀ°Ý¥‘Ñ è€œÄÀÀ”œ°…±¥¹M•±˜è€•¹Ñ•Èœô°(€µ½‘…±Q¥Ñ±”èì½±½Èè½±½ÉÌ¹¥¹¬°™½¹Ñ]•¥¡Ðè€œäÀÀœ°™½¹ÑM¥é”è€ÌÀ°±¥¹•!•¥¡Ðè€ÌØ°µ…É¥¹Q½Àè€ÄÀô°(€µ½‘…±…Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÈ°µ…É¥¹Q½Àè€ÄÈô°(€µ½‘…±IÕ±”èì¡•¥¡Ðè€Ì°Ý¥‘Ñ è€Ôà°‰…­É½Õ¹‘½±½Èè½±½ÉÌ¹…•¹Ð°µ…É¥¹Q½Àè€Èà°µ…É¥¹	½ÑÑ½´è€ÈÈô°(€µ½‘…±	½‘äèì½±½Èè½±½ÉÌ¹¥¹¬°™½¹ÑM¥é”è€ÄÜ°±¥¹•!•¥¡Ðè€ÈÜô°(€µ½‘…±9½Ñ”èì½±½Èè½±½ÉÌ¹µÕÑ•°™½¹ÑM¥é”è€ÄÌ°±¥¹•!•¥¡Ðè€ÈÀ°µ…É¥¹Q½Àè€ÈØô°)ô¤ì(
