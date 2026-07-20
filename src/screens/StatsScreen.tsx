@@ -4,22 +4,50 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
-import { AppContent, SeasonMatch, Standing } from '../types';
+import { AppContent, MatchCompetition, SeasonMatch, Standing } from '../types';
 
 type StatsView = 'calendar' | 'standings';
+type CalendarFilter = 'Tutte' | MatchCompetition;
+
+const filters: Array<{ value: CalendarFilter; label: string }> = [
+  { value: 'Tutte', label: 'Tutte' },
+  { value: 'Campionato', label: 'Campionato' },
+  { value: 'Coppa Italia', label: 'Coppa Italia' },
+  { value: 'Amichevole', label: 'Amichevoli' },
+];
+
 const number = (value: number | undefined) => Number(value) || 0;
 const visibleValue = (value: string) => value && value !== 'Data da definire' && value !== '—' ? value : '';
 
+function normalizedMatch(match: SeasonMatch, index: number): SeasonMatch {
+  return {
+    ...match,
+    competition: match.competition ?? 'Campionato',
+    roundLabel: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : ''),
+    venue: match.venue ?? '',
+    sortOrder: match.sortOrder ?? index,
+  };
+}
+
+function calendarKey(match: SeasonMatch): number {
+  const date = match.dateLabel.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+  if (date) return Date.UTC(Number(date[3]), Number(date[2]) - 1, Number(date[1]));
+  return 9_000_000_000_000 + (match.sortOrder ?? 0);
+}
+
 export function StatsScreen({ content }: { content: AppContent; wide: boolean }) {
   const [view, setView] = useState<StatsView>('calendar');
-  const schedule = content.schedule?.length ? content.schedule : provisionalPratoSchedule;
+  const [filter, setFilter] = useState<CalendarFilter>('Tutte');
   const standings = content.standings.length >= 18 ? content.standings : preseasonStandings;
-  const firstLeg = useMemo(() => schedule.filter((match) => match.leg === 'Andata'), [schedule]);
-  const secondLeg = useMemo(() => schedule.filter((match) => match.leg === 'Ritorno'), [schedule]);
+  const schedule = useMemo(() => {
+    const source = content.schedule?.length ? content.schedule : provisionalPratoSchedule;
+    return source.map(normalizedMatch).sort((a, b) => calendarKey(a) - calendarKey(b));
+  }, [content.schedule]);
+  const visibleSchedule = useMemo(() => filter === 'Tutte' ? schedule : schedule.filter((match) => match.competition === filter), [filter, schedule]);
 
   return <View style={styles.stack}>
     <View>
-      <Text style={styles.eyebrow}>SERIE D · GIRONE E</Text>
+      <Text style={styles.eyebrow}>AC PRATO</Text>
       <Text style={styles.title}>Stagione 2026/27</Text>
     </View>
 
@@ -35,16 +63,13 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
     </View>
 
     {view === 'calendar' ? <View style={styles.calendarStack}>
-      <ScheduleSection title="Girone di andata" matches={firstLeg} />
-      <ScheduleSection title="Girone di ritorno" matches={secondLeg} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {filters.map((item) => <Pressable key={item.value} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterActive]}><Text style={[styles.filterText, filter === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
+      </ScrollView>
+      <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Partite</Text><Text style={styles.sectionCount}>{visibleSchedule.length}</Text></View>
+      <View style={styles.matchList}>{visibleSchedule.map((match) => <MatchRow key={match.id} match={match} />)}</View>
+      {!visibleSchedule.length ? <View style={styles.empty}><MaterialCommunityIcons name="calendar-blank-outline" size={32} color={colors.muted} /><Text style={styles.emptyText}>Nessuna partita in questa categoria.</Text></View> : null}
     </View> : <StandingsTable standings={standings} />}
-  </View>;
-}
-
-function ScheduleSection({ title, matches }: { title: string; matches: SeasonMatch[] }) {
-  return <View style={styles.scheduleSection}>
-    <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{title}</Text><Text style={styles.sectionCount}>{matches.length}</Text></View>
-    <View style={styles.matchList}>{matches.map((match) => <MatchRow key={match.id} match={match} />)}</View>
   </View>;
 }
 
@@ -52,17 +77,21 @@ function MatchRow({ match }: { match: SeasonMatch }) {
   const date = visibleValue(match.dateLabel);
   const time = visibleValue(match.time);
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
+  const competition = match.competition ?? 'Campionato';
+  const round = match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : '');
+  const short = competition === 'Campionato' ? 'CAMP' : competition === 'Coppa Italia' ? 'COPPA' : 'AMIC';
   return <View style={styles.matchCard}>
-    <View style={styles.matchdayBadge}><Text style={styles.matchdayNumber}>{match.matchday}</Text></View>
+    <View style={[styles.competitionBadge, competition === 'Coppa Italia' && styles.cupBadge, competition === 'Amichevole' && styles.friendlyBadge]}><Text style={styles.competitionShort}>{short}</Text></View>
     <View style={styles.matchBody}>
-      {date || time ? <Text style={styles.matchMeta}>{[date, time].filter(Boolean).join(' · ')}</Text> : null}
+      <View style={styles.matchTop}><Text style={styles.competitionName}>{competition}</Text>{round ? <Text style={styles.round}>{round}</Text> : null}</View>
+      {date || time || match.venue ? <Text style={styles.matchMeta}>{[date, time, match.venue].filter(Boolean).join(' · ')}</Text> : null}
       <View style={styles.teamRow}>
-        <Text numberOfLines={1} style={[styles.teamName, match.home === 'AC Prato' && styles.pratoTeam]}>{match.home}</Text>
+        <Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.home) && styles.pratoTeam]}>{match.home}</Text>
         {hasScore ? <Text style={styles.score}>{match.homeScore}</Text> : null}
       </View>
       <View style={styles.teamDivider} />
       <View style={styles.teamRow}>
-        <Text numberOfLines={1} style={[styles.teamName, match.away === 'AC Prato' && styles.pratoTeam]}>{match.away}</Text>
+        <Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>
         {hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}
       </View>
     </View>
@@ -88,7 +117,7 @@ function StandingsTable({ standings }: { standings: Standing[] }) {
 }
 
 function StandingRow({ row }: { row: Standing }) {
-  const isPrato = row.club === 'AC Prato';
+  const isPrato = /^(AC )?Prato$/i.test(row.club);
   return <View style={[styles.tableRow, isPrato && styles.pratoRow]}>
     <Cell text={String(row.rank)} style={styles.posCell} strong={isPrato} />
     <View style={[styles.cell, styles.clubCell]}><Text numberOfLines={1} style={[styles.cellText, styles.clubText, isPrato && styles.pratoText]}>{row.club}</Text></View>
@@ -110,22 +139,33 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: colors.accentStrong },
   segmentText: { color: colors.accentStrong, fontSize: 12, fontWeight: '900' },
   segmentTextActive: { color: colors.paper },
-  calendarStack: { gap: 24 },
-  scheduleSection: { gap: 11 },
+  calendarStack: { gap: 14 },
+  filters: { gap: 8, paddingRight: 10 },
+  filter: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 20, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
+  filterActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+  filterText: { color: colors.inkSoft, fontSize: 11, fontWeight: '900' },
+  filterTextActive: { color: colors.paper },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { color: colors.ink, fontSize: 24, fontWeight: '900' },
   sectionCount: { minWidth: 30, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, overflow: 'hidden', color: colors.paper, backgroundColor: colors.accentStrong, textAlign: 'center', fontSize: 11, fontWeight: '900' },
   matchList: { gap: 9 },
-  matchCard: { minHeight: 96, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  matchdayBadge: { width: 48, height: 58, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.accentStrong },
-  matchdayNumber: { color: colors.paper, fontSize: 22, fontWeight: '900' },
+  matchCard: { minHeight: 112, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
+  competitionBadge: { width: 54, height: 62, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.accentStrong },
+  cupBadge: { backgroundColor: colors.navy },
+  friendlyBadge: { backgroundColor: colors.success },
+  competitionShort: { color: colors.paper, fontSize: 9, fontWeight: '900' },
   matchBody: { flex: 1, minWidth: 0 },
-  matchMeta: { color: colors.muted, fontSize: 10, fontWeight: '800', marginBottom: 7, textTransform: 'uppercase' },
+  matchTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  competitionName: { color: colors.accentStrong, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  round: { flexShrink: 1, color: colors.muted, fontSize: 9, fontWeight: '800', textTransform: 'uppercase' },
+  matchMeta: { color: colors.muted, fontSize: 10, fontWeight: '800', marginVertical: 6, textTransform: 'uppercase' },
   teamRow: { minHeight: 26, flexDirection: 'row', alignItems: 'center', gap: 10 },
   teamName: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '800' },
   pratoTeam: { color: colors.accentStrong, fontWeight: '900' },
   score: { minWidth: 24, color: colors.ink, fontSize: 18, fontWeight: '900', textAlign: 'center' },
   teamDivider: { height: 1, backgroundColor: colors.lineSoft, marginVertical: 3 },
+  empty: { alignItems: 'center', gap: 8, padding: 30, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
+  emptyText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
   tableCard: { overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   tableTitle: { color: colors.ink, fontSize: 24, fontWeight: '900', padding: 18, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   tableScroll: { paddingBottom: 2 },

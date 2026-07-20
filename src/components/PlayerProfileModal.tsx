@@ -3,6 +3,7 @@ import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, Vi
 
 import { colors, radii } from '../theme';
 import { Player } from '../types';
+import { playerImageStyle } from '../utils/player-image';
 
 function Stat({ value, label }: { value: string | number; label: string }) {
   return <View style={styles.stat}><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>;
@@ -32,7 +33,7 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
 
             <View style={styles.hero}>
               <View style={styles.heroImageWrap}>
-                {player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={styles.heroImage} /> : <View style={styles.heroPlaceholder}><Image source={require('../../assets/ac-prato-crest.png')} resizeMode="cover" style={styles.heroPlaceholderLogo} /></View>}
+                {player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={[styles.heroImage, playerImageStyle(player)]} /> : <View style={styles.heroPlaceholder}><Image source={require('../../assets/ac-prato-crest.png')} resizeMode="cover" style={styles.heroPlaceholderLogo} /></View>}
                 <View style={styles.numberBadge}><Text style={styles.numberText}>{player.number ? `#${player.number}` : 'AC'}</Text></View>
               </View>
               <View style={styles.heroBody}>
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
   topTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
   topSpacer: { width: 42 },
   hero: { margin: 16, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  heroImageWrap: { height: 360, backgroundColor: colors.surfaceSoft },
+  heroImageWrap: { height: 360, overflow: 'hidden', backgroundColor: colors.surfaceSoft },
   heroImage: { width: '100%', height: '100%' },
   heroPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   heroPlaceholderLogo: { width: 120, height: 120, borderRadius: 34, opacity: 0.7 },

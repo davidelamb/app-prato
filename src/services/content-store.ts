@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { playerPhotoFallbacks } from '../data/player-photo-fallbacks';
 import { seedContent } from '../data/seed';
 import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch, Standing } from '../types';
 
-const STORAGE_KEY = '@ac-prato/content-v6';
-const LEGACY_KEYS = ['@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v7';
+const LEGACY_KEYS = ['@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
   const demoMatchday = /demo|dimostrativa/i.test(fixture.matchday);
@@ -20,7 +21,19 @@ function normalizeFixture(fixture: Fixture): Fixture {
 }
 
 function normalizePlayer(player: Player): Player {
-  return { ...player, appearances: player.appearances ?? 0, goals: player.goals ?? 0, assists: player.assists ?? 0, imageUrl: player.imageUrl ?? '', nationality: player.nationality ?? 'Italia' };
+  const seed = seedContent.players.find((item) => item.id === player.id);
+  const fallback = playerPhotoFallbacks[player.id];
+  return {
+    ...player,
+    appearances: player.appearances ?? 0,
+    goals: player.goals ?? 0,
+    assists: player.assists ?? 0,
+    imageUrl: player.imageUrl || fallback?.imageUrl || seed?.imageUrl || '',
+    imageSourceUrl: player.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl,
+    imageScale: player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1,
+    imagePositionY: player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0,
+    nationality: player.nationality ?? 'Italia',
+  };
 }
 
 function normalizeNews(article: NewsArticle): NewsArticle {
@@ -50,14 +63,18 @@ function normalizeStanding(row: Standing, index: number): Standing {
 }
 
 function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
-  const matchday = Number(match.matchday) || index + 1;
+  const matchday = Number(match.matchday) || undefined;
   return {
     ...match,
-    id: match.id || `season-match-${matchday}`,
+    id: match.id || `season-match-${index + 1}`,
     matchday,
-    leg: match.leg ?? (matchday <= 17 ? 'Andata' : 'Ritorno'),
+    leg: match.leg ?? (matchday ? (matchday <= 17 ? 'Andata' : 'Ritorno') : undefined),
+    competition: match.competition ?? 'Campionato',
+    roundLabel: match.roundLabel ?? (matchday ? `${matchday}ª giornata` : ''),
     dateLabel: match.dateLabel ?? '',
     time: match.time ?? '',
+    venue: match.venue ?? '',
+    sortOrder: Number(match.sortOrder) || index,
   };
 }
 
@@ -65,8 +82,8 @@ export function normalizeContent(content: AppContent): AppContent {
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
     standings: Array.isArray(content.standings) ? content.standings.map(normalizeStanding) : seedContent.standings.map(normalizeStanding),
-    schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : undefined,
-    players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players,
+    schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : seedContent.schedule?.map(normalizeSchedule),
+    players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players.map(normalizePlayer),
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
     media: Array.isArray(content.media) ? content.media.map(normalizeMedia) : seedContent.media,
     updatedAt: content.updatedAt || seedContent.updatedAt,
@@ -81,8 +98,7 @@ export async function loadContent(): Promise<AppContent> {
     for (const key of LEGACY_KEYS) {
       const legacy = await AsyncStorage.getItem(key);
       if (legacy) {
-        const parsed = normalizeContent(JSON.parse(legacy) as AppContent);
-        const migrated = normalizeContent({ ...parsed, news: seedContent.news, media: seedContent.media });
+        const migrated = normalizeContent(JSON.parse(legacy) as AppContent);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
         return migrated;
       }
