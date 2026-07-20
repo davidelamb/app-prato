@@ -2,6 +2,7 @@ export type FixtureStatus = 'scheduled' | 'live' | 'final';
 export type LivePhase = 'scheduled' | 'first_half' | 'halftime' | 'second_half' | 'finished';
 export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'fulltime';
 export type PlayerRole = 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
+export type MediaKind = 'Highlights' | 'Intervista' | 'Video' | 'Podcast';
 
 export type LiveEvent = {
   id: string;
@@ -74,8 +75,21 @@ export type NewsArticle = {
   body?: string;
   publishedAt: string;
   source: string;
+  sourceUrl?: string;
   featured?: boolean;
   imageUrl?: string;
+};
+
+export type MediaItem = {
+  id: string;
+  kind: MediaKind;
+  title: string;
+  description: string;
+  publishedAt: string;
+  source: string;
+  thumbnailUrl: string;
+  url: string;
+  featured?: boolean;
 };
 
 export type AppContent = {
@@ -83,5 +97,6 @@ export type AppContent = {
   standings: Standing[];
   players: Player[];
   news: NewsArticle[];
+  media: MediaItem[];
   updatedAt: string;
 };
