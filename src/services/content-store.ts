@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { playerPhotoFallbacks } from '../data/player-photo-fallbacks';
+import { preseasonStandings } from '../data/season-2026-27';
 import { seedContent } from '../data/seed';
 import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch, Standing } from '../types';
 
-const STORAGE_KEY = '@ac-prato/content-v7';
-const LEGACY_KEYS = ['@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v8';
+const LEGACY_KEYS = ['@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
   const demoMatchday = /demo|dimostrativa/i.test(fixture.matchday);
@@ -14,6 +15,7 @@ function normalizeFixture(fixture: Fixture): Fixture {
     ...fixture,
     matchday: demoMatchday ? '1ª giornata' : fixture.matchday,
     dateLabel: demoDate ? '' : fixture.dateLabel,
+    kickoffAt: fixture.kickoffAt,
     isDemo: false,
     livePhase: fixture.livePhase ?? (fixture.status === 'live' ? 'first_half' : fixture.status === 'final' ? 'finished' : 'scheduled'),
     liveEvents: fixture.liveEvents ?? [],
@@ -58,8 +60,16 @@ function normalizeStanding(row: Standing, index: number): Standing {
     goalsAgainst,
     goalDifference: goalsFor - goalsAgainst,
     points: Number(row.points) || 0,
-    form: row.form ?? [],
+    form: (row.form ?? []).slice(-5),
   };
+}
+
+function emptyStandings(): Standing[] {
+  return preseasonStandings.map((row, index) => normalizeStanding({ ...row, rank: index + 1, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, form: [] }, index));
+}
+
+function normalizeStandingTable(value: Standing[] | undefined, fallback: Standing[]): Standing[] {
+  return Array.isArray(value) && value.length ? value.map(normalizeStanding) : fallback.map(normalizeStanding);
 }
 
 function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
@@ -73,15 +83,20 @@ function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
     roundLabel: match.roundLabel ?? (matchday ? `${matchday}ª giornata` : ''),
     dateLabel: match.dateLabel ?? '',
     time: match.time ?? '',
+    kickoffAt: match.kickoffAt,
     venue: match.venue ?? '',
     sortOrder: Number(match.sortOrder) || index,
   };
 }
 
 export function normalizeContent(content: AppContent): AppContent {
+  const blankTable = emptyStandings();
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
-    standings: Array.isArray(content.standings) ? content.standings.map(normalizeStanding) : seedContent.standings.map(normalizeStanding),
+    standings: normalizeStandingTable(content.standings, seedContent.standings),
+    standingsHome: normalizeStandingTable(content.standingsHome, seedContent.standingsHome ?? blankTable),
+    standingsAway: normalizeStandingTable(content.standingsAway, seedContent.standingsAway ?? blankTable),
+    standingsForm: normalizeStandingTable(content.standingsForm, seedContent.standingsForm ?? blankTable),
     schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : seedContent.schedule?.map(normalizeSchedule),
     players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players.map(normalizePlayer),
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
