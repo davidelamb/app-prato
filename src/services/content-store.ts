@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { playerPhotoFallbacks } from '../data/player-photo-fallbacks';
 import { seedContent } from '../data/seed';
 import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch, Standing } from '../types';
 
@@ -21,15 +22,16 @@ function normalizeFixture(fixture: Fixture): Fixture {
 
 function normalizePlayer(player: Player): Player {
   const seed = seedContent.players.find((item) => item.id === player.id);
+  const fallback = playerPhotoFallbacks[player.id];
   return {
     ...player,
     appearances: player.appearances ?? 0,
     goals: player.goals ?? 0,
     assists: player.assists ?? 0,
-    imageUrl: player.imageUrl || seed?.imageUrl || '',
-    imageSourceUrl: player.imageSourceUrl || seed?.imageSourceUrl,
-    imageScale: player.imageScale ?? seed?.imageScale ?? 1,
-    imagePositionY: player.imagePositionY ?? seed?.imagePositionY ?? 0,
+    imageUrl: player.imageUrl || fallback?.imageUrl || seed?.imageUrl || '',
+    imageSourceUrl: player.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl,
+    imageScale: player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1,
+    imagePositionY: player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0,
     nationality: player.nationality ?? 'Italia',
   };
 }
