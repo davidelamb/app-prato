@@ -3,24 +3,24 @@
  * Ogni squadra ha nome canonico, alias alternativi e URL del logo (quando disponibile).
  * Usare `resolveTeamLogo()` per ottenere le info a partire da qualsiasi variante del nome.
  *
- * I loghi sono gestiti come stringhe URI:
- * - Asset locali: prefisso 'local:' + percorso relativo (es. 'local:../../assets/ac-prato-crest.png')
- * - URL remoti: URI HTTP/HTTPS completo
- * Risolvere nel componente TeamLogo con `getTeamLogoSource()`.
+ * I loghi sono gestiti come URI:
+ * - Asset locali: `require(...)` per immagini nel progetto
+ * - URL remoti: stringa HTTP/HTTPS
+ *
+ * Se `logoSource` è undefined, il componente TeamLogo mostra un fallback con le iniziali.
  */
 
 import type { ImageSourcePropType } from 'react-native';
 
 export interface TeamLogoInfo {
-  /** Nome canonico della squadra */
+  /** Nome canonico della squadra (coincide con la chiave in teamLogos) */
   canonicalName: string;
   /** Alias alternativi con cui la squadra può apparire nei dati */
   aliases: string[];
   /**
-   * URI del logo.
-   * - Asset locale: 'local:../../assets/...'
-   * - Remoto: 'https://...'
-   * Assente = mostra fallback.
+   * Fonte del logo. Se undefined o null → fallback automatico.
+   * - Asset locale: `require('../../assets/...')`
+   * - Remoto: `{ uri: 'https://...' }`
    */
   logoSource?: ImageSourcePropType;
 }
@@ -105,7 +105,10 @@ export const teamLogos: Record<string, TeamLogoInfo> = {
   },
 };
 
-/** Resolve any team name variant to its canonical key */
+/**
+ * Risolve qualsiasi variante del nome di una squadra alla sua chiave canonica.
+ * Restituisce la chiave se trovata, altrimenti il nome originale.
+ */
 export function resolveTeamKey(name: string): string {
   const normalized = name.trim().toLowerCase();
   for (const [key, info] of Object.entries(teamLogos)) {
@@ -115,7 +118,10 @@ export function resolveTeamKey(name: string): string {
   return name;
 }
 
-/** Resolve any team name to its TeamLogoInfo (or undefined if unknown) */
+/**
+ * Risolve qualsiasi nome di squadra al suo TeamLogoInfo.
+ * Restituisce undefined se la squadra non è riconosciuta.
+ */
 export function resolveTeamLogo(name: string): TeamLogoInfo | undefined {
   const key = resolveTeamKey(name);
   return teamLogos[key] ?? undefined;
