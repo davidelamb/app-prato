@@ -2,10 +2,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { MatchDetailsModal } from '../components/MatchDetailsModal';
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
-import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope } from '../types';
-import { completeStandingRows, numberValue, standingRows, standingScopes } from '../utils/standings';
+import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, StandingsView } from '../types';
+import { calculatedFormRows, calculatedStandingRows, numberValue, standingScopes } from '../utils/standings';
 
 type StatsView = 'calendar' | 'standings';
 type CalendarFilter = 'Tutte' | MatchCompetition;
@@ -38,9 +39,9 @@ function calendarKey(match: SeasonMatch): number {
 export function StatsScreen({ content }: { content: AppContent; wide: boolean }) {
   const [view, setView] = useState<StatsView>('calendar');
   const [filter, setFilter] = useState<CalendarFilter>('Tutte');
+  const [standingsView, setStandingsView] = useState<StandingsView>('standings');
   const [standingScope, setStandingScope] = useState<StandingScope>('overall');
-
-  const standings = completeStandingRows(standingRows(content, standingScope), preseasonStandings);
+  const [selectedMatch, setSelectedMatch] = useState<SeasonMatch | null>(null);
   const schedule = useMemo(() => {
     const source = content.schedule?.length ? content.schedule : provisionalPratoSchedule;
     return source.map(normalizedMatch).sort((a, b) => calendarKey(a) - calendarKey(b));
@@ -48,6 +49,12 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
   const visibleSchedule = useMemo(
     () => filter === 'Tutte' ? schedule : schedule.filter((match) => match.competition === filter),
     [filter, schedule],
+  );
+  const standings = useMemo(
+    () => standingsView === 'form'
+      ? calculatedFormRows(schedule, preseasonStandings, standingScope)
+      : calculatedStandingRows(schedule, preseasonStandings, standingScope),
+    [schedule, standingScope, standingsView],
   );
 
   return <View style={styles.stack}>
@@ -69,25 +76,36 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
         {filters.map((item) => <Pressable key={item.value} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterActive]}><Text style={[styles.filterText, filter === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
       </ScrollView>
       <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Partite</Text><Text style={styles.sectionCount}>{visibleSchedule.length}</Text></View>
-      <View style={styles.matchList}>{visibleSchedule.map((match) => <MatchRow key={match.id} match={match} />)}</View>
+      <View style={styles.matchList}>{visibleSchedule.map((match) => <MatchRow key={match.id} match={match} onPress={() => setSelectedMatch(match)} />)}</View>
       {!visibleSchedule.length ? <View style={styles.empty}><MaterialCommunityIcons name="calendar-blank-outline" size={32} color={colors.muted} /><Text style={styles.emptyText}>Nessuna partita in questa categoria.</Text></View> : null}
     </View> : <View style={styles.standingsStack}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {standingScopes.map((item) => <Pressable key={item.value} onPress={() => setStandingScope(item.value)} style={[styles.filter, standingScope === item.value && styles.filterActive]}><Text style={[styles.filterText, standingScope === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
-      </ScrollView>
-      {standings.length ? <StandingsTable standings={standings} scope={standingScope} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
+      <View style={styles.standingsMode}>
+        <Pressable onPress={() => setStandingsView('standings')} style={[styles.standingsModeButton, standingsView === 'standings' && styles.standingsModeActive]}>
+          <MaterialCommunityIcons name="format-list-numbered" size={18} color={standingsView === 'standings' ? colors.paper : colors.accentStrong} />
+          <Text style={[styles.standingsModeText, standingsView === 'standings' && styles.standingsModeTextActive]}>Classifica</Text>
+        </Pressable>
+        <Pressable onPress={() => setStandingsView('form')} style={[styles.standingsModeButton, standingsView === 'form' && styles.standingsModeActive]}>
+          <MaterialCommunityIcons name="chart-timeline-variant" size={18} color={standingsView === 'form' ? colors.paper : colors.accentStrong} />
+          <Text style={[styles.standingsModeText, standingsView === 'form' && styles.standingsModeTextActive]}>Forma</Text>
+        </Pressable>
+      </View>
+      <View style={styles.scopeTabs}>
+        {standingScopes.map((item) => <Pressable key={item.value} onPress={() => setStandingScope(item.value)} style={[styles.filter, styles.scopeTab, standingScope === item.value && styles.filterActive]}><Text style={[styles.filterText, standingScope === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
+      </View>
+      {standings.length ? <StandingsTable standings={standings} scope={standingScope} view={standingsView} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
     </View>}
+    <MatchDetailsModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
   </View>;
 }
 
-function MatchRow({ match }: { match: SeasonMatch }) {
+function MatchRow({ match, onPress }: { match: SeasonMatch; onPress: () => void }) {
   const date = visibleValue(match.dateLabel);
   const time = visibleValue(match.time);
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
   const competition = match.competition ?? 'Campionato';
   const round = match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : '');
   const short = competition === 'Campionato' ? 'CAMP' : competition === 'Coppa Italia' ? 'COPPA' : 'AMIC';
-  return <View style={styles.matchCard}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Apri ${match.home} contro ${match.away}`} onPress={onPress} style={({ pressed }) => [styles.matchCard, pressed && styles.matchCardPressed]}>
     <View style={[styles.competitionBadge, competition === 'Coppa Italia' && styles.cupBadge, competition === 'Amichevole' && styles.friendlyBadge]}><Text style={styles.competitionShort}>{short}</Text></View>
     <View style={styles.matchBody}>
       <View style={styles.matchTop}><Text style={styles.competitionName}>{competition}</Text>{round ? <Text style={styles.round}>{round}</Text> : null}</View>
@@ -96,15 +114,19 @@ function MatchRow({ match }: { match: SeasonMatch }) {
       <View style={styles.teamDivider} />
       <View style={styles.teamRow}><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>{hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}</View>
     </View>
-  </View>;
+    <MaterialCommunityIcons name="chevron-right" size={23} color={colors.accentStrong} />
+  </Pressable>;
 }
 
-function StandingsTable({ standings, scope }: { standings: Standing[]; scope: StandingScope }) {
-  const label = standingScopes.find((item) => item.value === scope)?.label ?? 'Generale';
+function StandingsTable({ standings, scope, view }: { standings: Standing[]; scope: StandingScope; view: StandingsView }) {
+  const label = standingScopes.find((item) => item.value === scope)?.label ?? 'Totale';
   const ordered = [...standings].sort((a, b) => a.rank - b.rank);
-  const showForm = scope === 'form';
+  const showForm = view === 'form';
   return <View style={styles.tableCard}>
-    <Text style={styles.tableTitle}>Serie D Girone E · {label}</Text>
+    <View style={styles.tableHeading}>
+      <View><Text style={styles.tableEyebrow}>SERIE D · GIRONE E</Text><Text style={styles.tableTitle}>{showForm ? 'Forma' : 'Classifica'} · {label}</Text></View>
+      {showForm ? <View style={styles.legend}><FormLegend label="V" style={styles.formWin} /><FormLegend label="N" style={styles.formDraw} /><FormLegend label="P" style={styles.formLoss} /></View> : null}
+    </View>
     <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableViewport} contentContainerStyle={styles.tableScroll}>
       <View style={[styles.table, showForm && styles.formTable]}>
         <View style={styles.tableHeader}>
@@ -112,12 +134,16 @@ function StandingsTable({ standings, scope }: { standings: Standing[]; scope: St
           <Cell text="Squadra" style={styles.clubCell} header align="left" />
           <Cell text="G" header /><Cell text="V" header /><Cell text="N" header /><Cell text="P" header />
           <Cell text="GF" header /><Cell text="GS" header /><Cell text="DR" header /><Cell text="PT" header strong />
-          {showForm ? <Cell text="Ultime 5" style={styles.formCell} header /> : null}
+          {showForm ? <Cell text="Forma" style={styles.formCell} header /> : null}
         </View>
         {ordered.map((row) => <StandingRow key={row.club} row={row} showForm={showForm} />)}
       </View>
     </ScrollView>
   </View>;
+}
+
+function FormLegend({ label, style }: { label: string; style: object }) {
+  return <View style={[styles.legendDot, style]}><Text style={styles.legendLetter}>{label}</Text></View>;
 }
 
 function StandingRow({ row, showForm }: { row: Standing; showForm: boolean }) {
@@ -146,8 +172,15 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: colors.paper },
   calendarStack: { gap: 14 },
   standingsStack: { width: '100%', gap: 12 },
+  standingsMode: { flexDirection: 'row', minHeight: 46, padding: 4, gap: 4, borderRadius: radii.md, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
+  standingsModeButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: radii.sm },
+  standingsModeActive: { backgroundColor: colors.accentStrong },
+  standingsModeText: { color: colors.accentStrong, fontSize: 12, fontWeight: '900' },
+  standingsModeTextActive: { color: colors.paper },
+  scopeTabs: { flexDirection: 'row', gap: 8 },
+  scopeTab: { flex: 1 },
   filters: { gap: 8, paddingRight: 10 },
-  filter: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 20, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
+  filter: { minHeight: 38, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, borderRadius: radii.sm, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   filterActive: { backgroundColor: colors.navy, borderColor: colors.navy },
   filterText: { color: colors.inkSoft, fontSize: 11, fontWeight: '900' },
   filterTextActive: { color: colors.paper },
@@ -156,6 +189,7 @@ const styles = StyleSheet.create({
   sectionCount: { minWidth: 30, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, overflow: 'hidden', color: colors.paper, backgroundColor: colors.accentStrong, textAlign: 'center', fontSize: 11, fontWeight: '900' },
   matchList: { gap: 9 },
   matchCard: { minHeight: 112, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
+  matchCardPressed: { opacity: 0.84, backgroundColor: colors.surfaceRaised },
   competitionBadge: { width: 54, height: 62, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.accentStrong },
   cupBadge: { backgroundColor: colors.navy },
   friendlyBadge: { backgroundColor: colors.success },
@@ -173,7 +207,12 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: 8, padding: 30, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   emptyText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
   tableCard: { width: '100%', overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  tableTitle: { color: colors.ink, fontSize: 21, fontWeight: '900', padding: 18, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  tableHeading: { minHeight: 82, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  tableEyebrow: { color: colors.accentStrong, fontSize: 9, fontWeight: '900' },
+  tableTitle: { color: colors.ink, fontSize: 20, fontWeight: '900', marginTop: 4 },
+  legend: { flexDirection: 'row', gap: 5 },
+  legendDot: { width: 23, height: 23, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  legendLetter: { color: colors.paper, fontSize: 9, fontWeight: '900' },
   tableViewport: { width: '100%' },
   tableScroll: { flexGrow: 1, paddingBottom: 2 },
   table: { minWidth: 760 },

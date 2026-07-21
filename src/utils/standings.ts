@@ -1,10 +1,9 @@
-import { AppContent, Standing, StandingScope } from '../types';
+import { AppContent, SeasonMatch, Standing, StandingScope } from '../types';
 
 export const standingScopes: Array<{ value: StandingScope; label: string }> = [
-  { value: 'overall', label: 'Generale' },
+  { value: 'overall', label: 'Totale' },
   { value: 'home', label: 'Casa' },
-  { value: 'away', label: 'Trasferta' },
-  { value: 'form', label: 'Forma' },
+  { value: 'away', label: 'Fuori' },
 ];
 
 export const numberValue = (value: number | undefined) => Number(value) || 0;
@@ -23,7 +22,7 @@ export function normalizeStandingRow(row: Standing, index: number): Standing {
     goalsAgainst,
     goalDifference: goalsFor - goalsAgainst,
     points: Number(row.points) || 0,
-    form: (row.form ?? []).slice(-5),
+    form: (row.form ?? []).slice(-20),
   };
 }
 
@@ -80,22 +79,60 @@ export function sortStandingRows(rows: Standing[]): Standing[] {
 export function standingRows(content: AppContent, scope: StandingScope): Standing[] {
   if (scope === 'home') return content.homeStandings ?? [];
   if (scope === 'away') return content.awayStandings ?? [];
-  if (scope === 'form') return content.formStandings ?? [];
   return content.standings ?? [];
 }
-
 export function setStandingRows(content: AppContent, scope: StandingScope, rows: Standing[]): AppContent {
   if (scope === 'home') return { ...content, homeStandings: rows };
   if (scope === 'away') return { ...content, awayStandings: rows };
-  if (scope === 'form') return { ...content, formStandings: rows };
   return { ...content, standings: rows };
 }
 
-export function parseForm(value: string): Array<'W' | 'D' | 'L'> {
-  return value
-    .toUpperCase()
-    .split(/[\s,;|\-]+/)
-    .map((item) => item === 'V' ? 'W' : item === 'N' ? 'D' : item === 'P' ? 'L' : item)
-    .filter((item): item is 'W' | 'D' | 'L' => item === 'W' || item === 'D' || item === 'L')
-    .slice(-5);
+function calculateRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope, matchLimit?: number): Standing[] {
+  const rows = emptyStandingRows(masterRows);
+  const byClub = new Map(rows.map((row) => [clubKey(row.club), row]));
+  const completed = [...matches]
+    .filter((match) => (match.competition ?? 'Campionato') === 'Campionato'
+      && match.homeScore !== undefined && match.awayScore !== undefined)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  const addResult = (club: string, goalsFor: number, goalsAgainst: number) => {
+    const row = byClub.get(clubKey(club));
+    if (!row) return;
+    const result: NonNullable<Standing['form']>[number] = goalsFor > goalsAgainst ? 'W' : goalsFor === goalsAgainst ? 'D' : 'L';
+    row.played += 1;
+    row.wins = numberValue(row.wins) + (result === 'W' ? 1 : 0);
+    row.draws = numberValue(row.draws) + (result === 'D' ? 1 : 0);
+    row.losses = numberValue(row.losses) + (result === 'L' ? 1 : 0);
+    row.goalsFor = numberValue(row.goalsFor) + goalsFor;
+    row.goalsAgainst = numberValue(row.goalsAgainst) + goalsAgainst;
+    row.goalDifference = numberValue(row.goalsFor) - numberValue(row.goalsAgainst);
+    row.points += result === 'W' ? 3 : result === 'D' ? 1 : 0;
+    row.form = [...(row.form ?? []), result].slice(-20);
+  };
+
+  const resultsByClub = new Map<string, Array<{ club: string; goalsFor: number; goalsAgainst: number }>>();
+  const collectResult = (club: string, goalsFor: number, goalsAgainst: number) => {
+    const key = clubKey(club);
+    const results = resultsByClub.get(key) ?? [];
+    results.push({ club, goalsFor, goalsAgainst });
+    resultsByClub.set(key, results);
+  };
+
+  completed.forEach((match) => {
+    if (scope !== 'away') collectResult(match.home, match.homeScore!, match.awayScore!);
+    if (scope !== 'home') collectResult(match.away, match.awayScore!, match.homeScore!);
+  });
+  resultsByClub.forEach((results) => {
+    const relevantResults = matchLimit === undefined ? results : results.slice(-matchLimit);
+    relevantResults.forEach((result) => addResult(result.club, result.goalsFor, result.goalsAgainst));
+  });
+  return sortStandingRows(rows);
+}
+
+export function calculatedStandingRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope): Standing[] {
+  return calculateRows(matches, masterRows, scope);
+}
+
+export function calculatedFormRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope): Standing[] {
+  return calculateRows(matches, masterRows, scope, 5);
 }
