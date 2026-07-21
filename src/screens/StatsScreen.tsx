@@ -160,7 +160,7 @@ function StandingRow({ row, showForm, showExtendedStats, wide }: { row: Standing
 }
 
 function Cell({ text, style, header = false, strong = false, align = 'center', wide = false }: { text: string; style?: object; header?: boolean; strong?: boolean; align?: 'left' | 'center'; wide?: boolean }) {
-  return <View style={[styles.cell, wide && styles.cellWide, style]}><Text style={[styles.cellText, wide && styles.cellTextWide, align === 'left' && styles.cellLeft, header && styles.headerText, wide && header && styles.headerTextWide, strong && styles.strongText]}>{text}</Text></View>;
+  return <View style={[styles.cell, wide && styles.cellWide, style]}><Text style={[styles.cellText, wide && styles.cellTextWide, align === 'left' && styles.cellLeft, strong && styles.strongText, header && styles.headerText, wide && header && styles.headerTextWide]}>{text}</Text></View>;
 }
 
 const styles = StyleSheet.create({
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   clubCellWide: { flex: 0, width: 250, paddingLeft: 8 },
   formCell: { width: 108 },
   formCellWide: { width: 180 },
-  cellText: { color: colors.inkSoft, fontSize: 9, fontWeight: '700', textAlign: 'center' },
+  cellText: { color: colors.inkSoft, fontSize: 11, fontWeight: '800', textAlign: 'center' },
   cellTextWide: { fontSize: 12 },
   cellLeft: { textAlign: 'left' },
   headerText: { color: colors.paper, fontSize: 8, fontWeight: '900', textTransform: 'uppercase' },
