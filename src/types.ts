@@ -91,6 +91,7 @@ export type Player = {
   imageUrl?: string;
   imageSourceUrl?: string;
   imageScale?: number;
+  imagePositionX?: number;
   imagePositionY?: number;
 };
 
