@@ -4,7 +4,8 @@ export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'f
 export type PlayerRole = 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
 export type MediaKind = 'Highlights' | 'Intervista' | 'Video' | 'Podcast';
 export type MatchCompetition = 'Campionato' | 'Coppa Italia' | 'Amichevole';
-export type StandingScope = 'overall' | 'home' | 'away' | 'form';
+export type StandingScope = 'overall' | 'home' | 'away';
+export type StandingsView = 'standings' | 'form';
 
 export type LiveEvent = {
   id: string;

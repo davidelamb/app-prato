@@ -5,7 +5,7 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { preseasonStandings, provisionalPratoSchedule } from '../../data/season-2026-27';
 import { colors } from '../../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope } from '../../types';
-import { emptyStandingRows, normalizeStandingRow, numberValue, parseForm, setStandingRows, sortStandingRows, standingScopes } from '../../utils/standings';
+import { emptyStandingRows, normalizeStandingRow, numberValue, setStandingRows, sortStandingRows, standingScopes } from '../../utils/standings';
 import { Button, Field, adminStyles } from './Primitives';
 
 const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia', 'Amichevole'];
@@ -41,9 +41,8 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
       overall,
       home: content.homeStandings?.length === overall.length ? content.homeStandings.map(normalizeStandingRow) : empty,
       away: content.awayStandings?.length === overall.length ? content.awayStandings.map(normalizeStandingRow) : empty,
-      form: content.formStandings?.length === overall.length ? content.formStandings.map(normalizeStandingRow) : empty,
     };
-  }, [content.standings, content.homeStandings, content.awayStandings, content.formStandings]);
+  }, [content.standings, content.homeStandings, content.awayStandings]);
 
   const [schedule, setSchedule] = useState<SeasonMatch[]>(initialSchedule);
   const [draft, setDraft] = useState<SeasonMatch>(newMatch());
@@ -52,7 +51,7 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
   const [scheduleImport, setScheduleImport] = useState('');
   const [standingsImport, setStandingsImport] = useState('');
   const standings = standingTables[standingScope];
-  const scopeLabel = standingScopes.find((item) => item.value === standingScope)?.label ?? 'Generale';
+  const scopeLabel = standingScopes.find((item) => item.value === standingScope)?.label ?? 'Totale';
 
   const updateDraft = <K extends keyof SeasonMatch>(key: K, value: SeasonMatch[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const updateMatch = (id: string, patch: Partial<SeasonMatch>) => setSchedule((current) => current.map((match) => match.id === id ? { ...match, ...patch } : match));
@@ -108,9 +107,9 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
       if (cells.length < 9) return null;
       const goalsFor = number(cells[6]);
       const goalsAgainst = number(cells[7]);
-      return normalizeStandingRow({ rank: number(cells[0]) || index + 1, club: cells[1], played: number(cells[2]), wins: number(cells[3]), draws: number(cells[4]), losses: number(cells[5]), goalsFor, goalsAgainst, goalDifference: goalsFor - goalsAgainst, points: number(cells[8]), form: parseForm(cells[9] ?? '') }, index);
+      return normalizeStandingRow({ rank: number(cells[0]) || index + 1, club: cells[1], played: number(cells[2]), wins: number(cells[3]), draws: number(cells[4]), losses: number(cells[5]), goalsFor, goalsAgainst, goalDifference: goalsFor - goalsAgainst, points: number(cells[8]) }, index);
     }).filter((row): row is Standing => !!row?.club);
-    if (!parsed.length) return Alert.alert('Formato non riconosciuto', 'Usa: posizione;squadra;G;V;N;P;GF;GS;PT;ultime 5.');
+    if (!parsed.length) return Alert.alert('Formato non riconosciuto', 'Usa: posizione;squadra;G;V;N;P;GF;GS;PT.');
     setStandingTables((current) => ({ ...current, [standingScope]: parsed }));
     setStandingsImport('');
   };
@@ -129,7 +128,7 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
       <Field label="Calendario" value={scheduleImport} onChangeText={setScheduleImport} multiline placeholder="Coppa Italia;Turno preliminare;30/08/2026;16:00;AC Prato;Sangiovannese;Lungobisenzio;;" />
       <Button label="Importa calendario" icon="calendar-import" secondary onPress={importSchedule} />
       <StandingChoices value={standingScope} onChange={setStandingScope} />
-      <Field label={`Classifica ${scopeLabel}`} value={standingsImport} onChangeText={setStandingsImport} multiline placeholder="1;AC Prato;5;3;1;1;8;4;10;V,V,N,P,V" />
+      <Field label={`Classifica ${scopeLabel}`} value={standingsImport} onChangeText={setStandingsImport} multiline placeholder="1;AC Prato;5;3;1;1;8;4;10" />
       <Button label={`Importa ${scopeLabel.toLowerCase()}`} icon="table-arrow-down" secondary onPress={importStandings} />
     </View>
 
@@ -146,7 +145,7 @@ export function CompetitionAdmin({ content, onChange }: { content: AppContent; o
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Classifica</Text>
       <StandingChoices value={standingScope} onChange={setStandingScope} />
-      <View style={adminStyles.list}>{standings.map((row) => <View key={row.club} style={adminStyles.listRow}><View style={{ width: 32, alignItems: 'center' }}><Text style={{ color: colors.accentStrong, fontWeight: '900' }}>{row.rank}</Text></View><View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{row.club}</Text><View style={adminStyles.row}><Field label="G" value={String(row.played)} onChangeText={(value) => updateStanding(row.club, { played: number(value) })} keyboardType="numeric" /><Field label="V" value={String(numberValue(row.wins))} onChangeText={(value) => updateStanding(row.club, { wins: number(value) })} keyboardType="numeric" /><Field label="N" value={String(numberValue(row.draws))} onChangeText={(value) => updateStanding(row.club, { draws: number(value) })} keyboardType="numeric" /><Field label="P" value={String(numberValue(row.losses))} onChangeText={(value) => updateStanding(row.club, { losses: number(value) })} keyboardType="numeric" /><Field label="GF" value={String(numberValue(row.goalsFor))} onChangeText={(value) => updateStanding(row.club, { goalsFor: number(value) })} keyboardType="numeric" /><Field label="GS" value={String(numberValue(row.goalsAgainst))} onChangeText={(value) => updateStanding(row.club, { goalsAgainst: number(value) })} keyboardType="numeric" /><Field label="PT" value={String(row.points)} onChangeText={(value) => updateStanding(row.club, { points: number(value) })} keyboardType="numeric" />{standingScope === 'form' ? <Field label="Ultime 5" value={(row.form ?? []).map((item) => item === 'W' ? 'V' : item === 'D' ? 'N' : 'P').join(',')} onChangeText={(value) => updateStanding(row.club, { form: parseForm(value) })} /> : null}</View></View></View>)}</View>
+      <View style={adminStyles.list}>{standings.map((row) => <View key={row.club} style={adminStyles.listRow}><View style={{ width: 32, alignItems: 'center' }}><Text style={{ color: colors.accentStrong, fontWeight: '900' }}>{row.rank}</Text></View><View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{row.club}</Text><View style={adminStyles.row}><Field label="G" value={String(row.played)} onChangeText={(value) => updateStanding(row.club, { played: number(value) })} keyboardType="numeric" /><Field label="V" value={String(numberValue(row.wins))} onChangeText={(value) => updateStanding(row.club, { wins: number(value) })} keyboardType="numeric" /><Field label="N" value={String(numberValue(row.draws))} onChangeText={(value) => updateStanding(row.club, { draws: number(value) })} keyboardType="numeric" /><Field label="P" value={String(numberValue(row.losses))} onChangeText={(value) => updateStanding(row.club, { losses: number(value) })} keyboardType="numeric" /><Field label="GF" value={String(numberValue(row.goalsFor))} onChangeText={(value) => updateStanding(row.club, { goalsFor: number(value) })} keyboardType="numeric" /><Field label="GS" value={String(numberValue(row.goalsAgainst))} onChangeText={(value) => updateStanding(row.club, { goalsAgainst: number(value) })} keyboardType="numeric" /><Field label="PT" value={String(row.points)} onChangeText={(value) => updateStanding(row.club, { points: number(value) })} keyboardType="numeric" /></View></View></View>)}</View>
       <Button label={`Salva classifica ${scopeLabel.toLowerCase()}`} icon="content-save-outline" onPress={saveStandings} />
     </View>
   </View>;
