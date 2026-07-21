@@ -1,6 +1,6 @@
 import { Player } from '../types';
 
-type PlayerPhotoFallback = Pick<Player, 'imageUrl' | 'imageSourceUrl' | 'imageScale' | 'imagePositionY'>;
+type PlayerPhotoFallback = Pick<Player, 'imageUrl' | 'imageSourceUrl' | 'imageScale' | 'imagePositionX' | 'imagePositionY'>;
 
 export const playerPhotoFallbacks: Record<string, PlayerPhotoFallback> = {
   biguzzi: {
