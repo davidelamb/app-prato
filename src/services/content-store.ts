@@ -34,6 +34,7 @@ function normalizePlayer(player: Player): Player {
     imageUrl: player.imageUrl || fallback?.imageUrl || seed?.imageUrl || '',
     imageSourceUrl: player.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl,
     imageScale: player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1,
+    imagePositionX: player.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0,
     imagePositionY: player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0,
     nationality: player.nationality ?? 'Italia',
   };
