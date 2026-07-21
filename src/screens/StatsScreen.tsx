@@ -93,7 +93,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
       <View style={styles.scopeTabs}>
         {standingScopes.map((item) => <Pressable key={item.value} onPress={() => setStandingScope(item.value)} style={[styles.filter, styles.scopeTab, standingScope === item.value && styles.filterActive]}><Text style={[styles.filterText, standingScope === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
       </View>
-      {standings.length ? <StandingsTable standings={standings} scope={standingScope} view={standingsView} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
+      {standings.length ? <StandingsTable standings={standings} scope={standingScope} view={standingsView} wide={wide} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
     </View>}
     <MatchDetailsModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
   </View>;
@@ -119,27 +119,27 @@ function MatchRow({ match, onPress }: { match: SeasonMatch; onPress: () => void 
   </Pressable>;
 }
 
-function StandingsTable({ standings, scope, view }: { standings: Standing[]; scope: StandingScope; view: StandingsView }) {
+function StandingsTable({ standings, scope, view, wide }: { standings: Standing[]; scope: StandingScope; view: StandingsView; wide: boolean }) {
   const label = standingScopes.find((item) => item.value === scope)?.label ?? 'Totale';
   const ordered = [...standings].sort((a, b) => a.rank - b.rank);
   const showForm = view === 'form';
+  const showExtendedStats = wide || !showForm;
   return <View style={styles.tableCard}>
-    <View style={styles.tableHeading}>
+    <View style={[styles.tableHeading, wide && styles.tableHeadingWide]}>
       <View><Text style={styles.tableEyebrow}>SERIE D · GIRONE E</Text><Text style={styles.tableTitle}>{showForm ? 'Forma' : 'Classifica'} · {label}</Text></View>
       {showForm ? <View style={styles.legend}><FormLegend label="V" style={styles.formWin} /><FormLegend label="N" style={styles.formDraw} /><FormLegend label="P" style={styles.formLoss} /></View> : null}
     </View>
-    <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableViewport} contentContainerStyle={styles.tableScroll}>
-      <View style={[styles.table, showForm && styles.formTable]}>
-        <View style={styles.tableHeader}>
-          <Cell text="#" style={styles.posCell} header />
-          <Cell text="Squadra" style={styles.clubCell} header align="left" />
-          <Cell text="G" header /><Cell text="V" header /><Cell text="N" header /><Cell text="P" header />
-          <Cell text="GF" header /><Cell text="GS" header /><Cell text="DR" header /><Cell text="PT" header strong />
-          {showForm ? <Cell text="Forma" style={styles.formCell} header /> : null}
-        </View>
-        {ordered.map((row) => <StandingRow key={row.club} row={row} showForm={showForm} />)}
+    <View style={styles.table}>
+      <View style={styles.tableHeader}>
+        <Cell text="#" style={[styles.posCell, wide && styles.posCellWide]} header wide={wide} />
+        <Cell text="Squadra" style={[styles.clubCell, wide && styles.clubCellWide]} header align="left" wide={wide} />
+        <Cell text="G" header wide={wide} /><Cell text="V" header wide={wide} /><Cell text="N" header wide={wide} /><Cell text="P" header wide={wide} />
+        {showExtendedStats ? <><Cell text="GF" header wide={wide} /><Cell text="GS" header wide={wide} /><Cell text="DR" header wide={wide} /></> : null}
+        <Cell text="PT" header strong wide={wide} />
+        {showForm ? <Cell text="Forma" style={[styles.formCell, wide && styles.formCellWide]} header wide={wide} /> : null}
       </View>
-    </ScrollView>
+      {ordered.map((row) => <StandingRow key={row.club} row={row} showForm={showForm} showExtendedStats={showExtendedStats} wide={wide} />)}
+    </View>
   </View>;
 }
 
@@ -147,19 +147,20 @@ function FormLegend({ label, style }: { label: string; style: object }) {
   return <View style={[styles.legendDot, style]}><Text style={styles.legendLetter}>{label}</Text></View>;
 }
 
-function StandingRow({ row, showForm }: { row: Standing; showForm: boolean }) {
+function StandingRow({ row, showForm, showExtendedStats, wide }: { row: Standing; showForm: boolean; showExtendedStats: boolean; wide: boolean }) {
   const isPrato = /^(AC )?Prato$/i.test(row.club);
   return <View style={[styles.tableRow, isPrato && styles.pratoRow]}>
-    <Cell text={String(row.rank)} style={styles.posCell} strong={isPrato} />
-    <View style={[styles.cell, styles.clubCell]}><Text numberOfLines={1} style={[styles.cellText, styles.clubText, isPrato && styles.pratoText]}>{row.club}</Text></View>
-    <Cell text={String(row.played)} /><Cell text={String(numberValue(row.wins))} /><Cell text={String(numberValue(row.draws))} /><Cell text={String(numberValue(row.losses))} />
-    <Cell text={String(numberValue(row.goalsFor))} /><Cell text={String(numberValue(row.goalsAgainst))} /><Cell text={String(numberValue(row.goalDifference))} /><Cell text={String(row.points)} strong />
-    {showForm ? <View style={[styles.cell, styles.formCell]}><View style={styles.formRow}>{(row.form ?? []).slice(-5).map((result, index) => <View key={`${row.club}-${index}`} style={[styles.formBadge, result === 'W' ? styles.formWin : result === 'D' ? styles.formDraw : styles.formLoss]}><Text style={styles.formText}>{result === 'W' ? 'V' : result === 'D' ? 'N' : 'P'}</Text></View>)}</View></View> : null}
+    <Cell text={String(row.rank)} style={[styles.posCell, wide && styles.posCellWide]} strong={isPrato} wide={wide} />
+    <View style={[styles.cell, wide && styles.cellWide, styles.clubCell, wide && styles.clubCellWide]}><Text numberOfLines={2} style={[styles.cellText, wide && styles.cellTextWide, styles.clubText, wide && styles.clubTextWide, isPrato && styles.pratoText]}>{row.club}</Text></View>
+    <Cell text={String(row.played)} wide={wide} /><Cell text={String(numberValue(row.wins))} wide={wide} /><Cell text={String(numberValue(row.draws))} wide={wide} /><Cell text={String(numberValue(row.losses))} wide={wide} />
+    {showExtendedStats ? <><Cell text={String(numberValue(row.goalsFor))} wide={wide} /><Cell text={String(numberValue(row.goalsAgainst))} wide={wide} /><Cell text={String(numberValue(row.goalDifference))} wide={wide} /></> : null}
+    <Cell text={String(row.points)} strong wide={wide} />
+    {showForm ? <View style={[styles.cell, wide && styles.cellWide, styles.formCell, wide && styles.formCellWide]}><View style={[styles.formRow, wide && styles.formRowWide]}>{(row.form ?? []).slice(-5).map((result, index) => <View key={`${row.club}-${index}`} style={[styles.formBadge, wide && styles.formBadgeWide, result === 'W' ? styles.formWin : result === 'D' ? styles.formDraw : styles.formLoss]}><Text style={[styles.formText, wide && styles.formTextWide]}>{result === 'W' ? 'V' : result === 'D' ? 'N' : 'P'}</Text></View>)}</View></View> : null}
   </View>;
 }
 
-function Cell({ text, style, header = false, strong = false, align = 'center' }: { text: string; style?: object; header?: boolean; strong?: boolean; align?: 'left' | 'center' }) {
-  return <View style={[styles.cell, style]}><Text style={[styles.cellText, align === 'left' && styles.cellLeft, header && styles.headerText, strong && styles.strongText]}>{text}</Text></View>;
+function Cell({ text, style, header = false, strong = false, align = 'center', wide = false }: { text: string; style?: object; header?: boolean; strong?: boolean; align?: 'left' | 'center'; wide?: boolean }) {
+  return <View style={[styles.cell, wide && styles.cellWide, style]}><Text style={[styles.cellText, wide && styles.cellTextWide, align === 'left' && styles.cellLeft, header && styles.headerText, wide && header && styles.headerTextWide, strong && styles.strongText]}>{text}</Text></View>;
 }
 
 const styles = StyleSheet.create({
@@ -206,33 +207,41 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: 8, padding: 30, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   emptyText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
   tableCard: { width: '100%', overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  tableHeading: { minHeight: 82, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 16, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  tableHeading: { minHeight: 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: 12, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  tableHeadingWide: { minHeight: 82, gap: 12, padding: 16 },
   tableEyebrow: { color: colors.accentStrong, fontSize: 9, fontWeight: '900' },
   tableTitle: { color: colors.ink, fontSize: 20, fontWeight: '900', marginTop: 4 },
   legend: { flexDirection: 'row', gap: 5 },
   legendDot: { width: 23, height: 23, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   legendLetter: { color: colors.paper, fontSize: 9, fontWeight: '900' },
-  tableViewport: { width: '100%' },
-  tableScroll: { flexGrow: 1, paddingBottom: 2 },
-  table: { minWidth: 760 },
-  formTable: { minWidth: 940 },
+  table: { width: '100%' },
   tableHeader: { flexDirection: 'row', minHeight: 44, alignItems: 'center', backgroundColor: colors.navy },
   tableRow: { flexDirection: 'row', minHeight: 49, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   pratoRow: { backgroundColor: colors.surfaceRaised },
-  cell: { width: 52, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  posCell: { width: 44 },
-  clubCell: { width: 250, alignItems: 'flex-start' },
-  formCell: { width: 180 },
-  cellText: { color: colors.inkSoft, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  cell: { width: 27, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 1 },
+  cellWide: { width: 56, paddingHorizontal: 5 },
+  posCell: { width: 26 },
+  posCellWide: { width: 44 },
+  clubCell: { flex: 1, width: undefined, minWidth: 0, alignItems: 'flex-start', paddingLeft: 5 },
+  clubCellWide: { flex: 0, width: 250, paddingLeft: 8 },
+  formCell: { width: 108 },
+  formCellWide: { width: 180 },
+  cellText: { color: colors.inkSoft, fontSize: 9, fontWeight: '700', textAlign: 'center' },
+  cellTextWide: { fontSize: 12 },
   cellLeft: { textAlign: 'left' },
-  headerText: { color: colors.paper, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  headerText: { color: colors.paper, fontSize: 8, fontWeight: '900', textTransform: 'uppercase' },
+  headerTextWide: { fontSize: 10 },
   strongText: { color: colors.ink, fontWeight: '900' },
-  clubText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
+  clubText: { color: colors.ink, fontSize: 10, lineHeight: 12, fontWeight: '800', textAlign: 'left' },
+  clubTextWide: { fontSize: 13, lineHeight: 17 },
   pratoText: { color: colors.accentStrong, fontWeight: '900' },
-  formRow: { flexDirection: 'row', gap: 5 },
-  formBadge: { width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  formRow: { flexDirection: 'row', gap: 2 },
+  formRowWide: { gap: 5 },
+  formBadge: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  formBadgeWide: { width: 25, height: 25, borderRadius: 13 },
   formWin: { backgroundColor: colors.success },
   formDraw: { backgroundColor: colors.mutedDark },
   formLoss: { backgroundColor: colors.live },
-  formText: { color: colors.paper, fontSize: 10, fontWeight: '900' },
+  formText: { color: colors.paper, fontSize: 8, fontWeight: '900' },
+  formTextWide: { fontSize: 10 },
 });

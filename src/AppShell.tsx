@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 86 },
   adminScroll: { paddingBottom: 24 },
-  container: { width: '100%', paddingHorizontal: 12, paddingTop: 10 },
+  container: { width: '100%', paddingHorizontal: 8, paddingTop: 8 },
   containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 20 },
   stack: { gap: 16 },
   nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft },
