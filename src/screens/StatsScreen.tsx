@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MatchDetailsModal } from '../components/MatchDetailsModal';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, StandingsView } from '../types';
@@ -36,7 +37,7 @@ function calendarKey(match: SeasonMatch): number {
   return 9_000_000_000_000 + (match.sortOrder ?? 0);
 }
 
-export function StatsScreen({ content }: { content: AppContent; wide: boolean }) {
+export function StatsScreen({ content, wide }: { content: AppContent; wide: boolean }) {
   const [view, setView] = useState<StatsView>('calendar');
   const [filter, setFilter] = useState<CalendarFilter>('Tutte');
   const [standingsView, setStandingsView] = useState<StandingsView>('standings');
@@ -58,7 +59,7 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
   );
 
   return <View style={styles.stack}>
-    <View><Text style={styles.eyebrow}>AC PRATO</Text><Text style={styles.title}>Stagione 2026/27</Text></View>
+    <ScreenHeader eyebrow="AC PRATO" title="Stagione 2026/27" copy="Calendario, risultati e classifiche del campionato." wide={wide} />
 
     <View style={styles.segmented}>
       <Pressable onPress={() => setView('calendar')} style={[styles.segment, view === 'calendar' && styles.segmentActive]}>
@@ -162,9 +163,7 @@ function Cell({ text, style, header = false, strong = false, align = 'center' }:
 }
 
 const styles = StyleSheet.create({
-  stack: { gap: 18 },
-  eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  title: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
+  stack: { gap: 16 },
   segmented: { flexDirection: 'row', padding: 5, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, gap: 5 },
   segment: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: radii.md },
   segmentActive: { backgroundColor: colors.accentStrong },

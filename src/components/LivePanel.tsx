@@ -85,7 +85,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
 
       <View style={styles.timelineCard}>
         <View style={styles.timelineHeader}>
-          <View>
+          <View style={styles.timelineHeading}>
             <Text style={styles.timelineEyebrow}>DIRETTA</Text>
             <Text style={styles.timelineTitle}>Cronaca minuto per minuto</Text>
           </View>
@@ -149,11 +149,12 @@ const styles = StyleSheet.create({
   score: { color: colors.ink, fontSize: 40, fontWeight: '900' },
   scoreDash: { color: colors.mutedDark, fontSize: 28, fontWeight: '700' },
   venue: { color: colors.muted, textAlign: 'center', fontSize: 11, paddingVertical: 18 },
-  timelineCard: { padding: 18, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  timelineHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
+  timelineCard: { padding: 16, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  timelineHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 8 },
+  timelineHeading: { flex: 1, minWidth: 0 },
   timelineEyebrow: { color: colors.yellow, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
   timelineTitle: { color: colors.ink, fontSize: 23, lineHeight: 28, fontWeight: '900', marginTop: 4 },
-  timelineCount: { color: colors.muted, fontSize: 11 },
+  timelineCount: { width: 48, color: colors.muted, fontSize: 10, lineHeight: 14, textAlign: 'right' },
   eventRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   minuteBox: { width: 58, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.yellowSoft },
   minute: { color: colors.ink, fontSize: 18, fontWeight: '900' },

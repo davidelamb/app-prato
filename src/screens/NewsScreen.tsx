@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NewsCard } from '../components/NewsCard';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { colors, radii } from '../theme';
 import { AppContent, NewsArticle } from '../types';
 import { sortNewsByDate } from '../utils/news';
@@ -17,7 +18,7 @@ export function NewsScreen({ content, wide, onNews }: { content: AppContent; wid
   const hasMore = visibleCount < sortedNews.length;
 
   return <View style={styles.stack}>
-    <Header />
+    <ScreenHeader eyebrow="REDAZIONE" title="News AC Prato" copy="Le ultime notizie dal mondo biancazzurro." wide={wide} />
     <View style={[styles.grid, wide && styles.gridWide]}>
       {visibleNews.map((article) => <NewsCard key={article.id} article={article} onPress={() => onNews(article)} style={wide ? styles.half : undefined} />)}
     </View>
@@ -28,12 +29,8 @@ export function NewsScreen({ content, wide, onNews }: { content: AppContent; wid
   </View>;
 }
 
-function Header() { return <View><Text style={styles.eyebrow}>REDAZIONE</Text><Text style={styles.title}>News AC Prato</Text></View>; }
-
 const styles = StyleSheet.create({
-  stack: { gap: 18 },
-  eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900' },
-  title: { color: colors.ink, fontSize: 37, fontWeight: '900', marginTop: 4 },
+  stack: { gap: 16 },
   grid: { gap: 12 },
   gridWide: { flexDirection: 'row', flexWrap: 'wrap' },
   half: { width: '49%' },
