@@ -8,6 +8,7 @@ import { NewsCard } from '../components/NewsCard';
 import { colors, radii } from '../theme';
 import { AppContent, NewsArticle, Player } from '../types';
 import { isHomeLiveVisible, kickoffTimestamp } from '../utils/fixture-time';
+import { sortNewsByDate } from '../utils/news';
 import { playerImageStyle } from '../utils/player-image';
 
 export function HomeScreen({ content, wide, onTab, onNews, onPlayer }: { content: AppContent; wide: boolean; onTab: (tab: PublicTab | 'admin') => void; onNews: (item: NewsArticle) => void; onPlayer: (item: Player) => void }) {
@@ -26,8 +27,7 @@ export function HomeScreen({ content, wide, onTab, onNews, onPlayer }: { content
     .filter((item) => item.status === 'scheduled')
     .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER))[0], [content.fixtures]);
 
-  const featuredNews = content.news.find((item) => item.featured) ?? content.news[0];
-  const otherNews = content.news.filter((item) => item.id !== featuredNews?.id).slice(0, 2);
+  const latestNews = useMemo(() => sortNewsByDate(content.news).slice(0, 3), [content.news]);
   const featuredMedia = content.media.find((item) => item.featured) ?? content.media[0];
   const featuredPlayer = content.players.find((item) => !!item.imageUrl) ?? content.players[0];
 
@@ -43,7 +43,7 @@ export function HomeScreen({ content, wide, onTab, onNews, onPlayer }: { content
     <Pressable onPress={() => onTab('live')} style={styles.matchCard}><View style={styles.headingRow}><View><Text style={styles.eyebrow}>HOME</Text><Text style={styles.cardTitle}>Prossima partita</Text></View><MaterialCommunityIcons name="chevron-right" size={31} color={colors.accentStrong} /></View>{nextFixture ? <View style={styles.matchBody}><Text style={styles.matchTeams}>{nextFixture.home} – {nextFixture.away}</Text><Text style={styles.matchMeta}>{[nextFixture.dateLabel, nextFixture.time, nextFixture.venue].filter(Boolean).join(' · ')}</Text></View> : null}</Pressable>
 
     <View style={[styles.columns, wide && styles.columnsWide]}>
-      <View style={styles.main}><SectionHeader eyebrow="REDAZIONE" title="Ultime notizie" action="Tutte" onPress={() => onTab('news')} />{featuredNews ? <NewsCard article={featuredNews} featured onPress={() => onNews(featuredNews)} /> : null}<View style={styles.list}>{otherNews.map((article) => <NewsCard key={article.id} article={article} onPress={() => onNews(article)} />)}</View></View>
+      <View style={styles.main}><SectionHeader eyebrow="REDAZIONE" title="Ultime notizie" action="Tutte" onPress={() => onTab('news')} /><View style={styles.list}>{latestNews.map((article) => <NewsCard key={article.id} article={article} onPress={() => onNews(article)} />)}</View></View>
       <View style={styles.side}>{featuredPlayer ? <><SectionHeader eyebrow="PRIMA SQUADRA" title="In evidenza" action="Rosa" onPress={() => onTab('club')} /><Pressable onPress={() => onPlayer(featuredPlayer)} style={styles.playerCard}><View style={styles.playerImageWrap}>{featuredPlayer.imageUrl ? <Image source={{ uri: featuredPlayer.imageUrl }} resizeMode="cover" style={[styles.playerImage, playerImageStyle(featuredPlayer)]} /> : null}<View style={styles.number}><Text style={styles.numberText}>{featuredPlayer.number ? `#${featuredPlayer.number}` : 'AC'}</Text></View></View><View style={styles.playerBody}><Text style={styles.blueEyebrow}>{featuredPlayer.role}</Text><Text style={styles.playerName}>{featuredPlayer.name}</Text><Text style={styles.playerLink}>Apri il profilo ↗</Text></View></Pressable></> : null}</View>
     </View>
   </View>;

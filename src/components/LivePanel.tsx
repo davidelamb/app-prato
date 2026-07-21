@@ -9,7 +9,17 @@ const icons: Record<LiveEvent['type'], React.ComponentProps<typeof MaterialCommu
   halftime: 'pause',
   second_half: 'play',
   goal: 'soccer',
+  chance: 'alert-circle-outline',
+  yellow_card: 'card-outline',
+  substitution: 'swap-horizontal',
   fulltime: 'flag-checkered',
+};
+
+const eventColors: Partial<Record<LiveEvent['type'], string>> = {
+  goal: colors.success,
+  chance: colors.accentStrong,
+  yellow_card: colors.yellow,
+  substitution: colors.accent,
 };
 
 function phaseLabel(fixture: Fixture) {
@@ -85,8 +95,8 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
         {events.length ? events.map((event) => (
           <View key={event.id} style={styles.eventRow}>
             <View style={styles.minuteBox}><Text style={styles.minute}>{event.minute ? `${event.minute}'` : '—'}</Text></View>
-            <View style={[styles.iconBox, event.type === 'goal' && styles.goalIconBox]}>
-              <MaterialCommunityIcons name={icons[event.type]} size={22} color={event.type === 'goal' ? colors.success : colors.accentStrong} />
+            <View style={[styles.iconBox, event.type === 'goal' && styles.goalIconBox, event.type === 'yellow_card' && styles.cardIconBox]}>
+              <MaterialCommunityIcons name={icons[event.type]} size={22} color={eventColors[event.type] ?? colors.accentStrong} />
             </View>
             <View style={styles.eventBody}>
               <Text style={styles.eventTitle}>{event.label}</Text>
@@ -149,6 +159,7 @@ const styles = StyleSheet.create({
   minute: { color: colors.ink, fontSize: 18, fontWeight: '900' },
   iconBox: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft },
   goalIconBox: { backgroundColor: colors.successSoft },
+  cardIconBox: { backgroundColor: colors.yellowSoft },
   eventBody: { flex: 1, paddingTop: 2 },
   eventTitle: { color: colors.ink, fontSize: 17, fontWeight: '900' },
   eventCopy: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 4 },

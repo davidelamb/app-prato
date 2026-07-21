@@ -6,8 +6,8 @@ import { seedContent } from '../data/seed';
 import { AppContent, Fixture, MediaItem, NewsArticle, Player, SeasonMatch } from '../types';
 import { completeStandingRows, emptyStandingRows, normalizeStandingRow, sortStandingRows } from '../utils/standings';
 
-const STORAGE_KEY = '@ac-prato/content-v9';
-const LEGACY_KEYS = ['@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v10';
+const LEGACY_KEYS = ['@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeFixture(fixture: Fixture): Fixture {
   const demoMatchday = /demo|dimostrativa/i.test(fixture.matchday);
@@ -40,7 +40,7 @@ function normalizePlayer(player: Player): Player {
 }
 
 function normalizeNews(article: NewsArticle): NewsArticle {
-  return { ...article, body: article.body ?? article.summary, imageUrl: article.imageUrl ?? '' };
+  return { ...article, body: article.body ?? article.summary, imageUrl: article.imageUrl ?? '', featured: false };
 }
 
 function normalizeMedia(item: MediaItem): MediaItem {
@@ -87,7 +87,9 @@ export async function loadContent(): Promise<AppContent> {
     for (const key of LEGACY_KEYS) {
       const legacy = await AsyncStorage.getItem(key);
       if (legacy) {
-        const migrated = normalizeContent(JSON.parse(legacy) as AppContent);
+        const previous = JSON.parse(legacy) as AppContent;
+        const source = /contenuti demo online/i.test(previous.updatedAt ?? '') ? seedContent : previous;
+        const migrated = normalizeContent(source);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
         return migrated;
       }
