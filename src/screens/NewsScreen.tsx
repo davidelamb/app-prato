@@ -18,7 +18,7 @@ export function NewsScreen({ content, wide, onNews }: { content: AppContent; wid
   const hasMore = visibleCount < sortedNews.length;
 
   return <View style={styles.stack}>
-    <ScreenHeader eyebrow="REDAZIONE" title="News AC Prato" copy="Le ultime notizie dal mondo biancazzurro." wide={wide} />
+    <ScreenHeader title="News" wide={wide} />
     <View style={[styles.grid, wide && styles.gridWide]}>
       {visibleNews.map((article) => <NewsCard key={article.id} article={article} onPress={() => onNews(article)} style={wide ? styles.half : undefined} />)}
     </View>

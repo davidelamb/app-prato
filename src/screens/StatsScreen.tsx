@@ -59,7 +59,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
   );
 
   return <View style={styles.stack}>
-    <ScreenHeader eyebrow="AC PRATO" title="Stagione 2026/27" copy="Calendario, risultati e classifiche del campionato." wide={wide} />
+    <ScreenHeader title="Statistiche" wide={wide} />
 
     <View style={styles.segmented}>
       <Pressable onPress={() => setView('calendar')} style={[styles.segment, view === 'calendar' && styles.segmentActive]}>
