@@ -110,20 +110,23 @@ function calculateRows(matches: SeasonMatch[], masterRows: Standing[], scope: St
     row.form = [...(row.form ?? []), result].slice(-20);
   };
 
-  const resultsByClub = new Map<string, Array<{ club: string; goalsFor: number; goalsAgainst: number }>>();
-  const collectResult = (club: string, goalsFor: number, goalsAgainst: number) => {
+  const resultsByClub = new Map<string, Array<{ club: string; goalsFor: number; goalsAgainst: number; venue: Exclude<StandingScope, 'overall'> }>>();
+  const collectResult = (club: string, goalsFor: number, goalsAgainst: number, venue: Exclude<StandingScope, 'overall'>) => {
     const key = clubKey(club);
     const results = resultsByClub.get(key) ?? [];
-    results.push({ club, goalsFor, goalsAgainst });
+    results.push({ club, goalsFor, goalsAgainst, venue });
     resultsByClub.set(key, results);
   };
 
   completed.forEach((match) => {
-    if (scope !== 'away') collectResult(match.home, match.homeScore!, match.awayScore!);
-    if (scope !== 'home') collectResult(match.away, match.awayScore!, match.homeScore!);
+    collectResult(match.home, match.homeScore!, match.awayScore!, 'home');
+    collectResult(match.away, match.awayScore!, match.homeScore!, 'away');
   });
   resultsByClub.forEach((results) => {
-    const relevantResults = matchLimit === undefined ? results : results.slice(-matchLimit);
+    const limitedResults = matchLimit === undefined ? results : results.slice(-matchLimit);
+    const relevantResults = scope === 'overall'
+      ? limitedResults
+      : limitedResults.filter((result) => result.venue === scope);
     relevantResults.forEach((result) => addResult(result.club, result.goalsFor, result.goalsAgainst));
   });
   return sortStandingRows(rows);
