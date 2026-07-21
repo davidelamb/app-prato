@@ -3,6 +3,7 @@ import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } fr
 
 import { colors, radii } from '../theme';
 import { SeasonMatch } from '../types';
+import { TeamBadge } from './TeamBadge';
 
 const visibleValue = (value: string | undefined) => value && value !== 'Data da definire' && value !== '—' ? value : '';
 
@@ -45,7 +46,7 @@ export function MatchDetailsModal({ match, onClose }: { match: SeasonMatch | nul
 
 function Team({ name, align }: { name: string; align: 'left' | 'right' }) {
   const isPrato = /^(AC )?Prato$/i.test(name);
-  return <View style={[styles.team, align === 'right' && styles.teamRight]}><View style={[styles.badge, isPrato && styles.pratoBadge]}><Text style={styles.badgeText}>{name.slice(0, 1)}</Text></View><Text numberOfLines={2} style={[styles.teamName, align === 'right' && styles.teamNameRight, isPrato && styles.pratoName]}>{name}</Text></View>;
+  return <View style={[styles.team, align === 'right' && styles.teamRight]}><TeamBadge name={name} size={58} /><Text numberOfLines={2} style={[styles.teamName, align === 'right' && styles.teamNameRight, isPrato && styles.pratoName]}>{name}</Text></View>;
 }
 
 function Detail({ icon, label, value }: { icon: React.ComponentProps<typeof MaterialCommunityIcons>['name']; label: string; value: string }) {
@@ -67,9 +68,6 @@ const styles = StyleSheet.create({
   scoreboard: { minHeight: 190, flexDirection: 'row', alignItems: 'center', marginTop: 12 },
   team: { flex: 1, alignItems: 'flex-start' },
   teamRight: { alignItems: 'flex-end' },
-  badge: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.accentStrong },
-  pratoBadge: { backgroundColor: colors.blue },
-  badgeText: { color: colors.paper, fontSize: 23, fontWeight: '900' },
   teamName: { color: colors.paper, fontSize: 14, lineHeight: 19, fontWeight: '900', marginTop: 9 },
   teamNameRight: { textAlign: 'right' },
   pratoName: { color: colors.yellow },

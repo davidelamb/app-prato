@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MatchDetailsModal } from '../components/MatchDetailsModal';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { TeamBadge } from '../components/TeamBadge';
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, StandingsView } from '../types';
@@ -111,9 +112,9 @@ function MatchRow({ match, onPress }: { match: SeasonMatch; onPress: () => void 
     <View style={styles.matchBody}>
       <View style={styles.matchTop}><Text style={styles.competitionName}>{competition}</Text>{round ? <Text style={styles.round}>{round}</Text> : null}</View>
       {date || time || match.venue ? <Text style={styles.matchMeta}>{[date, time, match.venue].filter(Boolean).join(' · ')}</Text> : null}
-      <View style={styles.teamRow}><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.home) && styles.pratoTeam]}>{match.home}</Text>{hasScore ? <Text style={styles.score}>{match.homeScore}</Text> : null}</View>
+      <View style={styles.teamRow}><TeamBadge name={match.home} size={22} /><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.home) && styles.pratoTeam]}>{match.home}</Text>{hasScore ? <Text style={styles.score}>{match.homeScore}</Text> : null}</View>
       <View style={styles.teamDivider} />
-      <View style={styles.teamRow}><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>{hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}</View>
+      <View style={styles.teamRow}><TeamBadge name={match.away} size={22} /><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>{hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}</View>
     </View>
     <MaterialCommunityIcons name="chevron-right" size={23} color={colors.accentStrong} />
   </Pressable>;
@@ -151,7 +152,7 @@ function StandingRow({ row, showForm, showExtendedStats, wide }: { row: Standing
   const isPrato = /^(AC )?Prato$/i.test(row.club);
   return <View style={[styles.tableRow, isPrato && styles.pratoRow]}>
     <Cell text={String(row.rank)} style={[styles.posCell, wide && styles.posCellWide]} strong={isPrato} wide={wide} />
-    <View style={[styles.cell, wide && styles.cellWide, styles.clubCell, wide && styles.clubCellWide]}><Text numberOfLines={2} style={[styles.cellText, wide && styles.cellTextWide, styles.clubText, wide && styles.clubTextWide, isPrato && styles.pratoText]}>{row.club}</Text></View>
+    <View style={[styles.cell, wide && styles.cellWide, styles.clubCell, wide && styles.clubCellWide]}><TeamBadge name={row.club} size={wide ? 24 : 16} /><Text numberOfLines={2} style={[styles.cellText, wide && styles.cellTextWide, styles.clubText, wide && styles.clubTextWide, isPrato && styles.pratoText]}>{row.club}</Text></View>
     <Cell text={String(row.played)} wide={wide} /><Cell text={String(numberValue(row.wins))} wide={wide} /><Cell text={String(numberValue(row.draws))} wide={wide} /><Cell text={String(numberValue(row.losses))} wide={wide} />
     {showExtendedStats ? <><Cell text={String(numberValue(row.goalsFor))} wide={wide} /><Cell text={String(numberValue(row.goalsAgainst))} wide={wide} /><Cell text={String(numberValue(row.goalDifference))} wide={wide} /></> : null}
     <Cell text={String(row.points)} strong wide={wide} />
@@ -222,8 +223,8 @@ const styles = StyleSheet.create({
   cellWide: { width: 56, paddingHorizontal: 5 },
   posCell: { width: 26 },
   posCellWide: { width: 44 },
-  clubCell: { flex: 1, width: undefined, minWidth: 0, alignItems: 'flex-start', paddingLeft: 5 },
-  clubCellWide: { flex: 0, width: 250, paddingLeft: 8 },
+  clubCell: { flex: 1, width: undefined, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 3, paddingLeft: 3 },
+  clubCellWide: { flex: 0, width: 250, gap: 8, paddingLeft: 8 },
   formCell: { width: 108 },
   formCellWide: { width: 180 },
   cellText: { color: colors.inkSoft, fontSize: 11, fontWeight: '800', textAlign: 'center' },
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
   headerText: { color: colors.paper, fontSize: 8, fontWeight: '900', textTransform: 'uppercase' },
   headerTextWide: { fontSize: 10 },
   strongText: { color: colors.ink, fontWeight: '900' },
-  clubText: { color: colors.ink, fontSize: 10, lineHeight: 12, fontWeight: '800', textAlign: 'left' },
+  clubText: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 9, lineHeight: 11, fontWeight: '800', textAlign: 'left' },
   clubTextWide: { fontSize: 13, lineHeight: 17 },
   pratoText: { color: colors.accentStrong, fontWeight: '900' },
   formRow: { flexDirection: 'row', gap: 2 },

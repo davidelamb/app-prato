@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii } from '../theme';
 import { Fixture, LiveEvent } from '../types';
+import { TeamBadge } from './TeamBadge';
 
 const icons: Record<LiveEvent['type'], React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   kickoff: 'information-outline',
@@ -67,7 +68,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
 
         <View style={styles.scoreBoard}>
           <View style={styles.teamBlock}>
-            <View style={styles.teamBadge}><Text style={styles.teamBadgeText}>{fixture.home.slice(0, 1)}</Text></View>
+            <TeamBadge name={fixture.home} size={54} />
             <Text numberOfLines={2} style={styles.teamName}>{fixture.home}</Text>
           </View>
           <View style={styles.centerScore}>
@@ -76,7 +77,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
             <Text style={styles.score}>{fixture.awayScore ?? 0}</Text>
           </View>
           <View style={[styles.teamBlock, styles.teamBlockRight]}>
-            <View style={[styles.teamBadge, styles.opponentBadge]}><Text style={styles.teamBadgeText}>{fixture.away.slice(0, 1)}</Text></View>
+            <TeamBadge name={fixture.away} size={54} />
             <Text numberOfLines={2} style={[styles.teamName, styles.teamNameRight]}>{fixture.away}</Text>
           </View>
         </View>
@@ -140,9 +141,6 @@ const styles = StyleSheet.create({
   scoreBoard: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 24 },
   teamBlock: { flex: 1, alignItems: 'flex-start' },
   teamBlockRight: { alignItems: 'flex-end' },
-  teamBadge: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
-  opponentBadge: { backgroundColor: colors.navy },
-  teamBadgeText: { color: colors.paper, fontSize: 22, fontWeight: '900' },
   teamName: { color: colors.ink, fontSize: 14, lineHeight: 18, fontWeight: '900', marginTop: 8 },
   teamNameRight: { textAlign: 'right' },
   centerScore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 8 },
