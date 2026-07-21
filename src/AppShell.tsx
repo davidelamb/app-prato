@@ -9,7 +9,6 @@ import { LivePanel } from './components/LivePanel';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
 import { ScreenHeader } from './components/ScreenHeader';
 import { seedContent } from './data/seed';
-import { HomeScreen } from './screens/HomeScreen';
 import { MediaScreen } from './screens/MediaScreen';
 import { NewsScreen } from './screens/NewsScreen';
 import { RosterScreen } from './screens/RosterScreen';
@@ -18,16 +17,15 @@ import { loadContent, resetContent, saveContent } from './services/content-store
 import { colors } from './theme';
 import { AppContent, NewsArticle, Player } from './types';
 
-export type PublicTab = 'home' | 'news' | 'media' | 'live' | 'stats' | 'club';
+export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 const tabs: Array<{ key: PublicTab; label: string; icon: IconName }> = [
-  { key: 'home', label: 'Home', icon: 'home-outline' },
   { key: 'news', label: 'News', icon: 'newspaper-variant-outline' },
   { key: 'media', label: 'Media', icon: 'play-box-multiple-outline' },
   { key: 'live', label: 'Live', icon: 'broadcast' },
-  { key: 'stats', label: 'Stats', icon: 'chart-bar' },
+  { key: 'stats', label: 'Statistiche', icon: 'chart-bar' },
   { key: 'club', label: 'Club', icon: 'shield-outline' },
 ];
 
@@ -35,7 +33,7 @@ const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 's
 
 export default function AppShell() {
   const [content, setContent] = useState<AppContent>(seedContent);
-  const [tab, setTab] = useState<Tab>('home');
+  const [tab, setTab] = useState<Tab>('news');
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const { width } = useWindowDimensions();
@@ -44,7 +42,7 @@ export default function AppShell() {
   useEffect(() => { loadContent().then(setContent); }, []);
   const commit = async (next: AppContent) => { const stamped = { ...next, updatedAt: stamp() }; setContent(stamped); await saveContent(stamped); };
   const liveFixture = useMemo(() => content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0], [content.fixtures]);
-  const publicTab = tab === 'admin' ? 'home' : tab;
+  const publicTab = tab === 'admin' ? 'news' : tab;
 
   return <SafeAreaView style={styles.safe}>
     <StatusBar style="dark" />
@@ -52,13 +50,12 @@ export default function AppShell() {
 
     <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, tab === 'admin' && styles.adminScroll]}>
       <View style={[styles.container, wide && styles.containerWide]}>
-        {tab === 'home' ? <HomeScreen content={content} wide={wide} onTab={setTab} onNews={setSelectedNews} onPlayer={setSelectedPlayer} /> : null}
         {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
         {tab === 'media' ? <MediaScreen content={content} wide={wide} /> : null}
         {tab === 'live' && liveFixture ? <View style={styles.stack}><ScreenHeader eyebrow="MATCH CENTER" title="Diretta partita" copy="Risultato, cronaca e aggiornamenti minuto per minuto." wide={wide} /><LivePanel fixture={liveFixture} /></View> : null}
         {tab === 'stats' ? <StatsScreen content={content} wide={wide} /> : null}
         {tab === 'club' ? <RosterScreen content={content} wide={wide} onPlayer={setSelectedPlayer} /> : null}
-        {tab === 'admin' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('home')} /> : null}
+        {tab === 'admin' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('news')} /> : null}
       </View>
     </ScrollView>
 

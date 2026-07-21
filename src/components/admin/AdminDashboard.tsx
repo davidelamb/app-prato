@@ -15,7 +15,7 @@ export function AdminDashboard({ content, onChange, onReset, onClose }: { conten
   const [view, setView] = useState<ViewName>('overview');
   const live = useMemo(() => content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0], [content.fixtures]);
   const tabs: Array<{ key: ViewName; label: string; icon: IconName }> = [
-    { key: 'overview', label: 'Home', icon: 'view-dashboard-outline' },
+    { key: 'overview', label: 'Panoramica', icon: 'view-dashboard-outline' },
     { key: 'players', label: 'Rosa', icon: 'account-group-outline' },
     { key: 'news', label: 'News', icon: 'newspaper-variant-outline' },
     { key: 'media', label: 'Media', icon: 'play-box-multiple-outline' },
