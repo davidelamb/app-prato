@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { TeamLogo } from '../components/TeamLogo';
@@ -10,6 +11,8 @@ import { completeStandingRows, numberValue, standingRows, standingScopes } from 
 
 type StatsView = 'calendar' | 'standings';
 type CalendarFilter = 'Tutte' | MatchCompetition;
+
+const STATS_VIEW_STORAGE_KEY = 'app-prato:stats-view';
 
 const filters: Array<{ value: CalendarFilter; label: string }> = [
   { value: 'Tutte', label: 'Tutte' },
@@ -38,8 +41,21 @@ function calendarKey(match: SeasonMatch): number {
 
 export function StatsScreen({ content }: { content: AppContent; wide: boolean }) {
   const [view, setView] = useState<StatsView>('calendar');
+  const [viewHydrated, setViewHydrated] = useState(false);
   const [filter, setFilter] = useState<CalendarFilter>('Tutte');
   const [standingScope, setStandingScope] = useState<StandingScope>('overall');
+
+  useEffect(() => {
+    AsyncStorage.getItem(STATS_VIEW_STORAGE_KEY)
+      .then((savedView) => {
+        if (savedView === 'calendar' || savedView === 'standings') setView(savedView);
+      })
+      .finally(() => setViewHydrated(true));
+  }, []);
+
+  useEffect(() => {
+    if (viewHydrated) void AsyncStorage.setItem(STATS_VIEW_STORAGE_KEY, view);
+  }, [view, viewHydrated]);
 
   const standings = completeStandingRows(standingRows(content, standingScope), preseasonStandings);
   const schedule = useMemo(() => {
