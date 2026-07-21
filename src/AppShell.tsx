@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -14,7 +15,7 @@ import { NewsScreen } from './screens/NewsScreen';
 import { RosterScreen } from './screens/RosterScreen';
 import { StatsScreen } from './screens/StatsScreen';
 import { loadContent, resetContent, saveContent } from './services/content-store';
-import { colors } from './theme';
+import { colors, radii } from './theme';
 import { AppContent, NewsArticle, Player } from './types';
 
 export type PublicTab = 'home' | 'news' | 'media' | 'live' | 'stats' | 'club';
@@ -47,15 +48,26 @@ export default function AppShell() {
 
   return <SafeAreaView style={styles.safe}>
     <StatusBar style="dark" />
-    <View style={styles.header}><View style={styles.headerInner}>
+    {wide ? <LinearGradient colors={[colors.canvasRaised, '#E4F1FA', colors.canvasRaised]} style={StyleSheet.absoluteFillObject} /> : null}
+
+    <View style={styles.header}><View style={[styles.headerInner, wide && styles.headerInnerWide]}>
       <Pressable accessibilityLabel="Torna alla home di APPrato" onPress={() => setTab('home')} style={styles.brand}>
         <View style={styles.logoFrame}><Image source={require('../assets/ac-prato-crest.png')} resizeMode="cover" style={styles.logo} /></View>
         <View style={styles.brandCopy}><Text style={styles.brandName}>APPrato</Text><Text style={styles.brandTag}>News, media, live e Serie D</Text></View>
       </Pressable>
-      <Pressable accessibilityLabel="Apri amministrazione" onPress={() => setTab(tab === 'admin' ? 'home' : 'admin')} style={styles.onlineButton}>{tab === 'admin' ? <MaterialCommunityIcons name="close" size={23} color={colors.accentStrong} /> : <View style={styles.onlineDot} />}</Pressable>
+
+      {wide ? <View style={styles.desktopNav}>{tabs.map((item) => { const active = publicTab === item.key; return <Pressable key={item.key} onPress={() => setTab(item.key)} style={styles.desktopNavItem}>
+        <MaterialCommunityIcons name={item.icon} size={17} color={active ? colors.accentStrong : colors.inkSoft} />
+        <Text style={[styles.desktopNavText, active && styles.desktopNavTextActive]}>{item.label}</Text>
+        {active ? <View style={styles.desktopNavUnderline} /> : null}
+      </Pressable>; })}</View> : null}
+
+      <Pressable accessibilityLabel="Apri amministrazione" onPress={() => setTab(tab === 'admin' ? 'home' : 'admin')} style={[styles.onlineButton, wide && styles.onlineButtonWide]}>
+        {tab === 'admin' ? <MaterialCommunityIcons name="close" size={20} color={colors.accentStrong} /> : <><View style={styles.onlineDot} />{wide ? <Text style={styles.onlineLabel}>Admin</Text> : null}</>}
+      </Pressable>
     </View></View>
 
-    <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, tab === 'admin' && styles.adminScroll]}>
+    <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
       <View style={[styles.container, wide && styles.containerWide]}>
         {tab === 'home' ? <HomeScreen content={content} wide={wide} onTab={setTab} onNews={setSelectedNews} onPlayer={setSelectedPlayer} /> : null}
         {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
@@ -67,7 +79,7 @@ export default function AppShell() {
       </View>
     </ScrollView>
 
-    {tab !== 'admin' ? <View style={styles.nav}><View style={styles.navInner}>{tabs.map((item) => { const active = publicTab === item.key; return <Pressable key={item.key} onPress={() => setTab(item.key)} style={[styles.navItem, active && styles.navItemActive]}><MaterialCommunityIcons name={item.icon} size={22} color={active ? colors.accentStrong : colors.muted} /><Text style={[styles.navText, active && styles.navTextActive]}>{item.label}</Text>{active ? <View style={styles.navUnderline} /> : null}</Pressable>; })}</View></View> : null}
+    {tab !== 'admin' && !wide ? <View style={styles.nav}><View style={styles.navInner}>{tabs.map((item) => { const active = publicTab === item.key; return <Pressable key={item.key} onPress={() => setTab(item.key)} style={[styles.navItem, active && styles.navItemActive]}><MaterialCommunityIcons name={item.icon} size={22} color={active ? colors.accentStrong : colors.muted} /><Text style={[styles.navText, active && styles.navTextActive]}>{item.label}</Text>{active ? <View style={styles.navUnderline} /> : null}</Pressable>; })}</View></View> : null}
     <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     <ArticleModal article={selectedNews} onClose={() => setSelectedNews(null)} />
   </SafeAreaView>;
@@ -81,19 +93,28 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvasRaised },
   header: { backgroundColor: colors.paper, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   headerInner: { width: '100%', maxWidth: 1180, alignSelf: 'center', minHeight: 108, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  headerInnerWide: { minHeight: 84, maxWidth: 1320, paddingHorizontal: 32 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 14, flexShrink: 0 },
   logoFrame: { width: 74, height: 74, borderRadius: 22, overflow: 'hidden', backgroundColor: colors.navy },
   logo: { width: '100%', height: '100%' },
-  brandCopy: { flex: 1 },
+  brandCopy: { flexShrink: 1 },
   brandName: { color: colors.ink, fontSize: 24, fontWeight: '900' },
   brandTag: { color: colors.muted, fontSize: 13, fontWeight: '700', marginTop: 3 },
+  desktopNav: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  desktopNavItem: { alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: radii.pill, flexDirection: 'row', gap: 7 },
+  desktopNavText: { color: colors.inkSoft, fontSize: 13, fontWeight: '800' },
+  desktopNavTextActive: { color: colors.accentStrong },
+  desktopNavUnderline: { position: 'absolute', left: 14, right: 14, bottom: 2, height: 3, borderRadius: 3, backgroundColor: colors.yellow },
   onlineButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  onlineButtonWide: { width: 'auto', minWidth: 44, paddingHorizontal: 14, flexDirection: 'row', gap: 8, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.lineSoft },
   onlineDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.success },
+  onlineLabel: { color: colors.ink, fontSize: 13, fontWeight: '900' },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 104 },
+  scrollContentWide: { paddingBottom: 48 },
   adminScroll: { paddingBottom: 30 },
   container: { width: '100%', padding: 16 },
-  containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 22 },
+  containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 32 },
   stack: { gap: 20 },
   eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
   pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
