@@ -1,7 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { TeamLogo } from '../components/TeamLogo';
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope } from '../types';
@@ -9,6 +11,8 @@ import { completeStandingRows, numberValue, standingRows, standingScopes } from 
 
 type StatsView = 'calendar' | 'standings';
 type CalendarFilter = 'Tutte' | MatchCompetition;
+
+const STATS_VIEW_STORAGE_KEY = 'app-prato:stats-view';
 
 const filters: Array<{ value: CalendarFilter; label: string }> = [
   { value: 'Tutte', label: 'Tutte' },
@@ -37,8 +41,21 @@ function calendarKey(match: SeasonMatch): number {
 
 export function StatsScreen({ content }: { content: AppContent; wide: boolean }) {
   const [view, setView] = useState<StatsView>('calendar');
+  const [viewHydrated, setViewHydrated] = useState(false);
   const [filter, setFilter] = useState<CalendarFilter>('Tutte');
   const [standingScope, setStandingScope] = useState<StandingScope>('overall');
+
+  useEffect(() => {
+    AsyncStorage.getItem(STATS_VIEW_STORAGE_KEY)
+      .then((savedView) => {
+        if (savedView === 'calendar' || savedView === 'standings') setView(savedView);
+      })
+      .finally(() => setViewHydrated(true));
+  }, []);
+
+  useEffect(() => {
+    if (viewHydrated) void AsyncStorage.setItem(STATS_VIEW_STORAGE_KEY, view);
+  }, [view, viewHydrated]);
 
   const standings = completeStandingRows(standingRows(content, standingScope), preseasonStandings);
   const schedule = useMemo(() => {
@@ -92,9 +109,9 @@ function MatchRow({ match }: { match: SeasonMatch }) {
     <View style={styles.matchBody}>
       <View style={styles.matchTop}><Text style={styles.competitionName}>{competition}</Text>{round ? <Text style={styles.round}>{round}</Text> : null}</View>
       {date || time || match.venue ? <Text style={styles.matchMeta}>{[date, time, match.venue].filter(Boolean).join(' · ')}</Text> : null}
-      <View style={styles.teamRow}><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.home) && styles.pratoTeam]}>{match.home}</Text>{hasScore ? <Text style={styles.score}>{match.homeScore}</Text> : null}</View>
+      <View style={styles.teamRow}><TeamLogo name={match.home} size={22} style={{ borderRadius: 6 }} /><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.home) && styles.pratoTeam]}>{match.home}</Text>{hasScore ? <Text style={styles.score}>{match.homeScore}</Text> : null}</View>
       <View style={styles.teamDivider} />
-      <View style={styles.teamRow}><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>{hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}</View>
+      <View style={styles.teamRow}><TeamLogo name={match.away} size={22} style={{ borderRadius: 6 }} /><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>{hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}</View>
     </View>
   </View>;
 }
@@ -124,7 +141,7 @@ function StandingRow({ row, showForm }: { row: Standing; showForm: boolean }) {
   const isPrato = /^(AC )?Prato$/i.test(row.club);
   return <View style={[styles.tableRow, isPrato && styles.pratoRow]}>
     <Cell text={String(row.rank)} style={styles.posCell} strong={isPrato} />
-    <View style={[styles.cell, styles.clubCell]}><Text numberOfLines={1} style={[styles.cellText, styles.clubText, isPrato && styles.pratoText]}>{row.club}</Text></View>
+    <View style={[styles.cell, styles.clubCell]}><TeamLogo name={row.club} size={22} style={{ borderRadius: 6, marginRight: 6 }} /><Text numberOfLines={1} style={[styles.cellText, styles.clubText, isPrato && styles.pratoText]}>{row.club}</Text></View>
     <Cell text={String(row.played)} /><Cell text={String(numberValue(row.wins))} /><Cell text={String(numberValue(row.draws))} /><Cell text={String(numberValue(row.losses))} />
     <Cell text={String(numberValue(row.goalsFor))} /><Cell text={String(numberValue(row.goalsAgainst))} /><Cell text={String(numberValue(row.goalDifference))} /><Cell text={String(row.points)} strong />
     {showForm ? <View style={[styles.cell, styles.formCell]}><View style={styles.formRow}>{(row.form ?? []).slice(-5).map((result, index) => <View key={`${row.club}-${index}`} style={[styles.formBadge, result === 'W' ? styles.formWin : result === 'D' ? styles.formDraw : styles.formLoss]}><Text style={styles.formText}>{result === 'W' ? 'V' : result === 'D' ? 'N' : 'P'}</Text></View>)}</View></View> : null}

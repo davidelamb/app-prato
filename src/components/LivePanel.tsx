@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { TeamLogo } from './TeamLogo';
 import { colors, radii } from '../theme';
 import { Fixture, LiveEvent } from '../types';
 
@@ -35,7 +36,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
           <Text style={styles.compactCompetition}>{fixture.competition}</Text>
         </View>
         <Text style={styles.compactEyebrow}>{isLive ? 'Diretta partita' : fixture.matchday}</Text>
-        <Text style={styles.compactScore}>{fixture.home} {fixture.homeScore ?? 0}-{fixture.awayScore ?? 0} {fixture.away}</Text>
+        <View style={styles.compactTeamsRow}><TeamLogo name={fixture.home} size={28} style={{ borderRadius: 7 }} /><Text style={styles.compactScore}>{fixture.home} {fixture.homeScore ?? 0}–{fixture.awayScore ?? 0} {fixture.away}</Text><TeamLogo name={fixture.away} size={28} style={{ borderRadius: 7 }} /></View>
         <Text style={styles.compactMeta}>{phaseLabel(fixture)} · {fixture.venue}</Text>
       </View>
     );
@@ -57,7 +58,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
 
         <View style={styles.scoreBoard}>
           <View style={styles.teamBlock}>
-            <View style={styles.teamBadge}><Text style={styles.teamBadgeText}>{fixture.home.slice(0, 1)}</Text></View>
+            <TeamLogo name={fixture.home} size={54} />
             <Text numberOfLines={2} style={styles.teamName}>{fixture.home}</Text>
           </View>
           <View style={styles.centerScore}>
@@ -66,7 +67,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
             <Text style={styles.score}>{fixture.awayScore ?? 0}</Text>
           </View>
           <View style={[styles.teamBlock, styles.teamBlockRight]}>
-            <View style={[styles.teamBadge, styles.opponentBadge]}><Text style={styles.teamBadgeText}>{fixture.away.slice(0, 1)}</Text></View>
+            <TeamLogo name={fixture.away} size={54} />
             <Text numberOfLines={2} style={[styles.teamName, styles.teamNameRight]}>{fixture.away}</Text>
           </View>
         </View>
@@ -116,7 +117,8 @@ const styles = StyleSheet.create({
   liveLabel: { color: colors.yellow, fontSize: 13, fontWeight: '900', letterSpacing: 1.1 },
   compactCompetition: { color: '#CFE8F7', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
   compactEyebrow: { color: colors.paper, fontSize: 18, fontWeight: '900', marginTop: 18 },
-  compactScore: { color: colors.paper, fontSize: 29, lineHeight: 35, fontWeight: '900', letterSpacing: -0.5, marginTop: 9 },
+  compactTeamsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 9 },
+  compactScore: { color: colors.paper, fontSize: 29, lineHeight: 35, fontWeight: '900', letterSpacing: -0.5, flex: 1, textAlign: 'center' },
   compactMeta: { color: '#D5E7F2', fontSize: 15, fontWeight: '800', marginTop: 10 },
   scoreShell: { overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   scoreHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: 18, backgroundColor: colors.navy },
