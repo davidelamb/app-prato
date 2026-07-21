@@ -2,10 +2,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { MatchDetailsModal } from '../components/MatchDetailsModal';
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, StandingsView } from '../types';
-import { completeStandingRows, formStandingRows, numberValue, standingRows, standingScopes } from '../utils/standings';
+import { calculatedStandingRows, numberValue, standingScopes } from '../utils/standings';
 
 type StatsView = 'calendar' | 'standings';
 type CalendarFilter = 'Tutte' | MatchCompetition;
@@ -40,10 +41,7 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
   const [filter, setFilter] = useState<CalendarFilter>('Tutte');
   const [standingsView, setStandingsView] = useState<StandingsView>('standings');
   const [standingScope, setStandingScope] = useState<StandingScope>('overall');
-
-  const standings = standingsView === 'form'
-    ? formStandingRows(content.schedule ?? provisionalPratoSchedule, preseasonStandings, standingScope)
-    : completeStandingRows(standingRows(content, standingScope), preseasonStandings);
+  const [selectedMatch, setSelectedMatch] = useState<SeasonMatch | null>(null);
   const schedule = useMemo(() => {
     const source = content.schedule?.length ? content.schedule : provisionalPratoSchedule;
     return source.map(normalizedMatch).sort((a, b) => calendarKey(a) - calendarKey(b));
@@ -51,6 +49,10 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
   const visibleSchedule = useMemo(
     () => filter === 'Tutte' ? schedule : schedule.filter((match) => match.competition === filter),
     [filter, schedule],
+  );
+  const standings = useMemo(
+    () => calculatedStandingRows(schedule, preseasonStandings, standingScope),
+    [schedule, standingScope],
   );
 
   return <View style={styles.stack}>
@@ -72,7 +74,7 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
         {filters.map((item) => <Pressable key={item.value} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterActive]}><Text style={[styles.filterText, filter === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
       </ScrollView>
       <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Partite</Text><Text style={styles.sectionCount}>{visibleSchedule.length}</Text></View>
-      <View style={styles.matchList}>{visibleSchedule.map((match) => <MatchRow key={match.id} match={match} />)}</View>
+      <View style={styles.matchList}>{visibleSchedule.map((match) => <MatchRow key={match.id} match={match} onPress={() => setSelectedMatch(match)} />)}</View>
       {!visibleSchedule.length ? <View style={styles.empty}><MaterialCommunityIcons name="calendar-blank-outline" size={32} color={colors.muted} /><Text style={styles.emptyText}>Nessuna partita in questa categoria.</Text></View> : null}
     </View> : <View style={styles.standingsStack}>
       <View style={styles.standingsMode}>
@@ -90,17 +92,18 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
       </View>
       {standings.length ? <StandingsTable standings={standings} scope={standingScope} view={standingsView} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
     </View>}
+    <MatchDetailsModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
   </View>;
 }
 
-function MatchRow({ match }: { match: SeasonMatch }) {
+function MatchRow({ match, onPress }: { match: SeasonMatch; onPress: () => void }) {
   const date = visibleValue(match.dateLabel);
   const time = visibleValue(match.time);
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
   const competition = match.competition ?? 'Campionato';
   const round = match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : '');
   const short = competition === 'Campionato' ? 'CAMP' : competition === 'Coppa Italia' ? 'COPPA' : 'AMIC';
-  return <View style={styles.matchCard}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Apri ${match.home} contro ${match.away}`} onPress={onPress} style={({ pressed }) => [styles.matchCard, pressed && styles.matchCardPressed]}>
     <View style={[styles.competitionBadge, competition === 'Coppa Italia' && styles.cupBadge, competition === 'Amichevole' && styles.friendlyBadge]}><Text style={styles.competitionShort}>{short}</Text></View>
     <View style={styles.matchBody}>
       <View style={styles.matchTop}><Text style={styles.competitionName}>{competition}</Text>{round ? <Text style={styles.round}>{round}</Text> : null}</View>
@@ -109,7 +112,8 @@ function MatchRow({ match }: { match: SeasonMatch }) {
       <View style={styles.teamDivider} />
       <View style={styles.teamRow}><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>{hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}</View>
     </View>
-  </View>;
+    <MaterialCommunityIcons name="chevron-right" size={23} color={colors.accentStrong} />
+  </Pressable>;
 }
 
 function StandingsTable({ standings, scope, view }: { standings: Standing[]; scope: StandingScope; view: StandingsView }) {
@@ -183,6 +187,7 @@ const styles = StyleSheet.create({
   sectionCount: { minWidth: 30, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, overflow: 'hidden', color: colors.paper, backgroundColor: colors.accentStrong, textAlign: 'center', fontSize: 11, fontWeight: '900' },
   matchList: { gap: 9 },
   matchCard: { minHeight: 112, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
+  matchCardPressed: { opacity: 0.84, backgroundColor: colors.surfaceRaised },
   competitionBadge: { width: 54, height: 62, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.accentStrong },
   cupBadge: { backgroundColor: colors.navy },
   friendlyBadge: { backgroundColor: colors.success },

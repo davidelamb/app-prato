@@ -87,7 +87,7 @@ export function setStandingRows(content: AppContent, scope: StandingScope, rows:
   return { ...content, standings: rows };
 }
 
-export function formStandingRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope): Standing[] {
+export function calculatedStandingRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope): Standing[] {
   const rows = emptyStandingRows(masterRows);
   const byClub = new Map(rows.map((row) => [clubKey(row.club), row]));
   const completed = [...matches]
