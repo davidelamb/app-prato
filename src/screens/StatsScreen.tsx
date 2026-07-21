@@ -6,7 +6,7 @@ import { MatchDetailsModal } from '../components/MatchDetailsModal';
 import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, StandingsView } from '../types';
-import { calculatedStandingRows, numberValue, standingScopes } from '../utils/standings';
+import { calculatedFormRows, calculatedStandingRows, numberValue, standingScopes } from '../utils/standings';
 
 type StatsView = 'calendar' | 'standings';
 type CalendarFilter = 'Tutte' | MatchCompetition;
@@ -51,8 +51,10 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
     [filter, schedule],
   );
   const standings = useMemo(
-    () => calculatedStandingRows(schedule, preseasonStandings, standingScope),
-    [schedule, standingScope],
+    () => standingsView === 'form'
+      ? calculatedFormRows(schedule, preseasonStandings, standingScope)
+      : calculatedStandingRows(schedule, preseasonStandings, standingScope),
+    [schedule, standingScope, standingsView],
   );
 
   return <View style={styles.stack}>

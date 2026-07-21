@@ -87,7 +87,7 @@ export function setStandingRows(content: AppContent, scope: StandingScope, rows:
   return { ...content, standings: rows };
 }
 
-export function calculatedStandingRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope): Standing[] {
+function calculateRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope, matchLimit?: number): Standing[] {
   const rows = emptyStandingRows(masterRows);
   const byClub = new Map(rows.map((row) => [clubKey(row.club), row]));
   const completed = [...matches]
@@ -110,9 +110,29 @@ export function calculatedStandingRows(matches: SeasonMatch[], masterRows: Stand
     row.form = [...(row.form ?? []), result].slice(-20);
   };
 
+  const resultsByClub = new Map<string, Array<{ club: string; goalsFor: number; goalsAgainst: number }>>();
+  const collectResult = (club: string, goalsFor: number, goalsAgainst: number) => {
+    const key = clubKey(club);
+    const results = resultsByClub.get(key) ?? [];
+    results.push({ club, goalsFor, goalsAgainst });
+    resultsByClub.set(key, results);
+  };
+
   completed.forEach((match) => {
-    if (scope !== 'away') addResult(match.home, match.homeScore!, match.awayScore!);
-    if (scope !== 'home') addResult(match.away, match.awayScore!, match.homeScore!);
+    if (scope !== 'away') collectResult(match.home, match.homeScore!, match.awayScore!);
+    if (scope !== 'home') collectResult(match.away, match.awayScore!, match.homeScore!);
+  });
+  resultsByClub.forEach((results) => {
+    const relevantResults = matchLimit === undefined ? results : results.slice(-matchLimit);
+    relevantResults.forEach((result) => addResult(result.club, result.goalsFor, result.goalsAgainst));
   });
   return sortStandingRows(rows);
+}
+
+export function calculatedStandingRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope): Standing[] {
+  return calculateRows(matches, masterRows, scope);
+}
+
+export function calculatedFormRows(matches: SeasonMatch[], masterRows: Standing[], scope: StandingScope): Standing[] {
+  return calculateRows(matches, masterRows, scope, 5);
 }
