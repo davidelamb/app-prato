@@ -442,20 +442,6 @@ function StandingsView({
                   </View>
                 </View>
 
-                {/* Indicatori forma V/N/P */}
-                <View style={styles.standingFormRow}>
-                  {(row.form ?? []).map((f, i) => {
-                    const fi = formIcon(f);
-                    return (
-                      <View key={i} style={[styles.formDot, { backgroundColor: fi.bg, borderColor: fi.color }]}>
-                        <Text style={[styles.formDotLabel, { color: fi.color }]}>{fi.label}</Text>
-                      </View>
-                    );
-                  })}
-                  {(row.form ?? []).length === 0 && (
-                    <Text style={[styles.noFormText, { fontSize: mutedSize }]}>—</Text>
-                  )}
-                </View>
               </View>
             );
           })}
