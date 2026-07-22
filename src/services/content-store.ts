@@ -27,6 +27,7 @@ function normalizePlayer(player: Player): Player {
   const seed = seedContent.players.find((item) => item.id === player.id);
   const fallback = playerPhotoFallbacks[player.id];
   return {
+    ...seed,
     ...player,
     appearances: player.appearances ?? 0,
     goals: player.goals ?? 0,
@@ -67,6 +68,15 @@ function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
 export function normalizeContent(content: AppContent): AppContent {
   const master = preseasonStandings.map(normalizeStandingRow);
   const emptyMaster = emptyStandingRows(master);
+
+  // Merge giocatori: seed come base, dati salvati sovrascrivono per id corrispondente
+  const savedPlayers = Array.isArray(content.players) ? content.players.map(normalizePlayer) : [];
+  const savedMap = new Map(savedPlayers.map((p) => [p.id, p]));
+  const mergedPlayers = seedContent.players.map((seedPlayer) => {
+    const saved = savedMap.get(seedPlayer.id);
+    return saved ? normalizePlayer({ ...seedPlayer, ...saved }) : seedPlayer;
+  });
+
   return {
     fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
     standings: sortStandingRows(completeStandingRows(content.standings, master)),
@@ -74,7 +84,7 @@ export function normalizeContent(content: AppContent): AppContent {
     awayStandings: sortStandingRows(completeStandingRows(content.awayStandings, emptyMaster)),
     formStandings: sortStandingRows(completeStandingRows(content.formStandings, emptyMaster)),
     schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : seedContent.schedule?.map(normalizeSchedule),
-    players: Array.isArray(content.players) ? content.players.map(normalizePlayer) : seedContent.players.map(normalizePlayer),
+    players: mergedPlayers,
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
     media: Array.isArray(content.media) ? content.media.map(normalizeMedia) : seedContent.media,
     updatedAt: content.updatedAt || seedContent.updatedAt,
