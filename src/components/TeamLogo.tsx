@@ -88,7 +88,6 @@ export function TeamLogo({ name, size = 28, style, imageStyle }: TeamLogoProps) 
 const styles = StyleSheet.create({
   wrapper: {
     overflow: 'hidden',
-    backgroundColor: colors.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
