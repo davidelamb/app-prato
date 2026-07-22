@@ -42,7 +42,14 @@ function normalizePlayer(player: Player): Player {
 }
 
 function normalizeNews(article: NewsArticle): NewsArticle {
-  return { ...article, body: article.body ?? article.summary, imageUrl: article.imageUrl ?? '' };
+  return {
+    ...article,
+    body: article.body ?? article.summary,
+    imageUrl: article.imageUrl ?? '',
+    imageScale: article.imageScale ?? 1,
+    imagePositionX: article.imagePositionX ?? 0,
+    imagePositionY: article.imagePositionY ?? 0,
+  };
 }
 
 function normalizeMedia(item: MediaItem): MediaItem {
