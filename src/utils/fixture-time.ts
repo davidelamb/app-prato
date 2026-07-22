@@ -1,6 +1,5 @@
 import { Fixture } from '../types';
 
-const ONE_HOUR = 60 * 60 * 1000;
 const ITALY_TIME_ZONE = 'Europe/Rome';
 
 type DateParts = { year: number; month: number; day: number; hour: number; minute: number; second: number };
@@ -91,8 +90,3 @@ export function kickoffInput(fixture: Fixture): { date: string; time: string } {
   return { date: fixture.dateLabel, time: fixture.time };
 }
 
-export function isHomeLiveVisible(fixture: Fixture, now = Date.now()): boolean {
-  if (fixture.status === 'final') return false;
-  const kickoff = kickoffTimestamp(fixture);
-  return kickoff !== null && now >= kickoff - ONE_HOUR;
-}
