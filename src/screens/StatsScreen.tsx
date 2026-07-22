@@ -92,7 +92,7 @@ export function StatsScreen({ content }: { content: AppContent; wide: boolean })
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
         {standingScopes.map((item) => <Pressable key={item.value} onPress={() => setStandingScope(item.value)} style={[styles.filter, standingScope === item.value && styles.filterActive]}><Text style={[styles.filterText, standingScope === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
       </ScrollView>
-      {standings.length ? <StandingsTable standings={standings} scope={standingScope} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
+      {standings.length ? <StandingsList standings={standings} scope={standingScope} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
     </View>}
   </View>;
 }
@@ -103,9 +103,7 @@ function MatchRow({ match }: { match: SeasonMatch }) {
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
   const competition = match.competition ?? 'Campionato';
   const round = match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : '');
-  const short = competition === 'Campionato' ? 'CAMP' : competition === 'Coppa Italia' ? 'COPPA' : 'AMIC';
   return <View style={styles.matchCard}>
-    <View style={[styles.competitionBadge, competition === 'Coppa Italia' && styles.cupBadge, competition === 'Amichevole' && styles.friendlyBadge]}><Text style={styles.competitionShort}>{short}</Text></View>
     <View style={styles.matchBody}>
       <View style={styles.matchTop}><Text style={styles.competitionName}>{competition}</Text>{round ? <Text style={styles.round}>{round}</Text> : null}</View>
       {date || time || match.venue ? <Text style={styles.matchMeta}>{[date, time, match.venue].filter(Boolean).join(' · ')}</Text> : null}
@@ -116,40 +114,66 @@ function MatchRow({ match }: { match: SeasonMatch }) {
   </View>;
 }
 
-function StandingsTable({ standings, scope }: { standings: Standing[]; scope: StandingScope }) {
+function StandingsList({ standings, scope }: { standings: Standing[]; scope: StandingScope }) {
   const label = standingScopes.find((item) => item.value === scope)?.label ?? 'Generale';
   const ordered = [...standings].sort((a, b) => a.rank - b.rank);
   const showForm = scope === 'form';
-  return <View style={styles.tableCard}>
-    <Text style={styles.tableTitle}>Serie D Girone E · {label}</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableViewport} contentContainerStyle={styles.tableScroll}>
-      <View style={[styles.table, showForm && styles.formTable]}>
-        <View style={styles.tableHeader}>
-          <Cell text="#" style={styles.posCell} header />
-          <Cell text="Squadra" style={styles.clubCell} header align="left" />
-          <Cell text="G" header /><Cell text="V" header /><Cell text="N" header /><Cell text="P" header />
-          <Cell text="GF" header /><Cell text="GS" header /><Cell text="DR" header /><Cell text="PT" header strong />
-          {showForm ? <Cell text="Ultime 5" style={styles.formCell} header /> : null}
-        </View>
-        {ordered.map((row) => <StandingRow key={row.club} row={row} showForm={showForm} />)}
+
+  return (
+    <View style={styles.standingsCard}>
+      <Text style={styles.standingsTitle}>Serie D Girone E · {label}</Text>
+      <View style={styles.standingsBody}>
+        {ordered.map((row) => (
+          <StandingCard key={row.club} row={row} showForm={showForm} />
+        ))}
       </View>
-    </ScrollView>
-  </View>;
+    </View>
+  );
 }
 
-function StandingRow({ row, showForm }: { row: Standing; showForm: boolean }) {
+function StandingCard({ row, showForm }: { row: Standing; showForm: boolean }) {
   const isPrato = /^(AC )?Prato$/i.test(row.club);
-  return <View style={[styles.tableRow, isPrato && styles.pratoRow]}>
-    <Cell text={String(row.rank)} style={styles.posCell} strong={isPrato} />
-    <View style={[styles.cell, styles.clubCell]}><TeamLogo name={row.club} size={22} style={{ borderRadius: 6, marginRight: 6 }} /><Text numberOfLines={1} style={[styles.cellText, styles.clubText, isPrato && styles.pratoText]}>{row.club}</Text></View>
-    <Cell text={String(row.played)} /><Cell text={String(numberValue(row.wins))} /><Cell text={String(numberValue(row.draws))} /><Cell text={String(numberValue(row.losses))} />
-    <Cell text={String(numberValue(row.goalsFor))} /><Cell text={String(numberValue(row.goalsAgainst))} /><Cell text={String(numberValue(row.goalDifference))} /><Cell text={String(row.points)} strong />
-    {showForm ? <View style={[styles.cell, styles.formCell]}><View style={styles.formRow}>{(row.form ?? []).slice(-5).map((result, index) => <View key={`${row.club}-${index}`} style={[styles.formBadge, result === 'W' ? styles.formWin : result === 'D' ? styles.formDraw : styles.formLoss]}><Text style={styles.formText}>{result === 'W' ? 'V' : result === 'D' ? 'N' : 'P'}</Text></View>)}</View></View> : null}
-  </View>;
+  return (
+    <View style={[styles.card, isPrato && styles.pratoCard]}>
+      <View style={styles.cardMain}>
+        <Text style={[styles.cardPos, isPrato && styles.pratoPosText]}>{row.rank}</Text>
+        <TeamLogo name={row.club} size={28} style={styles.cardLogo} />
+        <Text numberOfLines={1} style={[styles.cardClub, isPrato && styles.pratoText]}>{row.club}</Text>
+        <Text style={[styles.cardPoints, isPrato && styles.pratoPointsText]}>{row.points}</Text>
+        <Text style={styles.cardPtsLabel}>PT</Text>
+      </View>
+      <View style={styles.cardStats}>
+        <Stat label="G" value={String(row.played)} />
+        <Stat label="V" value={String(numberValue(row.wins))} accent={numberValue(row.wins) > 0 ? 'positive' : undefined} />
+        <Stat label="N" value={String(numberValue(row.draws))} />
+        <Stat label="P" value={String(numberValue(row.losses))} accent={numberValue(row.losses) > 0 ? 'negative' : undefined} />
+        <Stat label="GF" value={String(numberValue(row.goalsFor))} />
+        <Stat label="GS" value={String(numberValue(row.goalsAgainst))} />
+        <Stat label="DR" value={String(numberValue(row.goalDifference))} accent={numberValue(row.goalDifference) > 0 ? 'positive' : numberValue(row.goalDifference) < 0 ? 'negative' : undefined} />
+      </View>
+      {showForm && (row.form ?? []).length > 0 ? (
+        <View style={styles.cardForm}>
+          <Text style={styles.formLabel}>Ultime 5</Text>
+          <View style={styles.formRow}>
+            {(row.form ?? []).slice(-5).map((result, index) => (
+              <View key={`${row.club}-${index}`} style={[styles.formBadge, result === 'W' ? styles.formWin : result === 'D' ? styles.formDraw : styles.formLoss]}>
+                <Text style={styles.formText}>{result === 'W' ? 'V' : result === 'D' ? 'N' : 'P'}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
-function Cell({ text, style, header = false, strong = false, align = 'center' }: { text: string; style?: object; header?: boolean; strong?: boolean; align?: 'left' | 'center' }) {
-  return <View style={[styles.cell, style]}><Text style={[styles.cellText, align === 'left' && styles.cellLeft, header && styles.headerText, strong && styles.strongText]}>{text}</Text></View>;
+function Stat({ label, value, accent }: { label: string; value: string; accent?: 'positive' | 'negative' }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={[styles.statLabel, accent === 'positive' && styles.statPositive, accent === 'negative' && styles.statNegative]}>{label}</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -173,10 +197,6 @@ const styles = StyleSheet.create({
   sectionCount: { minWidth: 30, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, overflow: 'hidden', color: colors.paper, backgroundColor: colors.accentStrong, textAlign: 'center', fontSize: 11, fontWeight: '900' },
   matchList: { gap: 9 },
   matchCard: { minHeight: 112, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  competitionBadge: { width: 54, height: 62, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.accentStrong },
-  cupBadge: { backgroundColor: colors.navy },
-  friendlyBadge: { backgroundColor: colors.success },
-  competitionShort: { color: colors.paper, fontSize: 9, fontWeight: '900' },
   matchBody: { flex: 1, minWidth: 0 },
   matchTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   competitionName: { color: colors.accentStrong, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
@@ -189,29 +209,34 @@ const styles = StyleSheet.create({
   teamDivider: { height: 1, backgroundColor: colors.lineSoft, marginVertical: 3 },
   empty: { alignItems: 'center', gap: 8, padding: 30, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
   emptyText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  tableCard: { width: '100%', overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  tableTitle: { color: colors.ink, fontSize: 21, fontWeight: '900', padding: 18, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
-  tableViewport: { width: '100%' },
-  tableScroll: { flexGrow: 1, paddingBottom: 2 },
-  table: { minWidth: 760, flexGrow: 1 },
-  formTable: { minWidth: 940 },
-  tableHeader: { flexDirection: 'row', minHeight: 44, alignItems: 'center', backgroundColor: colors.navy },
-  tableRow: { flexDirection: 'row', minHeight: 49, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
-  pratoRow: { backgroundColor: colors.surfaceRaised },
-  cell: { width: 52, flexGrow: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  posCell: { width: 44, flexGrow: 0 },
-  clubCell: { width: 250, flexGrow: 4, flexDirection: 'row', alignItems: 'center' },
-  formCell: { width: 180 },
-  cellText: { color: colors.inkSoft, fontSize: 12, fontWeight: '700', textAlign: 'center' },
-  cellLeft: { textAlign: 'left' },
-  headerText: { color: colors.paper, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
-  strongText: { color: colors.ink, fontWeight: '900' },
-  clubText: { flexShrink: 1, color: colors.ink, fontSize: 13, fontWeight: '800', textAlign: 'left' },
+
+  // Mobile-first standings cards
+  standingsCard: { width: '100%', borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
+  standingsTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', padding: 14, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  standingsBody: { gap: 1, backgroundColor: colors.lineSoft },
+  card: { gap: 10, padding: 12, backgroundColor: colors.paper },
+  pratoCard: { backgroundColor: colors.surfaceRaised, borderLeftWidth: 3, borderLeftColor: colors.accentStrong },
+  cardMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardPos: { width: 28, fontSize: 15, fontWeight: '900', color: colors.muted, textAlign: 'center' },
+  pratoPosText: { color: colors.accentStrong },
+  cardLogo: { width: 28, height: 28, borderRadius: 8 },
+  cardClub: { flex: 1, fontSize: 14, fontWeight: '800', color: colors.ink },
   pratoText: { color: colors.accentStrong, fontWeight: '900' },
-  formRow: { flexDirection: 'row', gap: 5 },
-  formBadge: { width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  cardPoints: { fontSize: 22, fontWeight: '900', color: colors.ink, minWidth: 28, textAlign: 'right' },
+  pratoPointsText: { color: colors.accentStrong },
+  cardPtsLabel: { fontSize: 10, fontWeight: '800', color: colors.muted, textTransform: 'uppercase' },
+  cardStats: { flexDirection: 'row', gap: 0, paddingLeft: 38 },
+  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  statValue: { fontSize: 13, fontWeight: '800', color: colors.ink },
+  statLabel: { fontSize: 9, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
+  statPositive: { color: colors.success },
+  statNegative: { color: colors.live },
+  cardForm: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 38 },
+  formLabel: { fontSize: 9, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
+  formRow: { flexDirection: 'row', gap: 4 },
+  formBadge: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   formWin: { backgroundColor: colors.success },
   formDraw: { backgroundColor: colors.mutedDark },
   formLoss: { backgroundColor: colors.live },
-  formText: { color: colors.paper, fontSize: 10, fontWeight: '900' },
+  formText: { color: colors.paper, fontSize: 9, fontWeight: '900' },
 });
