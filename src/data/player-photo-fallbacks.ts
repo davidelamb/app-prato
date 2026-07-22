@@ -1,11 +1,9 @@
-import { Image } from 'react-native';
-
 import { Player } from '../types';
 
 type PlayerPhotoFallback = Pick<Player, 'imageUrl' | 'imageSourceUrl' | 'imageScale' | 'imagePositionX' | 'imagePositionY'>;
 
-const localPucci = Image.resolveAssetSource(require('../../assets/players/pucci.jpg'));
-const localVerde = Image.resolveAssetSource(require('../../assets/players/verde.jpg'));
+const localPucci = require('../../assets/players/pucci.jpg') as { uri: string };
+const localVerde = require('../../assets/players/verde.jpg') as { uri: string };
 
 export const playerPhotoFallbacks: Record<string, PlayerPhotoFallback> = {
   biguzzi: {
