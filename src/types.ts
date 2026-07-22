@@ -6,12 +6,29 @@ export type MediaKind = 'Highlights' | 'Intervista' | 'Video' | 'Podcast';
 export type MatchCompetition = 'Campionato' | 'Coppa Italia' | 'Amichevole';
 export type StandingScope = 'overall' | 'home' | 'away' | 'form';
 
+export type MatchLineupPlayer = {
+  playerId: string;
+  starter: boolean;
+  positionOrder?: number;
+};
+
+export type MatchLineup = {
+  formation?: string;
+  starters: MatchLineupPlayer[];
+  substitutes: MatchLineupPlayer[];
+  confirmedAt?: string;
+};
+
 export type LiveEvent = {
   id: string;
   type: LiveEventType;
   label: string;
   minute?: number;
+  minuteLabel?: string;
+  phase?: LivePhase;
+  phaseElapsedSeconds?: number;
   team?: string;
+  playerId?: string;
   scorer?: string;
   score?: string;
   createdAt: string;
@@ -34,6 +51,13 @@ export type Fixture = {
   isDemo?: boolean;
   livePhase?: LivePhase;
   liveEvents?: LiveEvent[];
+  phaseStartedAt?: string;
+  firstHalfElapsedSeconds?: number;
+  secondHalfElapsedSeconds?: number;
+  homeLineup?: MatchLineup;
+  awayLineup?: MatchLineup;
+  scheduleMatchId?: string;
+  groupMatchId?: string;
 };
 
 export type SeasonMatch = {
@@ -50,6 +74,8 @@ export type SeasonMatch = {
   homeScore?: number;
   awayScore?: number;
   sortOrder?: number;
+  status?: FixtureStatus;
+  fixtureId?: string;
 };
 
 export type Standing = {
@@ -76,6 +102,7 @@ export type Player = {
   starts?: number;
   minutes?: number;
   goals: number;
+  liveGoals?: number;
   assists?: number;
   yellowCards?: number;
   redCards?: number;
@@ -94,6 +121,29 @@ export type Player = {
   imageScale?: number;
   imagePositionX?: number;
   imagePositionY?: number;
+};
+
+export type TeamPlayer = {
+  id: string;
+  name: string;
+  number?: number;
+  role?: string;
+  nationality?: string;
+  birthDate?: string;
+  marketValue?: string;
+  imageUrl?: string;
+  sourceUrl?: string;
+};
+
+export type Team = {
+  id: string;
+  name: string;
+  normalizedName: string;
+  crestUrl?: string;
+  stadium?: string;
+  coach?: string;
+  sourceUrl?: string;
+  players: TeamPlayer[];
 };
 
 export type NewsArticle = {
@@ -132,6 +182,7 @@ export type AppContent = {
   formStandings?: Standing[];
   schedule?: SeasonMatch[];
   groupMatches?: SeasonMatch[];
+  teams?: Team[];
   players: Player[];
   news: NewsArticle[];
   media: MediaItem[];

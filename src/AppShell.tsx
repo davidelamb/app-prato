@@ -109,7 +109,7 @@ export default function AppShell() {
       <View style={[styles.container, wide && styles.containerWide]}>
         {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
         {tab === 'media' ? <MediaScreen content={content} wide={wide} /> : null}
-        {tab === 'live' && liveFixture ? <View style={styles.stack}><PageHeader eyebrow="MATCH CENTER" title="Diretta partita" copy="Risultato, cronaca e aggiornamenti minuto per minuto." /><LivePanel fixture={liveFixture} /></View> : null}
+        {tab === 'live' && liveFixture ? <View style={styles.stack}><PageHeader eyebrow="MATCH CENTER" title="Diretta partita" copy="Risultato, cronaca e aggiornamenti minuto per minuto." /><LivePanel fixture={liveFixture} players={content.players} /></View> : null}
         {tab === 'stats' ? <StatsScreen content={content} wide={wide} /> : null}
         {tab === 'club' ? <RosterScreen content={content} wide={wide} onPlayer={setSelectedPlayer} /> : null}
         {tab === 'admin' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('news')} /> : null}

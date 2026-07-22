@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { colors } from '../../theme';
 import { AppContent, MatchCompetition, SeasonMatch } from '../../types';
+import { synchronizeSchedule } from '../../utils/match-sync';
 import { Button, Field, adminStyles } from './Primitives';
 
 const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia', 'Amichevole'];
@@ -11,8 +12,16 @@ const cleanDate = (value: string) => value === 'Data da definire' ? '' : value;
 const cleanTime = (value: string) => value === '—' ? '' : value;
 const newMatch = (): SeasonMatch => ({ id: '', competition: 'Campionato', roundLabel: '', dateLabel: '', time: '', home: 'AC Prato', away: '', venue: '', sortOrder: Date.now() });
 
+function scoreInput(value: string): number | undefined | null {
+  if (value === '') return undefined;
+  if (!/^\d+$/.test(value)) return null;
+  const score = Number(value);
+  return Number.isSafeInteger(score) ? score : null;
+}
+
 function normalizeMatch(match: SeasonMatch, index: number): SeasonMatch {
-  return { ...match, id: match.id || `calendar-${Date.now()}-${index}`, competition: match.competition ?? 'Campionato', roundLabel: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : ''), dateLabel: cleanDate(match.dateLabel ?? ''), time: cleanTime(match.time ?? ''), venue: match.venue ?? '', sortOrder: match.sortOrder ?? index };
+  const hasResult = Number.isInteger(match.homeScore) && Number.isInteger(match.awayScore);
+  return { ...match, id: match.id || `calendar-${Date.now()}-${index}`, competition: match.competition ?? 'Campionato', roundLabel: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : ''), dateLabel: cleanDate(match.dateLabel ?? ''), time: cleanTime(match.time ?? ''), venue: match.venue ?? '', sortOrder: match.sortOrder ?? index, status: match.status === 'live' ? 'live' : hasResult ? 'final' : 'scheduled' };
 }
 
 function dateKey(match: SeasonMatch): number {
@@ -49,8 +58,17 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
 
   const saveSchedule = () => {
     const sorted = schedule.map(normalizeMatch).sort((a, b) => dateKey(a) - dateKey(b)).map((match, index) => ({ ...match, sortOrder: index }));
+    const invalid = sorted.some((match) => (match.homeScore === undefined) !== (match.awayScore === undefined)
+      || (match.homeScore !== undefined && (!Number.isInteger(match.homeScore) || match.homeScore < 0))
+      || (match.awayScore !== undefined && (!Number.isInteger(match.awayScore) || match.awayScore < 0)));
+    if (invalid) return Alert.alert('Risultato non valido', 'Inserisci due numeri interi non negativi oppure lascia entrambi i campi vuoti.');
     setSchedule(sorted);
-    void onChange({ ...content, schedule: sorted });
+    void onChange(synchronizeSchedule(content, sorted));
+  };
+
+  const setMatchScore = (id: string, side: 'homeScore' | 'awayScore', value: string) => {
+    const score = scoreInput(value);
+    if (score !== null) updateMatch(id, { [side]: score });
   };
 
   const previewCsv = () => {
@@ -138,7 +156,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
       <CompetitionChoices value={draft.competition ?? 'Campionato'} onChange={(competition) => updateDraft('competition', competition)} />
       <View style={adminStyles.row}><Field label="Turno o descrizione" value={draft.roundLabel ?? ''} onChangeText={(v) => updateDraft('roundLabel', v)} placeholder="1ª giornata / Sedicesimi / Test" /><Field label="Data" value={draft.dateLabel} onChangeText={(v) => updateDraft('dateLabel', v)} placeholder="06/09/2026" /><Field label="Ora" value={draft.time} onChangeText={(v) => updateDraft('time', v)} placeholder="15:00" /></View>
       <View style={adminStyles.row}><Field label="Casa" value={draft.home} onChangeText={(v) => updateDraft('home', v)} /><Field label="Trasferta" value={draft.away} onChangeText={(v) => updateDraft('away', v)} /><Field label="Stadio" value={draft.venue ?? ''} onChangeText={(v) => updateDraft('venue', v)} /></View>
-      <View style={adminStyles.row}><Field label="Gol casa" value={draft.homeScore === undefined ? '' : String(draft.homeScore)} onChangeText={(v) => updateDraft('homeScore', v === '' ? undefined : number(v))} keyboardType="numeric" /><Field label="Gol ospite" value={draft.awayScore === undefined ? '' : String(draft.awayScore)} onChangeText={(v) => updateDraft('awayScore', v === '' ? undefined : number(v))} keyboardType="numeric" /></View>
+      <View style={adminStyles.row}><Field label="Gol casa" value={draft.homeScore === undefined ? '' : String(draft.homeScore)} onChangeText={(v) => { const score = scoreInput(v); if (score !== null) updateDraft('homeScore', score); }} keyboardType="numeric" /><Field label="Gol ospite" value={draft.awayScore === undefined ? '' : String(draft.awayScore)} onChangeText={(v) => { const score = scoreInput(v); if (score !== null) updateDraft('awayScore', score); }} keyboardType="numeric" /></View>
       <Button label="Aggiungi al calendario" icon="calendar-plus" onPress={addMatch} />
     </View>
 
@@ -169,7 +187,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
           <CompetitionChoices value={match.competition ?? 'Campionato'} onChange={(c) => updateMatch(match.id, { competition: c })} compact />
           <View style={adminStyles.row}><Field label="Turno" value={match.roundLabel ?? ''} onChangeText={(v) => updateMatch(match.id, { roundLabel: v })} /><Field label="Data" value={match.dateLabel} onChangeText={(v) => updateMatch(match.id, { dateLabel: v })} /><Field label="Ora" value={match.time} onChangeText={(v) => updateMatch(match.id, { time: v })} /></View>
           <View style={adminStyles.row}><Field label="Casa" value={match.home} onChangeText={(v) => updateMatch(match.id, { home: v })} /><Field label="Trasferta" value={match.away} onChangeText={(v) => updateMatch(match.id, { away: v })} /><Field label="Stadio" value={match.venue ?? ''} onChangeText={(v) => updateMatch(match.id, { venue: v })} /></View>
-          <View style={adminStyles.row}><Field label="Gol casa" value={match.homeScore === undefined ? '' : String(match.homeScore)} onChangeText={(v) => updateMatch(match.id, { homeScore: v === '' ? undefined : number(v) })} keyboardType="numeric" /><Field label="Gol ospite" value={match.awayScore === undefined ? '' : String(match.awayScore)} onChangeText={(v) => updateMatch(match.id, { awayScore: v === '' ? undefined : number(v) })} keyboardType="numeric" /></View>
+          <View style={adminStyles.row}><Field label="Gol casa" value={match.homeScore === undefined ? '' : String(match.homeScore)} onChangeText={(v) => setMatchScore(match.id, 'homeScore', v)} keyboardType="numeric" /><Field label="Gol ospite" value={match.awayScore === undefined ? '' : String(match.awayScore)} onChangeText={(v) => setMatchScore(match.id, 'awayScore', v)} keyboardType="numeric" /></View>
         </View>
         <Pressable onPress={() => setSchedule((c) => c.filter((item) => item.id !== match.id))}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable>
       </View>)}</View>

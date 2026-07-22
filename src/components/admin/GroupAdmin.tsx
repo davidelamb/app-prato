@@ -1,132 +1,180 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+
 import { colors } from '../../theme';
-import { AppContent, SeasonMatch, Standing } from '../../types';
-import { calculateStandings } from '../../utils/standings';
+import { AppContent, SeasonMatch } from '../../types';
+import { synchronizeGroupMatches } from '../../utils/match-sync';
+import { calculateStandingSets } from '../../utils/standings';
+import { canonicalTeamName, normalizeTeamName } from '../../utils/team-names';
 import { Button, Field, adminStyles } from './Primitives';
 
-const number = (value: string | number | undefined) => Number(value) || 0;
-
-function normalize(match: SeasonMatch, index: number): SeasonMatch {
-  return { ...match, id: match.id || `group-${Date.now()}-${index}`, competition: 'Campionato', matchday: match.matchday ?? undefined, roundLabel: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : ''), dateLabel: match.dateLabel ?? '', time: match.time ?? '', venue: match.venue ?? '', sortOrder: match.sortOrder ?? index };
+function normalizeMatch(match: SeasonMatch, index: number): SeasonMatch {
+  const matchday = Math.max(1, Math.trunc(Number(match.matchday) || 1));
+  const hasResult = Number.isInteger(match.homeScore) && Number.isInteger(match.awayScore);
+  return {
+    ...match,
+    id: match.id || `group-${Date.now()}-${index}`,
+    competition: 'Campionato',
+    matchday,
+    leg: match.leg ?? (matchday <= 17 ? 'Andata' : 'Ritorno'),
+    roundLabel: match.roundLabel || `${matchday}ª giornata`,
+    home: canonicalTeamName(match.home),
+    away: canonicalTeamName(match.away),
+    dateLabel: match.dateLabel ?? '',
+    time: match.time ?? '',
+    venue: match.venue ?? '',
+    sortOrder: match.sortOrder ?? index,
+    status: hasResult ? 'final' : 'scheduled',
+  };
 }
 
-function groupByMatchday(matches: SeasonMatch[]): Map<number, SeasonMatch[]> {
-  const map = new Map<number, SeasonMatch[]>();
-  for (const m of matches) {
-    const day = m.matchday ?? 0;
-    if (!map.has(day)) map.set(day, []);
-    map.get(day)!.push(m);
-  }
-  // Sort matchdays
-  const sorted = new Map([...map.entries()].sort((a, b) => a[0] - b[0]));
-  return sorted;
+function validScore(value: number | undefined): boolean {
+  return value === undefined || (Number.isInteger(value) && value >= 0);
+}
+
+function updateScore(value: string): number | undefined | null {
+  if (value === '') return undefined;
+  if (!/^\d+$/.test(value)) return null;
+  const score = Number(value);
+  return Number.isSafeInteger(score) ? score : null;
 }
 
 export function GroupAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  const initialMatches = useMemo<SeasonMatch[]>(() => (content.groupMatches?.length ? content.groupMatches.map(normalize) : []), [content.groupMatches]);
-  const [matches, setMatches] = useState<SeasonMatch[]>(initialMatches);
-  const [quickDay, setQuickDay] = useState('');
-  const [standings, setStandings] = useState<Standing[] | null>(null);
+  const [matches, setMatches] = useState<SeasonMatch[]>(() => (content.groupMatches ?? []).map(normalizeMatch));
+  const [selectedDay, setSelectedDay] = useState<number>(() => Number(content.groupMatches?.[0]?.matchday) || 1);
 
-  const updateMatch = (id: string, patch: Partial<SeasonMatch>) => setMatches((prev) => prev.map((m) => m.id === id ? { ...m, ...patch } : m));
+  useEffect(() => {
+    setMatches((content.groupMatches ?? []).map(normalizeMatch));
+  }, [content.groupMatches]);
+
+  const days = useMemo(() => [...new Set(matches.map((match) => Number(match.matchday) || 1))].sort((a, b) => a - b), [matches]);
+  const dayMatches = useMemo(() => matches.filter((match) => (Number(match.matchday) || 1) === selectedDay), [matches, selectedDay]);
+  const clubs = useMemo(() => [...new Set([
+    ...(content.standings ?? []).map((row) => canonicalTeamName(row.club)),
+    ...matches.flatMap((match) => [canonicalTeamName(match.home), canonicalTeamName(match.away)]),
+  ].filter(Boolean))], [content.standings, matches]);
+  const preview = useMemo(() => calculateStandingSets(matches, clubs).overall, [clubs, matches]);
+  const completed = matches.filter((match) => match.status === 'final').length;
+
+  const updateMatch = (id: string, patch: Partial<SeasonMatch>) => {
+    setMatches((current) => current.map((match) => match.id === id ? { ...match, ...patch } : match));
+  };
+
+  const setScore = (id: string, side: 'homeScore' | 'awayScore', value: string) => {
+    const score = updateScore(value);
+    if (score === null) return;
+    updateMatch(id, { [side]: score });
+  };
 
   const addMatch = () => {
-    const match: SeasonMatch = { id: `group-${Date.now()}`, competition: 'Campionato', matchday: 1, roundLabel: '1ª giornata', home: '', away: '', dateLabel: '', time: '', venue: '', sortOrder: matches.length };
-    setMatches((prev) => [match, ...prev]);
+    const day = selectedDay || 1;
+    setMatches((current) => [...current, normalizeMatch({
+      id: `group-${Date.now()}`,
+      competition: 'Campionato',
+      matchday: day,
+      roundLabel: `${day}ª giornata`,
+      home: '',
+      away: '',
+      dateLabel: '',
+      time: '',
+      venue: '',
+      sortOrder: current.length,
+      status: 'scheduled',
+    }, current.length)]);
   };
 
-  const save = () => {
-    const normalized = matches.map(normalize);
-    void onChange({ ...content, groupMatches: normalized });
+  const clearResult = (id: string) => updateMatch(id, { homeScore: undefined, awayScore: undefined, status: 'scheduled' });
+
+  const removeMatch = (id: string) => {
+    Alert.alert('Eliminare la partita?', 'La partita verrà rimossa dal girone al prossimo salvataggio.', [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Elimina', style: 'destructive', onPress: () => setMatches((current) => current.filter((match) => match.id !== id)) },
+    ]);
   };
 
-  const quickEntryApply = () => {
-    const day = number(quickDay);
-    if (day < 1) return Alert.alert('Giornata non valida', 'Inserisci un numero di giornata valido.');
-    const preview = matches.map((m) => {
-      if (m.matchday !== day) return m;
-      return { ...m, homeScore: 0, awayScore: 0 };
+  const save = async () => {
+    const normalized = matches.map(normalizeMatch);
+    const invalid = normalized.find((match) => {
+      const oneScoreOnly = (match.homeScore === undefined) !== (match.awayScore === undefined);
+      return !match.home.trim()
+        || !match.away.trim()
+        || normalizeTeamName(match.home) === normalizeTeamName(match.away)
+        || oneScoreOnly
+        || !validScore(match.homeScore)
+        || !validScore(match.awayScore);
     });
-    setMatches(preview);
+    if (invalid) {
+      return Alert.alert('Dati non validi', 'Ogni partita deve avere due squadre diverse e il risultato deve contenere due numeri interi non negativi, oppure essere completamente vuoto.');
+    }
+    const finalized = normalized.map((match) => ({
+      ...match,
+      status: Number.isInteger(match.homeScore) && Number.isInteger(match.awayScore) ? 'final' as const : 'scheduled' as const,
+    }));
+    const next = synchronizeGroupMatches(content, finalized);
+    await onChange(next);
+    Alert.alert('Girone aggiornato', 'Risultati, calendario, Live e classifiche sono stati sincronizzati.');
   };
-
-  const standingsFromMatches = () => {
-    const clubs = [...new Set([...matches.map((m) => m.home), ...matches.map((m) => m.away)].filter(Boolean))];
-    setStandings(calculateStandings(matches.filter((m) => m.homeScore !== undefined && m.awayScore !== undefined), clubs));
-  };
-
-  const applyStandingsToContent = () => {
-    if (!standings) return;
-    const penalties = new Map((content.standings ?? []).map((row) => [row.club, Number(row.penalty) || 0]));
-    void onChange({ ...content, standings: standings.map((row) => ({ ...row, penalty: penalties.get(row.club) ?? 0 })) });
-    Alert.alert('Applicata', 'Classifica calcolata e salvata nel contenuto.');
-  };
-
-  const grouped = groupByMatchday(matches);
 
   return <View style={{ gap: 14 }}>
     <View style={adminStyles.panel}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={adminStyles.title}>Partite del girone</Text><Button label="+ Aggiungi" icon="plus-circle-outline" onPress={addMatch} secondary /></View>
-      <Text style={adminStyles.copy}>Gestisci tutte le partite di Campionato del girone {matches.length ? `(${matches.length} partite)` : ''}.</Text>
+      <Text style={adminStyles.title}>Risultati Serie D · Girone E</Text>
+      <Text style={adminStyles.copy}>Inserisci soltanto i gol. Al salvataggio vengono aggiornate automaticamente classifica generale, casa, trasferta, forma e le partite del Prato.</Text>
+      <Text style={[adminStyles.listMeta, { marginTop: 10 }]}>{completed} risultati completi su {matches.length} partite</Text>
     </View>
 
     <View style={adminStyles.panel}>
-      <Text style={adminStyles.title}>Inserimento rapido risultati per giornata</Text>
-      <View style={adminStyles.row}><Field label="Giornata n°" value={quickDay} onChangeText={setQuickDay} keyboardType="numeric" /></View>
-      <Text style={adminStyles.copy}>Tutte le partite della giornata saranno inizializzate con 0-0, poi modifica i risultati uno per uno.</Text>
-      <Button label="Prepara giornata" icon="playlist-edit" onPress={quickEntryApply} />
+      <Text style={adminStyles.title}>Giornata</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={adminStyles.choices}>
+        {days.map((day) => <Pressable key={day} onPress={() => setSelectedDay(day)} style={[adminStyles.choice, selectedDay === day && adminStyles.choiceActive]}>
+          <Text style={[adminStyles.choiceText, selectedDay === day && adminStyles.choiceTextActive]}>{day}ª</Text>
+        </Pressable>)}
+        {!days.length ? <Text style={adminStyles.copy}>Nessuna giornata inserita.</Text> : null}
+      </ScrollView>
+      <Button label="Aggiungi partita alla giornata" icon="plus-circle-outline" secondary onPress={addMatch} />
     </View>
 
     <View style={adminStyles.panel}>
-      <Text style={adminStyles.title}>Classifica calcolata</Text>
-      <Button label="Calcola classifica dai risultati" icon="table" onPress={standingsFromMatches} />
-      {standings ? <View style={{ marginTop: 12 }}>
-        <View style={{ flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderColor: colors.line }}>
-          <Text style={{ flex: 0.4, fontSize: 11, fontWeight: '700' }}>#</Text>
-          <Text style={{ flex: 2, fontSize: 11, fontWeight: '700' }}>Squadra</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>G</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>V</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>N</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>P</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>GF</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>GS</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>DR</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, fontWeight: '700', textAlign: 'center' }}>PT</Text>
-        </View>
-        {standings.map((row) => <View key={row.club} style={{ flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderColor: colors.lineSoft, backgroundColor: row.club === 'AC Prato' ? colors.accentSoft : 'transparent' }}>
-          <Text style={{ flex: 0.4, fontSize: 11, fontWeight: '700' }}>{row.rank}</Text>
-          <Text style={{ flex: 2, fontSize: 11, fontWeight: '600', color: row.club === 'AC Prato' ? colors.accentStrong : colors.ink }}>{row.club}</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, textAlign: 'center' }}>{row.played}</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, textAlign: 'center' }}>{row.wins}</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, textAlign: 'center' }}>{row.draws}</Text>
-          <Text style={{ flex: 0.6, fontSize: 11, textAlign: 'center' }}>{row.losses}</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, textAlign: 'center' }}>{row.goalsFor}</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, textAlign: 'center' }}>{row.goalsAgainst}</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, textAlign: 'center', fontWeight: '600' }}>{row.goalDifference}</Text>
-          <Text style={{ flex: 0.8, fontSize: 11, textAlign: 'center', fontWeight: '900', color: colors.accentStrong }}>{row.points}</Text>
-        </View>)}
-        <Button label="Applica al contenuto" icon="database-arrow-up-outline" onPress={applyStandingsToContent} />
-      </View> : null}
-    </View>
-
-    <ScrollView horizontal style={{ maxHeight: 400 }}>
-      {[...grouped.entries()].map(([day, dayMatches]) => <View key={day} style={[adminStyles.panel, { marginRight: 8, minWidth: 340 }]}>
-        <Text style={adminStyles.title}>{day}ª giornata</Text>
-        {dayMatches.map((match) => <View key={match.id} style={[adminStyles.listRow, { paddingVertical: 10 }]}>
-          <View style={adminStyles.listBody}>
-            <Text style={adminStyles.listTitle}>{match.home || '?'} – {match.away || '?'}</Text>
-            <View style={[adminStyles.row, { marginTop: 6 }]}>
-              <Field label="Gol casa" value={match.homeScore === undefined ? '' : String(match.homeScore)} onChangeText={(v) => updateMatch(match.id, { homeScore: v === '' ? undefined : number(v) })} keyboardType="numeric" />
-              <Field label="Gol ospite" value={match.awayScore === undefined ? '' : String(match.awayScore)} onChangeText={(v) => updateMatch(match.id, { awayScore: v === '' ? undefined : number(v) })} keyboardType="numeric" />
+      <Text style={adminStyles.title}>{selectedDay}ª giornata</Text>
+      <View style={adminStyles.list}>
+        {dayMatches.map((match) => {
+          const hasResult = match.homeScore !== undefined && match.awayScore !== undefined;
+          return <View key={match.id} style={[adminStyles.listRow, { alignItems: 'flex-start' }]}>
+            <View style={adminStyles.listBody}>
+              <View style={adminStyles.row}>
+                <Field label="Squadra casa" value={match.home} onChangeText={(value) => updateMatch(match.id, { home: value })} />
+                <Field label="Gol casa" value={match.homeScore === undefined ? '' : String(match.homeScore)} onChangeText={(value) => setScore(match.id, 'homeScore', value)} keyboardType="numeric" />
+                <Field label="Gol ospite" value={match.awayScore === undefined ? '' : String(match.awayScore)} onChangeText={(value) => setScore(match.id, 'awayScore', value)} keyboardType="numeric" />
+                <Field label="Squadra ospite" value={match.away} onChangeText={(value) => updateMatch(match.id, { away: value })} />
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {hasResult ? <Pressable onPress={() => clearResult(match.id)} style={adminStyles.choice}>
+                  <Text style={adminStyles.choiceText}>Riporta a non disputata</Text>
+                </Pressable> : null}
+                <Text style={[adminStyles.listMeta, { alignSelf: 'center' }]}>{hasResult ? 'Risultato completo' : 'Non disputata'}</Text>
+              </View>
             </View>
-            <Field label="Casa" value={match.home} onChangeText={(v) => updateMatch(match.id, { home: v })} />
-            <Field label="Trasferta" value={match.away} onChangeText={(v) => updateMatch(match.id, { away: v })} />
-          </View>
-          <Pressable onPress={() => setMatches((prev) => prev.filter((m) => m.id !== match.id))}><MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.live} /></Pressable>
-        </View>)}</View>)}</ScrollView>
+            <Pressable accessibilityLabel="Elimina partita" onPress={() => removeMatch(match.id)} style={{ padding: 8 }}>
+              <MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} />
+            </Pressable>
+          </View>;
+        })}
+        {!dayMatches.length ? <Text style={adminStyles.copy}>Aggiungi la prima partita di questa giornata.</Text> : null}
+      </View>
+    </View>
 
-    <Button label="Salva girone" icon="content-save-outline" onPress={save} />
+    <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Anteprima classifica</Text>
+      <Text style={adminStyles.copy}>Calcolata in tempo reale dai risultati inseriti. Le penalità salvate vengono applicate al salvataggio.</Text>
+      <View style={adminStyles.list}>
+        {preview.slice(0, 5).map((row) => <View key={row.club} style={adminStyles.listRow}>
+          <Text style={{ width: 24, color: colors.muted, fontWeight: '900' }}>{row.rank}</Text>
+          <Text style={[adminStyles.listTitle, { flex: 1 }]}>{row.club}</Text>
+          <Text style={{ color: colors.accentStrong, fontWeight: '900' }}>{row.points} pt</Text>
+        </View>)}
+      </View>
+    </View>
+
+    <Button label="Salva e sincronizza tutto" icon="content-save-check-outline" onPress={() => void save()} />
   </View>;
 }

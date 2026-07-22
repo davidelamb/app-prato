@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { TeamLogo } from './TeamLogo';
 import { colors, radii } from '../theme';
-import { Fixture, LiveEvent } from '../types';
+import { Fixture, LiveEvent, MatchLineup, Player } from '../types';
+import { formatMatchClock, sortLiveEvents } from '../utils/live-match';
 
 const icons: Record<LiveEvent['type'], React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
   kickoff: 'information-outline',
@@ -13,16 +15,21 @@ const icons: Record<LiveEvent['type'], React.ComponentProps<typeof MaterialCommu
   fulltime: 'flag-checkered',
 };
 
-function phaseLabel(fixture: Fixture) {
+function phaseLabel(fixture: Fixture, now: number) {
   if (fixture.livePhase === 'halftime') return 'INTERVALLO';
   if (fixture.livePhase === 'finished' || fixture.status === 'final') return 'FINALE';
-  if (fixture.livePhase === 'second_half') return '2° TEMPO';
-  if (fixture.livePhase === 'first_half') return fixture.minute ? `${fixture.minute}'` : '1° TEMPO';
+  if (fixture.livePhase === 'second_half' || fixture.livePhase === 'first_half') return formatMatchClock(fixture, now);
   return fixture.dateLabel;
 }
 
-export function LivePanel({ fixture, compact = false }: { fixture: Fixture; compact?: boolean }) {
-  const events = [...(fixture.liveEvents ?? [])].sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
+export function LivePanel({ fixture, players = [], compact = false }: { fixture: Fixture; players?: Player[]; compact?: boolean }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (fixture.livePhase !== 'first_half' && fixture.livePhase !== 'second_half') return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [fixture.id, fixture.livePhase, fixture.phaseStartedAt]);
+  const events = useMemo(() => sortLiveEvents(fixture.liveEvents ?? []), [fixture.liveEvents]);
   const isLive = fixture.status === 'live';
 
   if (compact) {
@@ -37,7 +44,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
         </View>
         <Text style={styles.compactEyebrow}>{isLive ? 'Diretta partita' : fixture.matchday}</Text>
         <View style={styles.compactTeamsRow}><TeamLogo name={fixture.home} size={28} style={{ borderRadius: 7 }} /><Text style={styles.compactScore}>{fixture.home} {fixture.homeScore ?? 0}–{fixture.awayScore ?? 0} {fixture.away}</Text><TeamLogo name={fixture.away} size={28} style={{ borderRadius: 7 }} /></View>
-        <Text style={styles.compactMeta}>{phaseLabel(fixture)} · {fixture.venue}</Text>
+        <Text style={styles.compactMeta}>{phaseLabel(fixture, now)} · {fixture.venue}</Text>
       </View>
     );
   }
@@ -52,7 +59,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
           </View>
           <View style={[styles.phasePill, !isLive && styles.phasePillNeutral]}>
             <View style={[styles.phaseDot, !isLive && styles.phaseDotNeutral]} />
-            <Text style={styles.phaseText}>{phaseLabel(fixture)}</Text>
+            <Text style={styles.phaseText}>{phaseLabel(fixture, now)}</Text>
           </View>
         </View>
 
@@ -74,9 +81,15 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
         <Text style={styles.venue}>{fixture.venue}</Text>
       </View>
 
+      {fixture.homeLineup || fixture.awayLineup ? <View style={styles.lineupsCard}>
+        <Text style={styles.timelineEyebrow}>FORMAZIONI UFFICIALI</Text>
+        {fixture.homeLineup ? <LineupBlock team={fixture.home} lineup={fixture.homeLineup} players={players} /> : null}
+        {fixture.awayLineup ? <LineupBlock team={fixture.away} lineup={fixture.awayLineup} players={players} /> : null}
+      </View> : null}
+
       <View style={styles.timelineCard}>
         <View style={styles.timelineHeader}>
-          <View>
+          <View style={styles.timelineTitleBlock}>
             <Text style={styles.timelineEyebrow}>DIRETTA</Text>
             <Text style={styles.timelineTitle}>Cronaca minuto per minuto</Text>
           </View>
@@ -85,7 +98,7 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
 
         {events.length ? events.map((event) => (
           <View key={event.id} style={styles.eventRow}>
-            <View style={styles.minuteBox}><Text style={styles.minute}>{event.minute ? `${event.minute}'` : '—'}</Text></View>
+            <View style={styles.minuteBox}><Text style={styles.minute}>{event.minuteLabel ?? (event.minute !== undefined ? `${event.minute}'` : '—')}</Text></View>
             <View style={[styles.iconBox, event.type === 'goal' && styles.goalIconBox]}>
               <MaterialCommunityIcons name={icons[event.type]} size={22} color={event.type === 'goal' ? colors.success : colors.accentStrong} />
             </View>
@@ -105,6 +118,26 @@ export function LivePanel({ fixture, compact = false }: { fixture: Fixture; comp
       </View>
     </View>
   );
+}
+
+function LineupBlock({ team, lineup, players }: { team: string; lineup: MatchLineup; players: Player[] }) {
+  const byId = new Map(players.map((player) => [player.id, player]));
+  const row = (item: MatchLineup['starters'][number]) => {
+    const player = byId.get(item.playerId);
+    if (!player) return null;
+    return <View key={item.playerId} style={styles.lineupPlayer}>
+      <Text style={styles.lineupNumber}>{player.number ?? '—'}</Text>
+      <Text style={styles.lineupName}>{player.name}</Text>
+      <Text style={styles.lineupRole}>{player.role}</Text>
+    </View>;
+  };
+  return <View style={styles.lineupBlock}>
+    <View style={styles.lineupHeader}><TeamLogo name={team} size={34} /><Text style={styles.lineupTeam}>{team}</Text>{lineup.formation ? <Text style={styles.formation}>{lineup.formation}</Text> : null}</View>
+    <Text style={styles.lineupLabel}>Titolari</Text>
+    {[...lineup.starters].sort((a, b) => (a.positionOrder ?? 0) - (b.positionOrder ?? 0)).map(row)}
+    <Text style={styles.lineupLabel}>Panchina</Text>
+    {lineup.substitutes.length ? [...lineup.substitutes].sort((a, b) => (a.positionOrder ?? 0) - (b.positionOrder ?? 0)).map(row) : <Text style={styles.lineupEmpty}>Nessuna riserva comunicata</Text>}
+  </View>;
 }
 
 const styles = StyleSheet.create({
@@ -141,11 +174,23 @@ const styles = StyleSheet.create({
   score: { color: colors.ink, fontSize: 40, fontWeight: '900' },
   scoreDash: { color: colors.mutedDark, fontSize: 28, fontWeight: '700' },
   venue: { color: colors.muted, textAlign: 'center', fontSize: 11, paddingVertical: 18 },
+  lineupsCard: { padding: 18, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, gap: 16 },
+  lineupBlock: { gap: 7, paddingTop: 4 },
+  lineupHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
+  lineupTeam: { flex: 1, color: colors.ink, fontSize: 18, fontWeight: '900' },
+  formation: { color: colors.accentStrong, fontWeight: '900', paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.pill, backgroundColor: colors.accentSoft },
+  lineupLabel: { color: colors.muted, fontSize: 10, fontWeight: '900', letterSpacing: 0.8, marginTop: 7, textTransform: 'uppercase' },
+  lineupPlayer: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  lineupNumber: { width: 28, color: colors.accentStrong, fontWeight: '900', textAlign: 'center' },
+  lineupName: { flex: 1, color: colors.ink, fontWeight: '800' },
+  lineupRole: { color: colors.muted, fontSize: 11 },
+  lineupEmpty: { color: colors.muted, fontSize: 12 },
   timelineCard: { padding: 18, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   timelineHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 8 },
   timelineEyebrow: { color: colors.yellow, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
   timelineTitle: { color: colors.ink, fontSize: 23, lineHeight: 28, fontWeight: '900', marginTop: 4 },
-  timelineCount: { color: colors.muted, fontSize: 11 },
+  timelineTitleBlock: { flex: 1, minWidth: 0 },
+  timelineCount: { color: colors.muted, fontSize: 11, flexShrink: 0 },
   eventRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   minuteBox: { width: 58, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.yellowSoft },
   minute: { color: colors.ink, fontSize: 18, fontWeight: '900' },
