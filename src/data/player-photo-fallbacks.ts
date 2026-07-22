@@ -1,6 +1,11 @@
+import { Image } from 'react-native';
+
 import { Player } from '../types';
 
 type PlayerPhotoFallback = Pick<Player, 'imageUrl' | 'imageSourceUrl' | 'imageScale' | 'imagePositionX' | 'imagePositionY'>;
+
+const localPucci = Image.resolveAssetSource(require('../../assets/players/pucci.jpg'));
+const localVerde = Image.resolveAssetSource(require('../../assets/players/verde.jpg'));
 
 export const playerPhotoFallbacks: Record<string, PlayerPhotoFallback> = {
   biguzzi: {
@@ -15,10 +20,16 @@ export const playerPhotoFallbacks: Record<string, PlayerPhotoFallback> = {
     imageScale: 1.14,
     imagePositionY: -6,
   },
+  pucci: {
+    imageUrl: localPucci.uri,
+    imageSourceUrl: 'Fotografia fornita dall\'utente',
+    imageScale: 1.05,
+    imagePositionY: -2,
+  },
   verde: {
-    imageUrl: 'https://www.sportdiprato.it/wp-content/uploads/2026/02/verde-altopascio.jpg',
-    imageSourceUrl: 'https://www.sportdiprato.it/sport/calcio/dilettanti/15814-ac-prato-in-attacco-viene-confermato-francesco-verde',
-    imageScale: 1.28,
-    imagePositionY: -8,
+    imageUrl: localVerde.uri,
+    imageSourceUrl: 'Fotografia fornita dall\'utente',
+    imageScale: 1.05,
+    imagePositionY: -2,
   },
 };
