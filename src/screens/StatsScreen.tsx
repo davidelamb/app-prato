@@ -129,10 +129,11 @@ function CalendarView({
 }) {
   const bodySize = wide ? 14 : 13;
   const mutedSize = wide ? 12 : 11;
+  const logoSize = isMobile ? 28 : 32;
 
   return (
     <View>
-      {/* Filtri competizione - diciture complete senza badge */}
+      {/* Filtri competizione */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -164,70 +165,111 @@ function CalendarView({
         <View style={styles.calendarList}>
           {schedule.map((match) => {
             const comp = match.competition ?? 'Campionato';
-            const isHome = /\bprato\b/i.test(match.home);
+            const compColor = comp === 'Coppa Italia' ? colors.yellow : comp === 'Amichevole' ? colors.success : colors.accent;
+            const compBg = comp === 'Coppa Italia' ? colors.yellowSoft : comp === 'Amichevole' ? colors.successSoft : colors.accentSoft;
             const hasResult = match.homeScore != null && match.awayScore != null;
+            const isHomePrato = /\bprato\b/i.test(match.home);
+            const isAwayPrato = /\bprato\b/i.test(match.away);
             return (
               <View key={match.id} style={[styles.calCard, wide && styles.calCardWide]}>
-                {/* Intestazione competizione + turno */}
-                <View style={styles.calHeader}>
-                  <Text style={[styles.calComp, { fontSize: mutedSize }]}>{comp}</Text>
-                  <Text style={[styles.calRound, { fontSize: mutedSize }]}>
-                    {match.roundLabel || match.matchday ? `${match.matchday}ª giornata` : ''}
-                  </Text>
-                </View>
+                {/* Bordo accent sinistro per competizione */}
+                <View style={[styles.calCardAccent, { backgroundColor: compColor }]} />
 
-                {/* Data e ora */}
-                <View style={styles.calDateTime}>
-                  <MaterialCommunityIcons name="calendar-outline" size={14} color={colors.muted} />
-                  <Text style={[styles.calDate, { fontSize: mutedSize }]}>{match.dateLabel || '—'}</Text>
-                  <MaterialCommunityIcons name="clock-outline" size={14} color={colors.muted} style={{ marginLeft: 8 }} />
-                  <Text style={[styles.calTime, { fontSize: mutedSize }]}>{match.time || '—'}</Text>
-                </View>
-
-                {/* Squadre */}
-                <View style={styles.calMatchRow}>
-                  <View style={styles.calTeam}>
-                <TeamLogo name={match.home} size={isMobile ? 22 : 26} />
-                    <Text
-                      style={[styles.calTeamName, isPrato(match.home) && styles.calTeamPrato, { fontSize: bodySize }]}
-                      numberOfLines={1}
-                    >
-                      {match.home}
+                <View style={styles.calCardInner}>
+                  {/* Intestazione: competizione + turno/descrizione */}
+                  <View style={styles.calHeader}>
+                    <View style={[styles.calCompBadge, { backgroundColor: compBg, borderColor: compColor }]}>
+                      <Text style={[styles.calCompText, { color: compColor, fontSize: mutedSize - 1 }]}>{comp}</Text>
+                    </View>
+                    <Text style={[styles.calRound, { fontSize: mutedSize }]}>
+                      {match.roundLabel || (match.matchday ? `${match.matchday}ª giornata` : '')}
                     </Text>
                   </View>
 
-                  {hasResult ? (
-                    <View style={styles.calScore}>
-                      <Text style={[styles.calScoreText, { fontSize: bodySize + 2 }]}>
-                        {match.homeScore} - {match.awayScore}
+                  {/* Data e ora */}
+                  <View style={styles.calDateTime}>
+                    <MaterialCommunityIcons name="calendar-month" size={isMobile ? 15 : 16} color={colors.muted} />
+                    <Text style={[styles.calDate, { fontSize: mutedSize }]}>{match.dateLabel || '—'}</Text>
+                    {match.time ? (
+                      <>
+                        <View style={styles.calDateTimeDot} />
+                        <MaterialCommunityIcons name="clock-outline" size={isMobile ? 15 : 16} color={colors.muted} />
+                        <Text style={[styles.calTime, { fontSize: mutedSize }]}>{match.time}</Text>
+                      </>
+                    ) : null}
+                  </View>
+
+                  {/* Partita */}
+                  <View style={styles.calMatchSection}>
+                    {/* Squadra casa */}
+                    <View style={styles.calTeam}>
+                      <TeamLogo name={match.home} size={logoSize} />
+                      <Text
+                        style={[
+                          styles.calTeamName,
+                          isHomePrato && styles.calTeamPrato,
+                          { fontSize: bodySize },
+                        ]}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {match.home}
                       </Text>
                     </View>
-                  ) : (
-                    <View style={styles.calVs}>
-                      <Text style={[styles.calVsText, { fontSize: mutedSize }]}>VS</Text>
+
+                    {/* Risultato / VS */}
+                    <View style={styles.calResult}>
+                      {hasResult ? (
+                        <View style={styles.calScoreBox}>
+                          <Text style={[styles.calScoreValue, { fontSize: bodySize + 4, color: colors.ink }]}>
+                            {match.homeScore}
+                          </Text>
+                          <Text style={[styles.calScoreDivider, { fontSize: bodySize }]}>:</Text>
+                          <Text style={[styles.calScoreValue, { fontSize: bodySize + 4, color: colors.ink }]}>
+                            {match.awayScore}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.calVsBox}>
+                          <Text style={[styles.calVsText, { fontSize: mutedSize + 1 }]}>VS</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
 
-                  <View style={styles.calTeam}>
-                    <Text
-                      style={[styles.calTeamName, isPrato(match.away) && styles.calTeamPrato, { fontSize: bodySize }]}
-                      numberOfLines={1}
-                    >
-                      {match.away}
-                    </Text>
-                <TeamLogo name={match.away} size={isMobile ? 22 : 26} />
+                    {/* Squadra trasferta */}
+                    <View style={styles.calTeam}>
+                      <Text
+                        style={[
+                          styles.calTeamName,
+                          isAwayPrato && styles.calTeamPrato,
+                          { fontSize: bodySize, textAlign: 'right' },
+                        ]}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {match.away}
+                      </Text>
+                      <TeamLogo name={match.away} size={logoSize} />
+                    </View>
                   </View>
+
+                  {/* Stadio e info extra */}
+                  {match.venue ? (
+                    <View style={styles.calVenue}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={12} color={colors.mutedDark} />
+                      <Text style={[styles.calVenueText, { fontSize: mutedSize - 1 }]} numberOfLines={1}>
+                        {match.venue}
+                      </Text>
+                      {match.leg ? (
+                        <>
+                          <View style={styles.calDateTimeDot} />
+                          <MaterialCommunityIcons name="swap-horizontal" size={12} color={colors.mutedDark} />
+                          <Text style={[styles.calVenueText, { fontSize: mutedSize - 1 }]}>{match.leg}</Text>
+                        </>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
-
-                {/* Stadio */}
-                {match.venue ? (
-                  <View style={styles.calVenue}>
-                    <MaterialCommunityIcons name="map-marker-outline" size={12} color={colors.mutedDark} />
-                    <Text style={[styles.calVenueText, { fontSize: mutedSize - 1 }]} numberOfLines={1}>
-                      {match.venue}
-                    </Text>
-                  </View>
-                ) : null}
               </View>
             );
           })}
@@ -510,16 +552,28 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.lineSoft,
-    padding: 14,
-    gap: 8,
+    padding: 0,
+    overflow: 'hidden',
+    flexDirection: 'row',
   },
   calCardWide: {
-    padding: 18,
+    // inner padding via calCardInner
+  },
+  calCardAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+    flexShrink: 0,
+  },
+  calCardInner: {
+    flex: 1,
+    padding: 14,
+    gap: 10,
   },
   calHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   calComp: {
     color: colors.accent,
@@ -527,14 +581,33 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  calCompBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.xs,
+    borderWidth: 1,
+  },
+  calCompText: {
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
   calRound: {
     color: colors.muted,
     fontWeight: '700',
+    flexShrink: 0,
   },
   calDateTime: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
+    flexWrap: 'wrap',
+  },
+  calDateTimeDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.mutedDark,
+    marginHorizontal: 2,
   },
   calDate: {
     color: colors.muted,
@@ -544,11 +617,12 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontWeight: '700',
   },
-  calMatchRow: {
+  calMatchSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 44,
+    minHeight: 50,
+    gap: 6,
   },
   calTeam: {
     flexDirection: 'row',
@@ -565,6 +639,47 @@ const styles = StyleSheet.create({
   calTeamPrato: {
     color: colors.accentStrong,
   },
+  calResult: {
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 56,
+  },
+  calScoreBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceRaised,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.xs,
+    gap: 4,
+  },
+  calScoreValue: {
+    fontWeight: '900',
+    minWidth: 16,
+    textAlign: 'center',
+  },
+  calScoreDivider: {
+    color: colors.muted,
+    fontWeight: '700',
+  },
+  calVsBox: {
+    backgroundColor: colors.surfaceSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
+  calVsText: {
+    color: colors.mutedDark,
+    fontWeight: '800',
+  },
+  calMatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
   calScore: {
     backgroundColor: colors.surfaceRaised,
     paddingHorizontal: 14,
@@ -580,20 +695,17 @@ const styles = StyleSheet.create({
   calVs: {
     paddingHorizontal: 10,
   },
-  calVsText: {
-    color: colors.mutedDark,
-    fontWeight: '800',
-  },
   calVenue: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingTop: 2,
+    flexWrap: 'wrap',
   },
   calVenueText: {
     color: colors.mutedDark,
     fontWeight: '600',
-    flex: 1,
+    flexShrink: 1,
   },
 
   // Banner simulazione
