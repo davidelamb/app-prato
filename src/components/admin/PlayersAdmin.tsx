@@ -27,8 +27,12 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
   };
 
   const reset = () => { setDraft(empty); setEditing(null); };
-  const save = () => {
+    const save = () => {
     if (!draft.name.trim()) return Alert.alert('Nome mancante', 'Inserisci il nome del calciatore.');
+    const num = Number(draft.number);
+    if (draft.number !== undefined && draft.number !== null && !(Number.isInteger(num) && num >= 1 && num <= 99)) {
+      return Alert.alert('Numero non valido', 'Inserisci un numero intero tra 1 e 99 oppure lascia il campo vuoto.');
+    }
     const player: Player = {
       ...draft,
       id: editing ?? id(),
