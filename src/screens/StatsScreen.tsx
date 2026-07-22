@@ -403,7 +403,7 @@ function StandingsView({
                     {row.club}
                   </Text>
                   <View style={styles.pointsBadge}>
-                    <Text style={[styles.pointsValue, { fontSize: bodySize + 2 }]}>{row.points}</Text>
+                    <Text style={[styles.pointsValue, { fontSize: bodySize + 2 }]}>{row.points + (row.penalty ?? 0)}</Text>
                     <Text style={[styles.pointsLabel, { fontSize: mutedSize }]}>PT</Text>
                   </View>
                 </View>

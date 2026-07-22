@@ -49,6 +49,22 @@ function normalizeMedia(item: MediaItem): MediaItem {
   return { ...item, description: item.description ?? '', thumbnailUrl: item.thumbnailUrl ?? '', source: item.source ?? 'Redazione' };
 }
 
+function normalizeGroupMatch(match: SeasonMatch, index: number): SeasonMatch {
+  const matchday = Number(match.matchday) || undefined;
+  return {
+    ...match,
+    id: match.id || `group-match-${index + 1}`,
+    matchday,
+    leg: match.leg ?? (matchday ? (matchday <= 17 ? 'Andata' : 'Ritorno') : undefined),
+    competition: match.competition ?? 'Campionato',
+    roundLabel: match.roundLabel ?? (matchday ? `${matchday}ª giornata` : ''),
+    dateLabel: match.dateLabel ?? '',
+    time: match.time ?? '',
+    venue: match.venue ?? '',
+    sortOrder: Number(match.sortOrder) || index,
+  };
+}
+
 function normalizeSchedule(match: SeasonMatch, index: number): SeasonMatch {
   const matchday = Number(match.matchday) || undefined;
   return {
@@ -84,6 +100,7 @@ export function normalizeContent(content: AppContent): AppContent {
     awayStandings: sortStandingRows(completeStandingRows(content.awayStandings, emptyMaster)),
     formStandings: sortStandingRows(completeStandingRows(content.formStandings, emptyMaster)),
     schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : seedContent.schedule?.map(normalizeSchedule),
+    groupMatches: Array.isArray(content.groupMatches) ? content.groupMatches.map(normalizeGroupMatch) : (seedContent.groupMatches?.length ? seedContent.groupMatches.map(normalizeGroupMatch) : []),
     players: mergedPlayers,
     news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
     media: Array.isArray(content.media) ? content.media.map(normalizeMedia) : seedContent.media,

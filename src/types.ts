@@ -63,6 +63,7 @@ export type Standing = {
   goalsAgainst?: number;
   goalDifference?: number;
   points: number;
+  penalty?: number;
   form?: Array<'W' | 'D' | 'L'>;
 };
 
@@ -127,6 +128,7 @@ export type AppContent = {
   awayStandings?: Standing[];
   formStandings?: Standing[];
   schedule?: SeasonMatch[];
+  groupMatches?: SeasonMatch[];
   players: Player[];
   news: NewsArticle[];
   media: MediaItem[];
