@@ -27,7 +27,7 @@ const tabs: Array<{ key: PublicTab; label: string; icon?: IconName; image?: Retu
   { key: 'news', label: 'News', icon: 'newspaper-variant-outline' },
   { key: 'media', label: 'Media', icon: 'play-box-multiple-outline' },
   { key: 'live', label: 'Live', icon: 'broadcast' },
-  { key: 'stats', label: 'Stats', icon: 'chart-bar' },
+  { key: 'stats', label: 'Statistiche', icon: 'chart-bar' },
   { key: 'club', label: 'Club', image: clubIcon },
 ];
 
@@ -111,5 +111,5 @@ const styles = StyleSheet.create({
   navText: { color: colors.muted, fontSize: 9, fontWeight: '900' },
   navTextActive: { color: colors.accentStrong },
   navUnderline: { position: 'absolute', left: 7, right: 7, bottom: 0, height: 4, backgroundColor: colors.yellow, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  clubIcon: { width: 28, height: 28 },
+  clubIcon: { width: 30, height: 30 },
 });
