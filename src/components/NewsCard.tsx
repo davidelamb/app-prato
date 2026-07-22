@@ -4,6 +4,7 @@ import { Image, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from '
 
 import { colors, radii } from '../theme';
 import { NewsArticle } from '../types';
+import { imageTransformStyle } from '../utils/player-image';
 
 export function NewsCard({
   article,
@@ -20,7 +21,7 @@ export function NewsCard({
     return (
       <Pressable onPress={onPress} style={({ pressed }) => [styles.featured, style, pressed && styles.pressed]}>
         {article.imageUrl ? (
-          <Image source={{ uri: article.imageUrl }} resizeMode="cover" style={styles.featuredImage} />
+          <Image source={{ uri: article.imageUrl }} resizeMode="cover" style={[styles.featuredImage, imageTransformStyle(article)]} />
         ) : (
           <LinearGradient colors={[colors.accentStrong, colors.accent, colors.blue]} style={styles.placeholder}>
             <MaterialCommunityIcons name="newspaper-variant-outline" size={60} color={colors.paper} />
@@ -43,7 +44,7 @@ export function NewsCard({
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, style, pressed && styles.pressed]}>
       <View style={styles.thumbWrap}>
         {article.imageUrl ? (
-          <Image source={{ uri: article.imageUrl }} resizeMode="cover" style={styles.thumb} />
+          <Image source={{ uri: article.imageUrl }} resizeMode="cover" style={[styles.thumb, imageTransformStyle(article)]} />
         ) : (
           <View style={styles.thumbPlaceholder}>
             <MaterialCommunityIcons name="newspaper-variant-outline" size={34} color={colors.accent} />

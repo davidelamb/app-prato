@@ -107,6 +107,9 @@ export type NewsArticle = {
   sourceUrl?: string;
   featured?: boolean;
   imageUrl?: string;
+  imageScale?: number;
+  imagePositionX?: number;
+  imagePositionY?: number;
 };
 
 export type MediaItem = {
