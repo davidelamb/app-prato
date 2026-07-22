@@ -31,9 +31,45 @@ const tabs: Array<{ key: PublicTab; label: string; icon?: IconName; image?: Retu
   { key: 'club', label: 'Club', image: clubIcon },
 ];
 
+const hoverColors: Record<string, string> = {
+  news: colors.blue,
+  media: '#7B3FA3',
+  live: colors.live,
+  stats: colors.success,
+};
+
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
 const publicTabKeys = new Set<PublicTab>(tabs.map((item) => item.key));
+
+function NavTabItem({ item, active, onPress }: { item: typeof tabs[number]; active: boolean; onPress: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const isClub = item.key === 'club';
+  const highlight = !active && !isClub && (hovered || focused);
+  const iconColor = highlight ? hoverColors[item.key] : active ? colors.accentStrong : colors.muted;
+  const textColor = highlight ? hoverColors[item.key] : active ? colors.accentStrong : colors.muted;
+
+  return (
+    <Pressable
+      key={item.key}
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={[styles.navItem, active && styles.navItemActive, focused && !active && !isClub && styles.navItemFocus]}
+    >
+      {item.image ? (
+        <Image source={item.image} style={[styles.clubIcon, { opacity: active ? 1 : 0.55 }]} resizeMode="contain" />
+      ) : (
+        <MaterialCommunityIcons name={item.icon!} size={22} color={iconColor} />
+      )}
+      <Text style={[styles.navText, { color: textColor }]}>{item.label}</Text>
+      {active ? <View style={styles.navUnderline} /> : null}
+    </Pressable>
+  );
+}
 
 export default function AppShell() {
   const [content, setContent] = useState<AppContent>(seedContent);
@@ -80,7 +116,7 @@ export default function AppShell() {
       </View>
     </ScrollView>
 
-    {tab !== 'admin' ? <View style={styles.nav}><View style={styles.navInner}>{tabs.map((item) => { const active = publicTab === item.key; return <Pressable key={item.key} onPress={() => setTab(item.key)} style={[styles.navItem, active && styles.navItemActive]}>{item.image ? <Image source={item.image} style={[styles.clubIcon, { opacity: active ? 1 : 0.55 }]} resizeMode="contain" /> : <MaterialCommunityIcons name={item.icon!} size={22} color={active ? colors.accentStrong : colors.muted} />}<Text style={[styles.navText, active && styles.navTextActive]}>{item.label}</Text>{active ? <View style={styles.navUnderline} /> : null}</Pressable>; })}</View></View> : null}
+    {tab !== 'admin' ? <View style={styles.nav}><View style={styles.navInner}>{tabs.map((item) => <NavTabItem key={item.key} item={item} active={publicTab === item.key} onPress={() => setTab(item.key)} />)}</View></View> : null}
     <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     <ArticleModal article={selectedNews} onClose={() => setSelectedNews(null)} />
   </SafeAreaView>;
@@ -108,6 +144,7 @@ const styles = StyleSheet.create({
   navInner: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', minHeight: 68, paddingHorizontal: 3 },
   navItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: 3 },
   navItemActive: { backgroundColor: colors.surfaceRaised },
+  navItemFocus: { backgroundColor: 'rgba(0,0,0,0.04)' },
   navText: { color: colors.muted, fontSize: 9, fontWeight: '900' },
   navTextActive: { color: colors.accentStrong },
   navUnderline: { position: 'absolute', left: 7, right: 7, bottom: 0, height: 4, backgroundColor: colors.yellow, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
