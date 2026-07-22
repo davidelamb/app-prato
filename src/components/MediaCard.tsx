@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Image, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { colors, radii } from '../theme';
 import { MediaItem } from '../types';
@@ -27,7 +27,17 @@ export function MediaCard({ item, onPress, featured = false, style }: { item: Me
 }
 
 const styles = StyleSheet.create({
-  card: { overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, shadowColor: colors.shadow, shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+  card: {
+    overflow: 'hidden',
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...Platform.select({
+      web: { boxShadow: '0 5px 12px rgba(11, 36, 56, 0.07)' },
+      default: { shadowColor: colors.shadow, shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+    }),
+  },
   featured: { minHeight: 390, backgroundColor: colors.navy },
   pressed: { opacity: 0.9, transform: [{ scale: 0.995 }] },
   imageWrap: { height: 176, backgroundColor: colors.navy },
