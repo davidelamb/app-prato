@@ -1,242 +1,782 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { TeamLogo } from '../components/TeamLogo';
-import { preseasonStandings, provisionalPratoSchedule } from '../data/season-2026-27';
+import { getSimulatedStandings, isStandingsEmpty, SIMULATED_LABEL } from '../data/simulated-standings';
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope } from '../types';
-import { completeStandingRows, numberValue, standingRows, standingScopes } from '../utils/standings';
+import { normalizeStandingRow, standingRows } from '../utils/standings';
 
-type StatsView = 'calendar' | 'standings';
-type CalendarFilter = 'Tutte' | MatchCompetition;
+type StatsView = 'schedule' | 'standings';
 
-const STATS_VIEW_STORAGE_KEY = 'app-prato:stats-view';
+const competitionLabels: Record<MatchCompetition | 'Tutte', string> = {
+  Tutte: 'Tutte',
+  Campionato: 'Campionato',
+  'Coppa Italia': 'Coppa Italia',
+  Amichevole: 'Amichevole',
+};
 
-const filters: Array<{ value: CalendarFilter; label: string }> = [
-  { value: 'Tutte', label: 'Tutte' },
-  { value: 'Campionato', label: 'Campionato' },
-  { value: 'Coppa Italia', label: 'Coppa Italia' },
-  { value: 'Amichevole', label: 'Amichevoli' },
-];
+const scopeLabels: Record<StandingScope, string> = {
+  overall: 'Generale',
+  home: 'Casa',
+  away: 'Trasferta',
+  form: 'Forma',
+};
 
-const visibleValue = (value: string) => value && value !== 'Data da definire' && value !== '—' ? value : '';
+const calendarCompetitionFilters: Array<MatchCompetition | 'Tutte'> = ['Tutte', 'Campionato', 'Coppa Italia', 'Amichevole'];
+const scopeFilters: StandingScope[] = ['overall', 'home', 'away', 'form'];
 
-function normalizedMatch(match: SeasonMatch, index: number): SeasonMatch {
-  return {
-    ...match,
-    competition: match.competition ?? 'Campionato',
-    roundLabel: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : ''),
-    venue: match.venue ?? '',
-    sortOrder: match.sortOrder ?? index,
-  };
+const isPrato = (club: string) => /\bprato\b/i.test(club);
+
+function dateValue(label: string): number {
+  const d = new Date(`${label} 2026`);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
-function calendarKey(match: SeasonMatch): number {
-  const date = match.dateLabel.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
-  if (date) return Date.UTC(Number(date[3]), Number(date[2]) - 1, Number(date[1]));
-  return 9_000_000_000_000 + (match.sortOrder ?? 0);
+function formIcon(value: 'W' | 'D' | 'L') {
+  if (value === 'W') return { label: 'V', color: colors.success, bg: colors.successSoft };
+  if (value === 'D') return { label: 'N', color: colors.warning, bg: colors.yellowSoft };
+  return { label: 'P', color: colors.live, bg: colors.liveSoft };
 }
 
-export function StatsScreen({ content }: { content: AppContent; wide: boolean }) {
-  const [view, setView] = useState<StatsView>('calendar');
-  const [viewHydrated, setViewHydrated] = useState(false);
-  const [filter, setFilter] = useState<CalendarFilter>('Tutte');
-  const [standingScope, setStandingScope] = useState<StandingScope>('overall');
+export function StatsScreen({ content, wide }: { content: AppContent; wide: boolean }) {
+  const [view, setView] = useState<StatsView>('schedule');
+  const [calFilter, setCalFilter] = useState<MatchCompetition | 'Tutte'>('Tutte');
+  const [scope, setScope] = useState<StandingScope>('overall');
+  const { width } = useWindowDimensions();
+  const isMobile = width < 600;
 
-  useEffect(() => {
-    AsyncStorage.getItem(STATS_VIEW_STORAGE_KEY)
-      .then((savedView) => {
-        if (savedView === 'calendar' || savedView === 'standings') setView(savedView);
-      })
-      .finally(() => setViewHydrated(true));
-  }, []);
-
-  useEffect(() => {
-    if (viewHydrated) void AsyncStorage.setItem(STATS_VIEW_STORAGE_KEY, view);
-  }, [view, viewHydrated]);
-
-  const standings = completeStandingRows(standingRows(content, standingScope), preseasonStandings);
   const schedule = useMemo(() => {
-    const source = content.schedule?.length ? content.schedule : provisionalPratoSchedule;
-    return source.map(normalizedMatch).sort((a, b) => calendarKey(a) - calendarKey(b));
-  }, [content.schedule]);
-  const visibleSchedule = useMemo(
-    () => filter === 'Tutte' ? schedule : schedule.filter((match) => match.competition === filter),
-    [filter, schedule],
-  );
+    const items = content.schedule ?? [];
+    const filtered = calFilter === 'Tutte' ? items : items.filter((m) => (m.competition ?? 'Campionato') === calFilter);
+    return [...filtered].sort((a, b) => {
+      const d = dateValue(a.dateLabel) - dateValue(b.dateLabel);
+      if (d !== 0) return d;
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    });
+  }, [content.schedule, calFilter]);
 
-  return <View style={styles.stack}>
-    <View><Text style={styles.eyebrow}>AC PRATO</Text><Text style={styles.title}>Stagione 2026/27</Text></View>
-
-    <View style={styles.segmented}>
-      <Pressable onPress={() => setView('calendar')} style={[styles.segment, view === 'calendar' && styles.segmentActive]}>
-        <MaterialCommunityIcons name="calendar-month-outline" size={20} color={view === 'calendar' ? colors.paper : colors.accentStrong} />
-        <Text style={[styles.segmentText, view === 'calendar' && styles.segmentTextActive]}>Calendario</Text>
-      </Pressable>
-      <Pressable onPress={() => setView('standings')} style={[styles.segment, view === 'standings' && styles.segmentActive]}>
-        <MaterialCommunityIcons name="format-list-numbered" size={20} color={view === 'standings' ? colors.paper : colors.accentStrong} />
-        <Text style={[styles.segmentText, view === 'standings' && styles.segmentTextActive]}>Classifica</Text>
-      </Pressable>
-    </View>
-
-    {view === 'calendar' ? <View style={styles.calendarStack}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {filters.map((item) => <Pressable key={item.value} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterActive]}><Text style={[styles.filterText, filter === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
-      </ScrollView>
-      <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Partite</Text><Text style={styles.sectionCount}>{visibleSchedule.length}</Text></View>
-      <View style={styles.matchList}>{visibleSchedule.map((match) => <MatchRow key={match.id} match={match} />)}</View>
-      {!visibleSchedule.length ? <View style={styles.empty}><MaterialCommunityIcons name="calendar-blank-outline" size={32} color={colors.muted} /><Text style={styles.emptyText}>Nessuna partita in questa categoria.</Text></View> : null}
-    </View> : <View style={styles.standingsStack}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {standingScopes.map((item) => <Pressable key={item.value} onPress={() => setStandingScope(item.value)} style={[styles.filter, standingScope === item.value && styles.filterActive]}><Text style={[styles.filterText, standingScope === item.value && styles.filterTextActive]}>{item.label}</Text></Pressable>)}
-      </ScrollView>
-      {standings.length ? <StandingsList standings={standings} scope={standingScope} /> : <View style={styles.empty}><MaterialCommunityIcons name="table-alert" size={32} color={colors.muted} /><Text style={styles.emptyText}>Classifica in caricamento.</Text></View>}
-    </View>}
-  </View>;
-}
-
-function MatchRow({ match }: { match: SeasonMatch }) {
-  const date = visibleValue(match.dateLabel);
-  const time = visibleValue(match.time);
-  const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
-  const competition = match.competition ?? 'Campionato';
-  const round = match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : '');
-  return <View style={styles.matchCard}>
-    <View style={styles.matchBody}>
-      <View style={styles.matchTop}><Text style={styles.competitionName}>{competition}</Text>{round ? <Text style={styles.round}>{round}</Text> : null}</View>
-      {date || time || match.venue ? <Text style={styles.matchMeta}>{[date, time, match.venue].filter(Boolean).join(' · ')}</Text> : null}
-      <View style={styles.teamRow}><TeamLogo name={match.home} size={22} style={{ borderRadius: 6 }} /><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.home) && styles.pratoTeam]}>{match.home}</Text>{hasScore ? <Text style={styles.score}>{match.homeScore}</Text> : null}</View>
-      <View style={styles.teamDivider} />
-      <View style={styles.teamRow}><TeamLogo name={match.away} size={22} style={{ borderRadius: 6 }} /><Text numberOfLines={1} style={[styles.teamName, /^(AC )?Prato$/i.test(match.away) && styles.pratoTeam]}>{match.away}</Text>{hasScore ? <Text style={styles.score}>{match.awayScore}</Text> : null}</View>
-    </View>
-  </View>;
-}
-
-function StandingsList({ standings, scope }: { standings: Standing[]; scope: StandingScope }) {
-  const label = standingScopes.find((item) => item.value === scope)?.label ?? 'Generale';
-  const ordered = [...standings].sort((a, b) => a.rank - b.rank);
-  const showForm = scope === 'form';
+  const displayStandings = useMemo(() => {
+    const rows = standingRows(content, scope);
+    // Se ci sono dati reali (almeno una riga con partite giocate) usali, altrimenti simulati
+    if (!isStandingsEmpty(rows)) return { rows: rows.map(normalizeStandingRow), simulated: false };
+    return { rows: getSimulatedStandings(scope), simulated: true };
+  }, [content, scope]);
 
   return (
-    <View style={styles.standingsCard}>
-      <Text style={styles.standingsTitle}>Serie D Girone E · {label}</Text>
-      <View style={styles.standingsBody}>
-        {ordered.map((row) => (
-          <StandingCard key={row.club} row={row} showForm={showForm} />
-        ))}
+    <View>
+      {/* View switcher */}
+      <View style={styles.viewTabs}>
+        <Pressable
+          onPress={() => setView('schedule')}
+          style={[styles.viewTab, view === 'schedule' && styles.viewTabActive]}
+        >
+          <MaterialCommunityIcons
+            name="calendar-month-outline"
+            size={18}
+            color={view === 'schedule' ? colors.accentStrong : colors.muted}
+          />
+          <Text style={[styles.viewTabText, view === 'schedule' && styles.viewTabTextActive]}>Calendario</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setView('standings')}
+          style={[styles.viewTab, view === 'standings' && styles.viewTabActive]}
+        >
+          <MaterialCommunityIcons
+            name="trophy-outline"
+            size={18}
+            color={view === 'standings' ? colors.accentStrong : colors.muted}
+          />
+          <Text style={[styles.viewTabText, view === 'standings' && styles.viewTabTextActive]}>Classifica</Text>
+        </Pressable>
       </View>
+
+      {view === 'schedule' ? (
+        <CalendarView
+          schedule={schedule}
+          calFilter={calFilter}
+          onCalFilter={setCalFilter}
+          wide={wide}
+          isMobile={isMobile}
+        />
+      ) : (
+        <StandingsView
+          standings={displayStandings.rows}
+          simulated={displayStandings.simulated}
+          scope={scope}
+          onScope={setScope}
+          wide={wide}
+          isMobile={isMobile}
+        />
+      )}
     </View>
   );
 }
 
-function StandingCard({ row, showForm }: { row: Standing; showForm: boolean }) {
-  const isPrato = /^(AC )?Prato$/i.test(row.club);
+function CalendarView({
+  schedule,
+  calFilter,
+  onCalFilter,
+  wide,
+  isMobile,
+}: {
+  schedule: SeasonMatch[];
+  calFilter: MatchCompetition | 'Tutte';
+  onCalFilter: (f: MatchCompetition | 'Tutte') => void;
+  wide: boolean;
+  isMobile: boolean;
+}) {
+  const bodySize = wide ? 14 : 13;
+  const mutedSize = wide ? 12 : 11;
+
   return (
-    <View style={[styles.card, isPrato && styles.pratoCard]}>
-      <View style={styles.cardMain}>
-        <Text style={[styles.cardPos, isPrato && styles.pratoPosText]}>{row.rank}</Text>
-        <TeamLogo name={row.club} size={28} style={styles.cardLogo} />
-        <Text numberOfLines={1} style={[styles.cardClub, isPrato && styles.pratoText]}>{row.club}</Text>
-        <Text style={[styles.cardPoints, isPrato && styles.pratoPointsText]}>{row.points}</Text>
-        <Text style={styles.cardPtsLabel}>PT</Text>
-      </View>
-      <View style={styles.cardStats}>
-        <Stat label="G" value={String(row.played)} />
-        <Stat label="V" value={String(numberValue(row.wins))} accent={numberValue(row.wins) > 0 ? 'positive' : undefined} />
-        <Stat label="N" value={String(numberValue(row.draws))} />
-        <Stat label="P" value={String(numberValue(row.losses))} accent={numberValue(row.losses) > 0 ? 'negative' : undefined} />
-        <Stat label="GF" value={String(numberValue(row.goalsFor))} />
-        <Stat label="GS" value={String(numberValue(row.goalsAgainst))} />
-        <Stat label="DR" value={String(numberValue(row.goalDifference))} accent={numberValue(row.goalDifference) > 0 ? 'positive' : numberValue(row.goalDifference) < 0 ? 'negative' : undefined} />
-      </View>
-      {showForm && (row.form ?? []).length > 0 ? (
-        <View style={styles.cardForm}>
-          <Text style={styles.formLabel}>Ultime 5</Text>
-          <View style={styles.formRow}>
-            {(row.form ?? []).slice(-5).map((result, index) => (
-              <View key={`${row.club}-${index}`} style={[styles.formBadge, result === 'W' ? styles.formWin : result === 'D' ? styles.formDraw : styles.formLoss]}>
-                <Text style={styles.formText}>{result === 'W' ? 'V' : result === 'D' ? 'N' : 'P'}</Text>
-              </View>
-            ))}
-          </View>
+    <View>
+      {/* Filtri competizione - diciture complete senza badge */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterContent}
+      >
+        {calendarCompetitionFilters.map((f) => {
+          const active = calFilter === f;
+          return (
+            <Pressable
+              key={f}
+              onPress={() => onCalFilter(f)}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                {competitionLabels[f]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {schedule.length === 0 ? (
+        <View style={styles.emptyState}>
+          <MaterialCommunityIcons name="calendar-blank-outline" size={36} color={colors.mutedDark} />
+          <Text style={styles.emptyText}>Nessuna partita in calendario</Text>
         </View>
-      ) : null}
+      ) : (
+        <View style={styles.calendarList}>
+          {schedule.map((match) => {
+            const comp = match.competition ?? 'Campionato';
+            const isHome = /\bprato\b/i.test(match.home);
+            const hasResult = match.homeScore != null && match.awayScore != null;
+            return (
+              <View key={match.id} style={[styles.calCard, wide && styles.calCardWide]}>
+                {/* Intestazione competizione + turno */}
+                <View style={styles.calHeader}>
+                  <Text style={[styles.calComp, { fontSize: mutedSize }]}>{comp}</Text>
+                  <Text style={[styles.calRound, { fontSize: mutedSize }]}>
+                    {match.roundLabel || match.matchday ? `${match.matchday}ª giornata` : ''}
+                  </Text>
+                </View>
+
+                {/* Data e ora */}
+                <View style={styles.calDateTime}>
+                  <MaterialCommunityIcons name="calendar-outline" size={14} color={colors.muted} />
+                  <Text style={[styles.calDate, { fontSize: mutedSize }]}>{match.dateLabel || '—'}</Text>
+                  <MaterialCommunityIcons name="clock-outline" size={14} color={colors.muted} style={{ marginLeft: 8 }} />
+                  <Text style={[styles.calTime, { fontSize: mutedSize }]}>{match.time || '—'}</Text>
+                </View>
+
+                {/* Squadre */}
+                <View style={styles.calMatchRow}>
+                  <View style={styles.calTeam}>
+                <TeamLogo name={match.home} size={isMobile ? 22 : 26} />
+                    <Text
+                      style={[styles.calTeamName, isPrato(match.home) && styles.calTeamPrato, { fontSize: bodySize }]}
+                      numberOfLines={1}
+                    >
+                      {match.home}
+                    </Text>
+                  </View>
+
+                  {hasResult ? (
+                    <View style={styles.calScore}>
+                      <Text style={[styles.calScoreText, { fontSize: bodySize + 2 }]}>
+                        {match.homeScore} - {match.awayScore}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.calVs}>
+                      <Text style={[styles.calVsText, { fontSize: mutedSize }]}>VS</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.calTeam}>
+                    <Text
+                      style={[styles.calTeamName, isPrato(match.away) && styles.calTeamPrato, { fontSize: bodySize }]}
+                      numberOfLines={1}
+                    >
+                      {match.away}
+                    </Text>
+                <TeamLogo name={match.away} size={isMobile ? 22 : 26} />
+                  </View>
+                </View>
+
+                {/* Stadio */}
+                {match.venue ? (
+                  <View style={styles.calVenue}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={12} color={colors.mutedDark} />
+                    <Text style={[styles.calVenueText, { fontSize: mutedSize - 1 }]} numberOfLines={1}>
+                      {match.venue}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: 'positive' | 'negative' }) {
+function StandingsView({
+  standings,
+  simulated,
+  scope,
+  onScope,
+  wide,
+  isMobile,
+}: {
+  standings: Standing[];
+  simulated: boolean;
+  scope: StandingScope;
+  onScope: (s: StandingScope) => void;
+  wide: boolean;
+  isMobile: boolean;
+}) {
+  const labelSize = wide ? 13 : 11;
+  const bodySize = wide ? 14 : 13;
+  const highlightName = wide ? 15 : 14;
+
   return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={[styles.statLabel, accent === 'positive' && styles.statPositive, accent === 'negative' && styles.statNegative]}>{label}</Text>
+    <View>
+      {/* Filtri scope */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterContent}
+      >
+        {scopeFilters.map((s) => {
+          const active = scope === s;
+          return (
+            <Pressable
+              key={s}
+              onPress={() => onScope(s)}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                {scopeLabels[s]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {simulated && (
+        <View style={styles.simulatedBanner}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={14} color={colors.warning} />
+          <Text style={styles.simulatedText}>{SIMULATED_LABEL}</Text>
+        </View>
+      )}
+
+      {/* Vista Forma: solo posizione, squadra, forma — niente PT/punteggi */}
+      {scope === 'form' ? (
+        <View style={styles.standingList}>
+          {standings.map((row) => {
+            const prato = isPrato(row.club);
+            return (
+              <View key={row.club} style={[styles.standingCard, prato && styles.standingCardPrato]}>
+                <View style={styles.formRow}>
+                  <Text style={[styles.rankBadge, prato && styles.rankBadgePrato, { fontSize: bodySize }]}>
+                    {row.rank}
+                  </Text>
+                <TeamLogo name={row.club} size={isMobile ? 22 : 26} />
+                  <Text
+                    style={[styles.standingClub, prato && styles.standingClubPrato, { fontSize: highlightName, flex: 1 }]}
+                    numberOfLines={1}
+                  >
+                    {row.club}
+                  </Text>
+                  <View style={styles.formIndicators}>
+                    {(row.form ?? []).map((f, i) => {
+                      const fi = formIcon(f);
+                      return (
+                        <View key={i} style={[styles.formDot, { backgroundColor: fi.bg, borderColor: fi.color }]}>
+                          <Text style={[styles.formDotLabel, { color: fi.color }]}>{fi.label}</Text>
+                        </View>
+                      );
+                    })}
+                    {(row.form ?? []).length === 0 && (
+                      <Text style={[styles.noFormText, { fontSize: mutedSize }]}>—</Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        /* Vista Generale / Casa / Trasferta: card completa con statistiche */
+        <View style={styles.standingList}>
+          {/* Header etichette */}
+          {!isMobile && (
+            <View style={styles.standingHeader}>
+              <Text style={[styles.headerCell, styles.headerRank]}>#</Text>
+              <Text style={[styles.headerCell, { flex: 2 }]}>Squadra</Text>
+              <Text style={[styles.headerCell, { width: 28 }]}>G</Text>
+              <Text style={[styles.headerCell, { width: 22 }]}>V</Text>
+              <Text style={[styles.headerCell, { width: 22 }]}>N</Text>
+              <Text style={[styles.headerCell, { width: 22 }]}>P</Text>
+              <Text style={[styles.headerCell, { width: 28 }]}>GF</Text>
+              <Text style={[styles.headerCell, { width: 28 }]}>GS</Text>
+              <Text style={[styles.headerCell, { width: 30 }]}>DR</Text>
+              <Text style={[styles.headerCell, styles.headerPts]}>PT</Text>
+              <View style={{ width: isMobile ? 0 : 60 }} />
+            </View>
+          )}
+
+          {standings.map((row) => {
+            const prato = isPrato(row.club);
+            return (
+              <View key={row.club} style={[styles.standingCard, prato && styles.standingCardPrato]}>
+                {/* Riga principale: posizione + stemma + nome + punti */}
+                <View style={styles.standingMainRow}>
+                  <Text style={[styles.rankBadge, prato && styles.rankBadgePrato, { fontSize: bodySize }]}>
+                    {row.rank}
+                  </Text>
+                  <TeamLogo name={row.club} size={isMobile ? 22 : 26} />
+                  <Text
+                    style={[styles.standingClub, prato && styles.standingClubPrato, { fontSize: highlightName, flex: 1 }]}
+                    numberOfLines={1}
+                  >
+                    {row.club}
+                  </Text>
+                  <View style={styles.pointsBadge}>
+                    <Text style={[styles.pointsValue, { fontSize: bodySize + 2 }]}>{row.points}</Text>
+                    <Text style={[styles.pointsLabel, { fontSize: mutedSize }]}>PT</Text>
+                  </View>
+                </View>
+
+                {/* Riga secondaria: statistiche con etichette (G, V, N, P, GF, GS, DR) */}
+                <View style={styles.standingStatsRow}>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statLabel, { fontSize: labelSize }]}>G</Text>
+                    <Text style={[styles.statValue, { fontSize: bodySize }]}>{row.played}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statLabel, { fontSize: labelSize }]}>V</Text>
+                    <Text style={[styles.statValue, { fontSize: bodySize }]}>{row.wins ?? 0}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statLabel, { fontSize: labelSize }]}>N</Text>
+                    <Text style={[styles.statValue, { fontSize: bodySize }]}>{row.draws ?? 0}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statLabel, { fontSize: labelSize }]}>P</Text>
+                    <Text style={[styles.statValue, { fontSize: bodySize }]}>{row.losses ?? 0}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statLabel, { fontSize: labelSize }]}>GF</Text>
+                    <Text style={[styles.statValue, { fontSize: bodySize }]}>{row.goalsFor ?? 0}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statLabel, { fontSize: labelSize }]}>GS</Text>
+                    <Text style={[styles.statValue, { fontSize: bodySize }]}>{row.goalsAgainst ?? 0}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statLabel, { fontSize: labelSize }]}>DR</Text>
+                    <Text style={[styles.statValueDr, { fontSize: bodySize }, (row.goalDifference ?? 0) > 0 && styles.statPositive, (row.goalDifference ?? 0) < 0 && styles.statNegative]}>
+                      {row.goalDifference != null ? (row.goalDifference > 0 ? `+${row.goalDifference}` : `${row.goalDifference}`) : '0'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Indicatori forma V/N/P */}
+                <View style={styles.standingFormRow}>
+                  {(row.form ?? []).map((f, i) => {
+                    const fi = formIcon(f);
+                    return (
+                      <View key={i} style={[styles.formDot, { backgroundColor: fi.bg, borderColor: fi.color }]}>
+                        <Text style={[styles.formDotLabel, { color: fi.color }]}>{fi.label}</Text>
+                      </View>
+                    );
+                  })}
+                  {(row.form ?? []).length === 0 && (
+                    <Text style={[styles.noFormText, { fontSize: mutedSize }]}>—</Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
+
+const mutedSize = 11;
 
 const styles = StyleSheet.create({
-  stack: { gap: 18 },
-  eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  title: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
-  segmented: { flexDirection: 'row', padding: 5, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, gap: 5 },
-  segment: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: radii.md },
-  segmentActive: { backgroundColor: colors.accentStrong },
-  segmentText: { color: colors.accentStrong, fontSize: 12, fontWeight: '900' },
-  segmentTextActive: { color: colors.paper },
-  calendarStack: { gap: 14 },
-  standingsStack: { width: '100%', gap: 12 },
-  filters: { gap: 8, paddingRight: 10 },
-  filter: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 15, borderRadius: 20, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  filterActive: { backgroundColor: colors.navy, borderColor: colors.navy },
-  filterText: { color: colors.inkSoft, fontSize: 11, fontWeight: '900' },
-  filterTextActive: { color: colors.paper },
-  sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { color: colors.ink, fontSize: 24, fontWeight: '900' },
-  sectionCount: { minWidth: 30, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 15, overflow: 'hidden', color: colors.paper, backgroundColor: colors.accentStrong, textAlign: 'center', fontSize: 11, fontWeight: '900' },
-  matchList: { gap: 9 },
-  matchCard: { minHeight: 112, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  matchBody: { flex: 1, minWidth: 0 },
-  matchTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  competitionName: { color: colors.accentStrong, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
-  round: { flexShrink: 1, color: colors.muted, fontSize: 9, fontWeight: '800', textTransform: 'uppercase' },
-  matchMeta: { color: colors.muted, fontSize: 10, fontWeight: '800', marginVertical: 6, textTransform: 'uppercase' },
-  teamRow: { minHeight: 26, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  teamName: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: '800' },
-  pratoTeam: { color: colors.accentStrong, fontWeight: '900' },
-  score: { minWidth: 24, color: colors.ink, fontSize: 18, fontWeight: '900', textAlign: 'center' },
-  teamDivider: { height: 1, backgroundColor: colors.lineSoft, marginVertical: 3 },
-  empty: { alignItems: 'center', gap: 8, padding: 30, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  emptyText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
+  viewTabs: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radii.pill,
+    padding: 4,
+    marginBottom: 16,
+  },
+  viewTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: radii.pill,
+  },
+  viewTabActive: {
+    backgroundColor: colors.paper,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  viewTabText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.muted,
+  },
+  viewTabTextActive: {
+    color: colors.accentStrong,
+  },
 
-  // Mobile-first standings cards
-  standingsCard: { width: '100%', borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
-  standingsTitle: { color: colors.ink, fontSize: 18, fontWeight: '900', padding: 14, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
-  standingsBody: { gap: 1, backgroundColor: colors.lineSoft },
-  card: { gap: 10, padding: 12, backgroundColor: colors.paper },
-  pratoCard: { backgroundColor: colors.surfaceRaised, borderLeftWidth: 3, borderLeftColor: colors.accentStrong },
-  cardMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  cardPos: { width: 28, fontSize: 15, fontWeight: '900', color: colors.muted, textAlign: 'center' },
-  pratoPosText: { color: colors.accentStrong },
-  cardLogo: { width: 28, height: 28, borderRadius: 8 },
-  cardClub: { flex: 1, fontSize: 14, fontWeight: '800', color: colors.ink },
-  pratoText: { color: colors.accentStrong, fontWeight: '900' },
-  cardPoints: { fontSize: 22, fontWeight: '900', color: colors.ink, minWidth: 28, textAlign: 'right' },
-  pratoPointsText: { color: colors.accentStrong },
-  cardPtsLabel: { fontSize: 10, fontWeight: '800', color: colors.muted, textTransform: 'uppercase' },
-  cardStats: { flexDirection: 'row', gap: 0, paddingLeft: 38 },
-  stat: { flex: 1, alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 13, fontWeight: '800', color: colors.ink },
-  statLabel: { fontSize: 9, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
-  statPositive: { color: colors.success },
-  statNegative: { color: colors.live },
-  cardForm: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 38 },
-  formLabel: { fontSize: 9, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
-  formRow: { flexDirection: 'row', gap: 4 },
-  formBadge: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  formWin: { backgroundColor: colors.success },
-  formDraw: { backgroundColor: colors.mutedDark },
-  formLoss: { backgroundColor: colors.live },
-  formText: { color: colors.paper, fontSize: 9, fontWeight: '900' },
+  // Filtri
+  filterScroll: {
+    marginBottom: 12,
+  },
+  filterContent: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+  },
+  filterChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.muted,
+  },
+  filterChipTextActive: {
+    color: colors.paper,
+  },
+
+  // Empty state
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 10,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.muted,
+    fontWeight: '600',
+  },
+
+  // Calendario
+  calendarList: {
+    gap: 10,
+  },
+  calCard: {
+    backgroundColor: colors.paper,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    padding: 14,
+    gap: 8,
+  },
+  calCardWide: {
+    padding: 18,
+  },
+  calHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  calComp: {
+    color: colors.accent,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  calRound: {
+    color: colors.muted,
+    fontWeight: '700',
+  },
+  calDateTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  calDate: {
+    color: colors.muted,
+    fontWeight: '600',
+  },
+  calTime: {
+    color: colors.muted,
+    fontWeight: '700',
+  },
+  calMatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  calTeam: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
+  },
+  calTeamName: {
+    color: colors.ink,
+    fontWeight: '800',
+    flexShrink: 1,
+  },
+  calTeamPrato: {
+    color: colors.accentStrong,
+  },
+  calScore: {
+    backgroundColor: colors.surfaceRaised,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radii.xs,
+    marginHorizontal: 8,
+  },
+  calScoreText: {
+    color: colors.ink,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  calVs: {
+    paddingHorizontal: 10,
+  },
+  calVsText: {
+    color: colors.mutedDark,
+    fontWeight: '800',
+  },
+  calVenue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: 2,
+  },
+  calVenueText: {
+    color: colors.mutedDark,
+    fontWeight: '600',
+    flex: 1,
+  },
+
+  // Banner simulazione
+  simulatedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.yellowSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radii.xs,
+    marginBottom: 12,
+  },
+  simulatedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.warning,
+    flex: 1,
+  },
+
+  // Classifica — header (desktop)
+  standingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  headerCell: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.muted,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  headerRank: {
+    width: 32,
+  },
+  headerPts: {
+    width: 36,
+  },
+
+  // Classifica — lista
+  standingList: {
+    gap: 8,
+  },
+
+  // Card squadra
+  standingCard: {
+    backgroundColor: colors.paper,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    padding: 12,
+    gap: 8,
+  },
+  standingCardPrato: {
+    backgroundColor: '#F4FAFF',
+    borderColor: colors.accent,
+    borderWidth: 1.5,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  // Riga principale: posizione + stemma + nome + PT
+  standingMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceSoft,
+    textAlign: 'center',
+    lineHeight: 32,
+    fontWeight: '900',
+    color: colors.muted,
+    overflow: 'hidden',
+  },
+  rankBadgePrato: {
+    backgroundColor: colors.accentStrong,
+    color: colors.paper,
+  },
+  standingClub: {
+    color: colors.ink,
+    fontWeight: '800',
+  },
+  standingClubPrato: {
+    color: colors.accentStrong,
+  },
+  pointsBadge: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+    backgroundColor: colors.surfaceRaised,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.xs,
+  },
+  pointsValue: {
+    color: colors.ink,
+    fontWeight: '900',
+  },
+  pointsLabel: {
+    color: colors.muted,
+    fontWeight: '800',
+  },
+
+  // Riga statistiche
+  standingStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 10,
+    paddingLeft: 4,
+  },
+  statItem: {
+    alignItems: 'center',
+    minWidth: 28,
+    gap: 1,
+  },
+  statLabel: {
+    color: colors.mutedDark,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  statValue: {
+    color: colors.ink,
+    fontWeight: '800',
+  },
+  statValueDr: {
+    color: colors.ink,
+    fontWeight: '800',
+  },
+  statPositive: {
+    color: colors.success,
+  },
+  statNegative: {
+    color: colors.live,
+  },
+
+  // Forma (V/N/P) — per tutte le viste
+  standingFormRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingLeft: 4,
+  },
+  formRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  formIndicators: {
+    flexDirection: 'row',
+    gap: 5,
+  },
+  formDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formDotLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  noFormText: {
+    color: colors.mutedDark,
+    fontWeight: '600',
+  },
+
+  // Typography helpers
+  mutedText: {
+    color: colors.muted,
+    fontWeight: '600',
+    fontSize: mutedSize,
+  },
 });
