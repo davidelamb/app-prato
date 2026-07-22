@@ -33,7 +33,9 @@
     "web": "expo start --web",
     "prebuild:web": "npm run logo:apply",
     "build:web": "expo export --platform web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "import-rosters": "node scripts/import-team-rosters.cjs",
+    "verify:core": "node scripts/verify-core-match-system.cjs"
   },
   "private": true
 }

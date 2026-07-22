@@ -2,11 +2,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { TeamProfileModal } from '../components/TeamProfileModal';
 import { TeamLogo } from '../components/TeamLogo';
 import { getSimulatedStandings, isStandingsEmpty, SIMULATED_LABEL } from '../data/simulated-standings';
 import { colors, radii } from '../theme';
-import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope } from '../types';
+import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, Team } from '../types';
 import { normalizeStandingRow, standingRows } from '../utils/standings';
+import { normalizeTeamName } from '../utils/team-names';
 
 type StatsView = 'schedule' | 'standings';
 
@@ -44,6 +46,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
   const [view, setView] = useState<StatsView>('schedule');
   const [calFilter, setCalFilter] = useState<MatchCompetition | 'Tutte'>('Tutte');
   const [scope, setScope] = useState<StandingScope>('overall');
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const { width } = useWindowDimensions();
   const isMobile = width < 600;
 
@@ -59,10 +62,21 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
 
   const displayStandings = useMemo(() => {
     const rows = standingRows(content, scope);
-    // Se ci sono dati reali (almeno una riga con partite giocate) usali, altrimenti simulati
     if (!isStandingsEmpty(rows)) return { rows: rows.map(normalizeStandingRow), simulated: false };
     return { rows: getSimulatedStandings(scope), simulated: true };
   }, [content, scope]);
+
+  /** Risolve una squadra per nome normalizzato da content.teams oppure costruisce un fallback. */
+  const resolveTeam = (clubName: string): Team => {
+    const key = normalizeTeamName(clubName);
+    const teams = content.teams ?? [];
+    const existing = teams.find((team) => team.normalizedName === key);
+    if (existing) return existing;
+    // Fallback senza inventare dati: solo nome, normalizedName e rosa vuota
+    return { id: key || clubName, name: clubName.trim() || clubName, normalizedName: key, players: [] };
+  };
+
+  const openTeam = (clubName: string) => setSelectedTeam(resolveTeam(clubName));
 
   return (
     <View>
@@ -99,6 +113,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
           onCalFilter={setCalFilter}
           wide={wide}
           isMobile={isMobile}
+          onTeamPress={openTeam}
         />
       ) : (
         <StandingsView
@@ -108,8 +123,11 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
           onScope={setScope}
           wide={wide}
           isMobile={isMobile}
+          onTeamPress={openTeam}
         />
       )}
+
+      <TeamProfileModal team={selectedTeam} onClose={() => setSelectedTeam(null)} />
     </View>
   );
 }
@@ -120,12 +138,14 @@ function CalendarView({
   onCalFilter,
   wide,
   isMobile,
+  onTeamPress,
 }: {
   schedule: SeasonMatch[];
   calFilter: MatchCompetition | 'Tutte';
   onCalFilter: (f: MatchCompetition | 'Tutte') => void;
   wide: boolean;
   isMobile: boolean;
+  onTeamPress: (clubName: string) => void;
 }) {
   const bodySize = wide ? 14 : 13;
   const mutedSize = wide ? 12 : 11;
@@ -202,7 +222,7 @@ function CalendarView({
                   {/* Partita */}
                   <View style={styles.calMatchSection}>
                     {/* Squadra casa */}
-                    <View style={styles.calTeam}>
+                    <Pressable style={styles.calTeam} onPress={() => onTeamPress(match.home)}>
                       <TeamLogo name={match.home} size={logoSize} />
                       <Text
                         style={[
@@ -215,7 +235,7 @@ function CalendarView({
                       >
                         {match.home}
                       </Text>
-                    </View>
+                    </Pressable>
 
                     {/* Risultato / VS */}
                     <View style={styles.calResult}>
@@ -237,7 +257,7 @@ function CalendarView({
                     </View>
 
                     {/* Squadra trasferta */}
-                    <View style={styles.calTeam}>
+                    <Pressable style={styles.calTeam} onPress={() => onTeamPress(match.away)}>
                       <Text
                         style={[
                           styles.calTeamName,
@@ -250,7 +270,7 @@ function CalendarView({
                         {match.away}
                       </Text>
                       <TeamLogo name={match.away} size={logoSize} />
-                    </View>
+                    </Pressable>
                   </View>
 
                   {/* Stadio e info extra */}
@@ -286,6 +306,7 @@ function StandingsView({
   onScope,
   wide,
   isMobile,
+  onTeamPress,
 }: {
   standings: Standing[];
   simulated: boolean;
@@ -293,6 +314,7 @@ function StandingsView({
   onScope: (s: StandingScope) => void;
   wide: boolean;
   isMobile: boolean;
+  onTeamPress: (clubName: string) => void;
 }) {
   const labelSize = wide ? 13 : 11;
   const bodySize = wide ? 14 : 13;
@@ -337,11 +359,11 @@ function StandingsView({
             const prato = isPrato(row.club);
             return (
               <View key={row.club} style={[styles.standingCard, prato && styles.standingCardPrato]}>
-                <View style={styles.formRow}>
+                <Pressable style={styles.formRow} onPress={() => onTeamPress(row.club)}>
                   <Text style={[styles.rankBadge, prato && styles.rankBadgePrato, { fontSize: bodySize }]}>
                     {row.rank}
                   </Text>
-                <TeamLogo name={row.club} size={isMobile ? 22 : 26} />
+                  <TeamLogo name={row.club} size={isMobile ? 22 : 26} />
                   <Text
                     style={[styles.standingClub, prato && styles.standingClubPrato, { fontSize: highlightName, flex: 1 }]}
                     numberOfLines={1}
@@ -361,7 +383,7 @@ function StandingsView({
                       <Text style={[styles.noFormText, { fontSize: mutedSize }]}>—</Text>
                     )}
                   </View>
-                </View>
+                </Pressable>
               </View>
             );
           })}
@@ -391,7 +413,7 @@ function StandingsView({
             return (
               <View key={row.club} style={[styles.standingCard, prato && styles.standingCardPrato]}>
                 {/* Riga principale: posizione + stemma + nome + punti */}
-                <View style={styles.standingMainRow}>
+                <Pressable style={styles.standingMainRow} onPress={() => onTeamPress(row.club)}>
                   <Text style={[styles.rankBadge, prato && styles.rankBadgePrato, { fontSize: bodySize }]}>
                     {row.rank}
                   </Text>
@@ -406,7 +428,7 @@ function StandingsView({
                     <Text style={[styles.pointsValue, { fontSize: bodySize + 2 }]}>{row.points + (row.penalty ?? 0)}</Text>
                     <Text style={[styles.pointsLabel, { fontSize: mutedSize }]}>PT</Text>
                   </View>
-                </View>
+                </Pressable>
 
                 {/* Riga secondaria: statistiche con etichette (G, V, N, P, GF, GS, DR) */}
                 <View style={styles.standingStatsRow}>

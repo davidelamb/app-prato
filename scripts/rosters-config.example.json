@@ -1,0 +1,89 @@
+{
+  "teams": [
+    {
+      "name": "US Città di Pontedera",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Tau Calcio Altopascio",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Siena FC",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "SC Trestina",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "US Follonica Gavorrano",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "San Donato Tavarnelle",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Aquila Montevarchi",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Lucchese Calcio",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Terranuova Traiana",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Seravezza Pozzi",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "GSD Ghiviborgo VDS",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "FC Scandicci 1908",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Foligno Calcio 1928",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Ternana Calcio",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "ASD Angelana 1930",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Rondinella Marzocco",
+      "sourceUrl": "",
+      "manualPlayers": []
+    },
+    {
+      "name": "Polisportiva Pietralunghese",
+      "sourceUrl": "",
+      "manualPlayers": []
+    }
+  ]
+}
