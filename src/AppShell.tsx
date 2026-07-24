@@ -17,13 +17,14 @@ import { StatsScreen } from './screens/StatsScreen';
 import { loadContent, resetContent, saveContent } from './services/content-store';
 import { colors, radii } from './theme';
 import { AppContent, NewsArticle, Player } from './types';
+import { isLiveWindow } from './utils/fixture-time';
 
 export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 const clubIcon = require('../assets/club-tab-icon-44.png');
-const tabs: Array<{ key: PublicTab; label: string; icon?: IconName; image?: ReturnType<typeof require> }> = [
+const allTabs: Array<{ key: PublicTab; label: string; icon?: IconName; image?: ReturnType<typeof require> }> = [
   { key: 'news', label: 'News', icon: 'newspaper-variant-outline' },
   { key: 'media', label: 'Media', icon: 'play-box-multiple-outline' },
   { key: 'live', label: 'Live', icon: 'broadcast' },
@@ -40,9 +41,10 @@ const hoverColors: Record<string, string> = {
 
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
-const publicTabKeys = new Set<PublicTab>(tabs.map((item) => item.key));
+const publicTabKeys = new Set<PublicTab>(allTabs.map((item) => item.key));
 
-function NavTabItem({ item, active, onPress }: { item: typeof tabs[number]; active: boolean; onPress: () => void }) {
+type TabItem = typeof allTabs[number];
+function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean; onPress: () => void }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const isClub = item.key === 'club';
@@ -94,7 +96,25 @@ export default function AppShell() {
     if (tabReady && tab !== 'admin') void AsyncStorage.setItem(TAB_STORAGE_KEY, tab);
   }, [tab, tabReady]);
   const commit = async (next: AppContent) => { const stamped = { ...next, updatedAt: stamp() }; setContent(stamped); await saveContent(stamped); };
-  const liveFixture = useMemo(() => content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0], [content.fixtures]);
+  const liveFixture = useMemo(() => {
+    const real = content.fixtures.filter((item) => !item.isDemo);
+    const live = real.find((item) => item.status === 'live');
+    if (live) return live;
+    const inWindow = real.filter((item) => isLiveWindow(item));
+    if (inWindow.length > 0) {
+      return [...inWindow].sort((a, b) => (a.kickoffAt ? Date.parse(a.kickoffAt) : 0) - (b.kickoffAt ? Date.parse(b.kickoffAt) : 0))[0];
+    }
+    return real[0] || content.fixtures[0];
+  }, [content.fixtures]);
+  const liveTabVisible = useMemo(() => {
+    if (!liveFixture) return false;
+    if (liveFixture.isDemo) return false;
+    if (liveFixture.status === 'live') return true;
+    return isLiveWindow(liveFixture);
+  }, [liveFixture]);
+  const tabs = useMemo(() => {
+    return liveTabVisible ? allTabs : allTabs.filter((item) => item.key !== 'live');
+  }, [liveTabVisible]);
   const publicTab = tab === 'admin' ? 'news' : tab;
 
   return <SafeAreaView style={styles.safe}>

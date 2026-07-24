@@ -75,6 +75,16 @@ export function kickoffIso(dateValue: string, timeValue: string): string | null 
   return timestamp === null ? null : new Date(timestamp).toISOString();
 }
 
+/** Restituisce true se la partita è nella finestra temporale del Live:
+ * da 60 minuti prima del kickoff fino a 150 minuti dopo (per coprire tutta la partita). */
+export function isLiveWindow(fixture: Fixture, now = Date.now()): boolean {
+  const kickoff = kickoffTimestamp(fixture);
+  if (kickoff === null) return false;
+  const msBefore = 60 * 60 * 1000; // 1 ora prima
+  const msAfter = 150 * 60 * 1000;  // 2.5 ore dopo (copre partita + recupero)
+  return now >= kickoff - msBefore && now <= kickoff + msAfter;
+}
+
 export function kickoffInput(fixture: Fixture): { date: string; time: string } {
   if (fixture.kickoffAt) {
     const timestamp = Date.parse(fixture.kickoffAt);
