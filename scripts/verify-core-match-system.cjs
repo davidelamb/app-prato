@@ -57,6 +57,7 @@ function main() {
       'src/utils/standings.ts',
       'src/utils/live-match.ts',
       'src/utils/match-sync.ts',
+      'src/utils/match-merge.ts',
     ].map((f) => path.join(projectRoot, f));
 
     execFileSync(
@@ -78,6 +79,7 @@ function main() {
     const standings = require(path.join(tmpDir, 'utils', 'standings.js'));
     const liveMatch = require(path.join(tmpDir, 'utils', 'live-match.js'));
     const matchSync = require(path.join(tmpDir, 'utils', 'match-sync.js'));
+    const matchMerge = require(path.join(tmpDir, 'utils', 'match-merge.js'));
 
     // ══════════════════════════════════════════
     //  1. ALIAS: AC Prato / A.C. Prato / Prato
@@ -561,6 +563,50 @@ function main() {
     const originalG1 = removeGoalFixture.liveEvents.find((e) => e.id === 'g1');
     assertOk(originalG1, 'input originale contiene ancora g1');
     assertEqual(originalG1.score, '1-0', 'input g1 immutato');
+
+    // ══════════════════════════════════════════
+    //  17. Migrazione: vecchio dataset incompleto (34 partite,
+    //      solo Prato) non deve oscurare né duplicare il nuovo
+    //      seed completo (306 partite) — bug riportato dall'utente
+    //      (localhost con storage v11 persistito vs sito pubblico
+    //      con storage vuoto mostravano dati diversi).
+    // ══════════════════════════════════════════
+
+    console.log('── 17. Migrazione dataset incompleto → completo ──');
+
+    // Costruisce un finto "girone completo" di 3 giornate (9 partite ciascuna
+    // sarebbe eccessivo per il test): usiamo 2 giornate x 2 partite = 4 partite
+    // come seed aggiornato, di cui una coinvolge il Prato.
+    const seedGirone = [
+      { id: 'seed-1', matchday: 1, competition: 'Campionato', roundLabel: '1ª giornata', dateLabel: 'DOM 06 SET', time: '15:00', home: 'AC Prato', away: 'Polisportiva Pietralunghese', venue: 'Stadio Lungobisenzio', homeScore: 2, awayScore: 0, status: 'final', sortOrder: 0 },
+      { id: 'seed-2', matchday: 1, competition: 'Campionato', roundLabel: '1ª giornata', dateLabel: 'DOM 06 SET', time: '15:00', home: 'Siena FC', away: 'Lucchese Calcio', venue: 'Stadio Franchi Siena', homeScore: 1, awayScore: 1, status: 'final', sortOrder: 1 },
+      { id: 'seed-3', matchday: 2, competition: 'Campionato', roundLabel: '2ª giornata', dateLabel: 'DOM 13 SET', time: '15:00', home: 'Siena FC', away: 'AC Prato', venue: 'Stadio Franchi Siena', homeScore: undefined, awayScore: undefined, status: 'scheduled', sortOrder: 2 },
+      { id: 'seed-4', matchday: 2, competition: 'Campionato', roundLabel: '2ª giornata', dateLabel: 'DOM 13 SET', time: '15:00', home: 'Lucchese Calcio', away: 'Polisportiva Pietralunghese', venue: 'Stadio Porta Elisa', homeScore: undefined, awayScore: undefined, status: 'scheduled', sortOrder: 3 },
+    ];
+
+    // Simula un content persistito PRIMA della migrazione: contiene SOLO la
+    // partita del Prato (id "vecchio stile", diverso da quello del seed),
+    // con un risultato diverso (come se un admin l'avesse corretto a mano).
+    const oldOnlyPratoMatch = { id: 'OLD-md1-prato', matchday: 1, competition: 'Campionato', roundLabel: '1ª giornata', dateLabel: 'DOM 06 SET', time: '15:00', home: 'AC Prato', away: 'Polisportiva Pietralunghese', venue: 'Stadio Lungobisenzio', homeScore: 9, awayScore: 0, status: 'final', sortOrder: 0 };
+
+    const migratedGirone = matchMerge.mergeMatchLists(seedGirone, [oldOnlyPratoMatch]);
+
+    assertEqual(migratedGirone.length, 4, 'il girone resta completo (4 partite), non si riduce a 1');
+    const md1Prato = migratedGirone.filter((m) => m.matchday === 1 && teamNames.teamNamesEqual(m.home, 'AC Prato'));
+    assertEqual(md1Prato.length, 1, 'la partita MD1 Prato-Pietralunghese non è duplicata');
+    assertEqual(md1Prato[0].id, 'seed-1', 'l\'id resta quello del seed aggiornato (non quello vecchio)');
+    assertEqual(md1Prato[0].homeScore, 9, 'il risultato salvato (9-0) viene preservato sulla partita corretta');
+    const md1Count = migratedGirone.filter((m) => m.matchday === 1).length;
+    assertEqual(md1Count, 2, 'la 1ª giornata mantiene entrambe le partite (non solo quella del Prato)');
+    const siena_lucchese = migratedGirone.find((m) => teamNames.teamNamesEqual(m.home, 'Siena FC') && teamNames.teamNamesEqual(m.away, 'Lucchese Calcio'));
+    assertOk(siena_lucchese, 'la partita Siena-Lucchese (non toccata dal vecchio storage) resta presente');
+    assertEqual(siena_lucchese.homeScore, 1, 'il risultato del seed per Siena-Lucchese resta invariato');
+
+    // Un vero match "nuovo" aggiunto a mano (non presente nel seed) deve
+    // essere mantenuto, non scartato.
+    const manuallyAdded = { id: 'admin-added', matchday: 3, competition: 'Coppa Italia', roundLabel: 'Ottavi', dateLabel: '', time: '', home: 'AC Prato', away: 'Foligno Calcio 1928', venue: '', sortOrder: 99 };
+    const withManual = matchMerge.mergeMatchLists(seedGirone, [oldOnlyPratoMatch, manuallyAdded]);
+    assertEqual(withManual.length, 5, 'una partita aggiunta manualmente (non nel seed) viene mantenuta, non scartata');
 
     // ══════════════════════════════════════════
     //  Summary

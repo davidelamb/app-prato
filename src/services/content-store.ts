@@ -7,10 +7,11 @@ import { defaultTeams } from '../data/teams';
 import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup, MediaItem, NewsArticle, Player, SeasonMatch, Team } from '../types';
 import { completeStandingRows, emptyStandingRows, normalizeStandingRow, recalculateContentStandings, sortStandingRows } from '../utils/standings';
 import { canonicalTeamName, normalizeTeamName } from '../utils/team-names';
+import { mergeMatchLists } from '../utils/match-merge';
 import { minuteLabelFor, inferLegacyEventPhase } from '../utils/live-match';
 
-const STORAGE_KEY = '@ac-prato/content-v11';
-const LEGACY_KEYS = ['@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v12';
+const LEGACY_KEYS = ['@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeLineup(lineup: MatchLineup | undefined): MatchLineup | undefined {
   if (!lineup) return undefined;
@@ -318,20 +319,25 @@ export function normalizeContent(content: AppContent): AppContent {
     if (!mergedFixtures.some((f) => f.id === saved.id)) mergedFixtures.push(saved);
   }
 
-  // Merge schedule: completa dal seed le partite di calendario mancanti (per id)
+  // Merge schedule: le partite del seed (fonte aggiornata) restano integre;
+  // eventuali modifiche salvate (risultati, orari...) sulla stessa partita
+  // vengono riapplicate sopra; partite salvate senza corrispondenza nel seed
+  // (aggiunte manualmente) vengono mantenute in coda. Confronto tramite
+  // competizione+giornata+squadre normalizzate, non tramite id grezzo:
+  // questo impedisce che un vecchio calendario incompleto (id diversi)
+  // duplichi le partite invece di completarle.
   const seedSchedule = seedContent.schedule?.map(normalizeSchedule) ?? [];
   const savedSched = Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : [];
-  const savedSchedMap = new Map(savedSched.map((s) => [s.id, s]));
-  const mergedSchedule = seedSchedule.map((seed) => savedSchedMap.get(seed.id) ?? seed);
-  for (const saved of savedSched) {
-    if (!mergedSchedule.some((s) => s.id === saved.id)) mergedSchedule.push(saved);
-  }
+  const mergedSchedule = mergeMatchLists(seedSchedule, savedSched);
 
-  const fixedGroupMatches = (() => {
-    if (Array.isArray(content.groupMatches)) return content.groupMatches.map(normalizeGroupMatch);
-    if (seedContent.groupMatches?.length) return seedContent.groupMatches.map(normalizeGroupMatch);
-    return [];
-  })();
+  // Stesso principio per il girone: prima la fonte aggiornata (306 partite),
+  // poi si riapplicano sopra le modifiche salvate. Il vecchio bug era che un
+  // qualunque `content.groupMatches` salvato (anche il datataset incompleto
+  // pre-v12, con solo le partite del Prato) veniva usato COSÌ COM'ERA,
+  // ignorando del tutto il nuovo seed completo.
+  const seedGroupMatches = seedContent.groupMatches?.map(normalizeGroupMatch) ?? [];
+  const savedGroupMatches = Array.isArray(content.groupMatches) ? content.groupMatches.map(normalizeGroupMatch) : [];
+  const fixedGroupMatches = mergeMatchLists(seedGroupMatches, savedGroupMatches);
 
   const normalized: AppContent = {
     fixtures: mergedFixtures,
