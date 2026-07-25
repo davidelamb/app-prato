@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import LiveIcon from './components/nav-icons/LiveIcon';
 import MediaIcon from './components/nav-icons/MediaIcon';
 import NewsIcon from './components/nav-icons/NewsIcon';
@@ -33,6 +33,14 @@ const allTabs: Array<{ key: PublicTab; label: string; image?: ReturnType<typeof 
   { key: 'stats', label: 'Statistiche' },
   { key: 'club', label: 'Club', image: clubIcon },
 ];
+
+const MIN_HIT_AREA = 44;
+// Clearance generica per l'home indicator su iOS (non legata a un modello
+// specifico di iPhone). In assenza di react-native-safe-area-context nel
+// progetto, usiamo un valore fisso ragionevole per piattaforma anziché per
+// singolo dispositivo. TODO: sostituire con useSafeAreaInsets() quando
+// react-native-safe-area-context sarà aggiunto alle dipendenze native.
+const IOS_HOME_INDICATOR_CLEARANCE = Platform.OS === 'ios' ? 20 : 0;
 
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
@@ -156,8 +164,8 @@ const styles = StyleSheet.create({
   adminButton: { position: 'absolute', zIndex: 20, top: 10, right: 12, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.lineSoft },
   onlineDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.success },
   scroll: { flex: 1 },
-    scrollContent: { paddingBottom: 58 },
-  scrollContentWide: { paddingBottom: 48 },
+    scrollContent: { paddingBottom: 58 + IOS_HOME_INDICATOR_CLEARANCE },
+  scrollContentWide: { paddingBottom: 48 + IOS_HOME_INDICATOR_CLEARANCE },
   adminScroll: { paddingBottom: 30 },
   container: { width: '100%', padding: 16 },
   containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 32 },
@@ -165,9 +173,9 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
   pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
   pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 8 },
-  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft },
-    navInner: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', minHeight: 42, paddingHorizontal: 3 },
-    navItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 0, paddingTop: 0 },
+  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft, paddingBottom: IOS_HOME_INDICATOR_CLEARANCE },
+    navInner: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', minHeight: MIN_HIT_AREA, paddingHorizontal: 3 },
+    navItem: { flex: 1, minWidth: 0, minHeight: MIN_HIT_AREA, alignItems: 'center', justifyContent: 'center', gap: 0, paddingTop: 0 },
   navItemActive: { backgroundColor: colors.surfaceRaised },
   navItemFocus: { backgroundColor: 'rgba(0,0,0,0.04)' },
   navText: { color: colors.muted, fontSize: 9, fontWeight: '900' },
