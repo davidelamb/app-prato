@@ -4,6 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import LiveIcon from './components/nav-icons/LiveIcon';
+import MediaIcon from './components/nav-icons/MediaIcon';
+import NewsIcon from './components/nav-icons/NewsIcon';
+import StatsIcon from './components/nav-icons/StatsIcon';
 
 import { AdminDashboard } from './components/AdminDashboard';
 import { ArticleModal } from './components/ArticleModal';
@@ -21,36 +25,37 @@ import { isLiveWindow } from './utils/fixture-time';
 
 export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-
 const clubIcon = require('../assets/club-tab-icon-44.png');
-const allTabs: Array<{ key: PublicTab; label: string; icon?: IconName; image?: ReturnType<typeof require> }> = [
-  { key: 'news', label: 'News', icon: 'newspaper-variant-outline' },
-  { key: 'media', label: 'Media', icon: 'play-box-multiple-outline' },
-  { key: 'live', label: 'Live', icon: 'broadcast' },
-  { key: 'stats', label: 'Statistiche', icon: 'chart-bar' },
+const allTabs: Array<{ key: PublicTab; label: string; image?: ReturnType<typeof require> }> = [
+  { key: 'news', label: 'News' },
+  { key: 'media', label: 'Media' },
+  { key: 'live', label: 'Live' },
+  { key: 'stats', label: 'Statistiche' },
   { key: 'club', label: 'Club', image: clubIcon },
 ];
-
-const hoverColors: Record<string, string> = {
-  news: colors.blue,
-  media: '#7B3FA3',
-  live: colors.live,
-  stats: colors.success,
-};
 
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
 const publicTabKeys = new Set<PublicTab>(allTabs.map((item) => item.key));
 
 type TabItem = typeof allTabs[number];
+function NavTabIcon({ tab, active, hovered }: { tab: PublicTab; active: boolean; hovered: boolean }) {
+  const size = 22;
+  switch (tab) {
+    case 'news': return <NewsIcon size={size} active={active} hovered={hovered} />;
+    case 'media': return <MediaIcon size={size} active={active} hovered={hovered} />;
+    case 'live': return <LiveIcon size={size} active={active} hovered={hovered} />;
+    case 'stats': return <StatsIcon size={size} active={active} hovered={hovered} />;
+    default: return null;
+  }
+}
+
 function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean; onPress: () => void }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const isClub = item.key === 'club';
   const highlight = !active && !isClub && (hovered || focused);
-  const iconColor = highlight ? hoverColors[item.key] : active ? colors.accentStrong : colors.muted;
-  const textColor = highlight ? hoverColors[item.key] : active ? colors.accentStrong : colors.muted;
+  const textColor = active ? colors.accentStrong : colors.muted;
 
   return (
     <Pressable
@@ -65,7 +70,7 @@ function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean;
       {item.image ? (
         <Image source={item.image} style={[styles.clubIcon, { opacity: active ? 1 : 0.55 }]} resizeMode="contain" />
       ) : (
-        <MaterialCommunityIcons name={item.icon!} size={22} color={iconColor} />
+        <NavTabIcon tab={item.key} active={active} hovered={highlight} />
       )}
       <Text style={[styles.navText, { color: textColor }]}>{item.label}</Text>
       {active ? <View style={styles.navUnderline} /> : null}
