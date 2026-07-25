@@ -109,7 +109,7 @@ export default function AppShell() {
     if (inWindow.length > 0) {
       return [...inWindow].sort((a, b) => (a.kickoffAt ? Date.parse(a.kickoffAt) : 0) - (b.kickoffAt ? Date.parse(b.kickoffAt) : 0))[0];
     }
-    return real[0] || content.fixtures[0];
+    return null;
   }, [content.fixtures]);
   const liveTabVisible = useMemo(() => {
     if (!liveFixture) return false;

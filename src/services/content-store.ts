@@ -9,8 +9,8 @@ import { completeStandingRows, emptyStandingRows, normalizeStandingRow, recalcul
 import { canonicalTeamName, normalizeTeamName } from '../utils/team-names';
 import { minuteLabelFor, inferLegacyEventPhase } from '../utils/live-match';
 
-const STORAGE_KEY = '@ac-prato/content-v10';
-const LEGACY_KEYS = ['@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v11';
+const LEGACY_KEYS = ['@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function normalizeLineup(lineup: MatchLineup | undefined): MatchLineup | undefined {
   if (!lineup) return undefined;
@@ -294,18 +294,57 @@ export function normalizeContent(content: AppContent): AppContent {
     if (!mergedTeams.some((team) => team.normalizedName === saved.normalizedName)) mergedTeams.push(saved);
   }
 
+  // Merge news: completa dal seed le news mancanti (per id)
+  const savedNews = Array.isArray(content.news) ? content.news.map(normalizeNews) : [];
+  const savedNewsMap = new Map(savedNews.map((n) => [n.id, n]));
+  const mergedNews = seedContent.news.map((seed) => savedNewsMap.get(seed.id) ?? seed);
+  for (const saved of savedNews) {
+    if (!mergedNews.some((n) => n.id === saved.id)) mergedNews.push(saved);
+  }
+
+  // Merge media: completa dal seed i media mancanti (per id)
+  const savedMedia = Array.isArray(content.media) ? content.media.map(normalizeMedia) : [];
+  const savedMediaMap = new Map(savedMedia.map((m) => [m.id, m]));
+  const mergedMedia = seedContent.media.map((seed) => savedMediaMap.get(seed.id) ?? seed);
+  for (const saved of savedMedia) {
+    if (!mergedMedia.some((m) => m.id === saved.id)) mergedMedia.push(saved);
+  }
+
+  // Merge fixtures: completa dal seed le partite mancanti (per id)
+  const savedFixtures = Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : [];
+  const savedFixMap = new Map(savedFixtures.map((f) => [f.id, f]));
+  const mergedFixtures = seedContent.fixtures.map((seed) => savedFixMap.get(seed.id) ?? normalizeFixture(seed));
+  for (const saved of savedFixtures) {
+    if (!mergedFixtures.some((f) => f.id === saved.id)) mergedFixtures.push(saved);
+  }
+
+  // Merge schedule: completa dal seed le partite di calendario mancanti (per id)
+  const seedSchedule = seedContent.schedule?.map(normalizeSchedule) ?? [];
+  const savedSched = Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : [];
+  const savedSchedMap = new Map(savedSched.map((s) => [s.id, s]));
+  const mergedSchedule = seedSchedule.map((seed) => savedSchedMap.get(seed.id) ?? seed);
+  for (const saved of savedSched) {
+    if (!mergedSchedule.some((s) => s.id === saved.id)) mergedSchedule.push(saved);
+  }
+
+  const fixedGroupMatches = (() => {
+    if (Array.isArray(content.groupMatches)) return content.groupMatches.map(normalizeGroupMatch);
+    if (seedContent.groupMatches?.length) return seedContent.groupMatches.map(normalizeGroupMatch);
+    return [];
+  })();
+
   const normalized: AppContent = {
-    fixtures: Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : seedContent.fixtures.map(normalizeFixture),
+    fixtures: mergedFixtures,
     standings: sortStandingRows(completeStandingRows(content.standings, master)),
     homeStandings: sortStandingRows(completeStandingRows(content.homeStandings, emptyMaster)),
     awayStandings: sortStandingRows(completeStandingRows(content.awayStandings, emptyMaster)),
     formStandings: sortStandingRows(completeStandingRows(content.formStandings, emptyMaster)),
-    schedule: Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : seedContent.schedule?.map(normalizeSchedule),
-    groupMatches: Array.isArray(content.groupMatches) ? content.groupMatches.map(normalizeGroupMatch) : (seedContent.groupMatches?.length ? seedContent.groupMatches.map(normalizeGroupMatch) : []),
+    schedule: mergedSchedule,
+    groupMatches: fixedGroupMatches,
     teams: mergedTeams,
     players: mergedPlayers,
-    news: Array.isArray(content.news) ? content.news.map(normalizeNews) : seedContent.news,
-    media: Array.isArray(content.media) ? content.media.map(normalizeMedia) : seedContent.media,
+    news: mergedNews,
+    media: mergedMedia,
     updatedAt: content.updatedAt || seedContent.updatedAt,
   };
   return normalized.groupMatches?.length ? recalculateContentStandings(normalized, normalized.groupMatches) : normalized;
