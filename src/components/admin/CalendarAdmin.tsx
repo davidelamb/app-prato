@@ -6,11 +6,11 @@ import { AppContent, MatchCompetition, SeasonMatch } from '../../types';
 import { synchronizeSchedule } from '../../utils/match-sync';
 import { Button, Field, adminStyles } from './Primitives';
 
-const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia', 'Amichevole'];
+const competitions: MatchCompetition[] = ['Coppa Italia', 'Amichevole'];
 const number = (value: string | number | undefined) => Number(value) || 0;
 const cleanDate = (value: string) => value === 'Data da definire' ? '' : value;
 const cleanTime = (value: string) => value === '—' ? '' : value;
-const newMatch = (): SeasonMatch => ({ id: '', competition: 'Campionato', roundLabel: '', dateLabel: '', time: '', home: 'AC Prato', away: '', venue: '', sortOrder: Date.now() });
+const newMatch = (): SeasonMatch => ({ id: '', competition: 'Coppa Italia', roundLabel: '', dateLabel: '', time: '', home: 'AC Prato', away: '', venue: '', sortOrder: Date.now() });
 
 function scoreInput(value: string): number | undefined | null {
   if (value === '') return undefined;
@@ -39,7 +39,13 @@ function competitionFrom(value: string): MatchCompetition | null {
 }
 
 export function CalendarAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  const initialSchedule = useMemo<SeasonMatch[]>(() => (content.schedule?.length ? content.schedule.map(normalizeMatch) : []), [content.schedule]);
+  // Il Campionato (306 partite) si gestisce esclusivamente in "Girone" (GroupAdmin):
+  // qui restano solo Coppa Italia e Amichevoli, per avere un'unica fonte dati
+  // autorevole per il campionato e non ricreare le incoerenze del Problema 1.
+  const initialSchedule = useMemo<SeasonMatch[]>(
+    () => (content.schedule ?? []).filter((m) => (m.competition ?? 'Campionato') !== 'Campionato').map(normalizeMatch),
+    [content.schedule],
+  );
   const [schedule, setSchedule] = useState<SeasonMatch[]>(initialSchedule);
   const [draft, setDraft] = useState<SeasonMatch>(newMatch());
   const [scheduleImport, setScheduleImport] = useState('');
@@ -63,7 +69,10 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
       || (match.awayScore !== undefined && (!Number.isInteger(match.awayScore) || match.awayScore < 0)));
     if (invalid) return Alert.alert('Risultato non valido', 'Inserisci due numeri interi non negativi oppure lascia entrambi i campi vuoti.');
     setSchedule(sorted);
-    void onChange(synchronizeSchedule(content, sorted));
+    // Il Campionato (gestito in "Girone") resta invariato: qui si aggiornano
+    // solo Coppa Italia e Amichevoli, poi si ricompone il calendario completo.
+    const campionato = (content.schedule ?? []).filter((m) => (m.competition ?? 'Campionato') === 'Campionato');
+    void onChange(synchronizeSchedule(content, [...campionato, ...sorted]));
   };
 
   const setMatchScore = (id: string, side: 'homeScore' | 'awayScore', value: string) => {
@@ -88,12 +97,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
         else errors.push(`Riga ${index + 1}: casa o trasferta vuoti.`);
         return;
       }
-      if (cells.length < 5) { errors.push(`Riga ${index + 1}: colonne insufficienti (minimo 5).`); return; }
-      const matchday = number(cells[0]) || index + 1;
-      const match: SeasonMatch = { id: `prev-${index}`, matchday, leg: matchday <= 17 ? 'Andata' : 'Ritorno', competition: 'Campionato', roundLabel: `${matchday}ª giornata`, dateLabel: cells[1], time: cells[2], home: cells[3], away: cells[4], venue: '', sortOrder: index };
-      if (cells[5] !== '' && cells[5] !== undefined) match.homeScore = number(cells[5]);
-      if (cells[6] !== '' && cells[6] !== undefined) match.awayScore = number(cells[6]);
-      parsed.push(match);
+      errors.push(`Riga ${index + 1}: il Campionato si importa dal pannello "Girone", non da qui. Specifica esplicitamente "Coppa Italia" o "Amichevole" come prima colonna.`);
     });
     setImportErrors(errors);
     setImportPreview(parsed.length ? parsed : null);
@@ -113,10 +117,14 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
         const home = String(obj.home ?? obj.casa ?? '');
         const away = String(obj.away ?? obj.trasferta ?? '');
         if (!home || !away) { errors.push(`Elemento ${index + 1}: casa o trasferta mancanti.`); return; }
+        if (comp !== 'Coppa Italia' && comp !== 'Amichevole') {
+          errors.push(`Elemento ${index + 1}: specifica "competition": "Coppa Italia" o "Amichevole" — il Campionato si importa dal pannello "Girone".`);
+          return;
+        }
         const match: SeasonMatch = {
           id: String(obj.id ?? `prev-${index}`),
           matchday: number(String(obj.matchday ?? obj.giornata ?? '')),
-          competition: comp ?? 'Campionato',
+          competition: comp ?? 'Coppa Italia',
           roundLabel: String(obj.roundLabel ?? obj.turno ?? ''),
           dateLabel: String(obj.dateLabel ?? obj.data ?? ''),
           time: String(obj.time ?? obj.ora ?? ''),
@@ -162,7 +170,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Importa calendario</Text>
-      <Text style={adminStyles.copy}>Importa partite via CSV (competizione;turno;data;ora;casa;trasferta;stadio;golC;golO) o JSON (array di oggetti con home/away/competition...).</Text>
+      <Text style={adminStyles.copy}>Importa partite di Coppa Italia o Amichevole via CSV (competizione;turno;data;ora;casa;trasferta;stadio;golC;golO) o JSON. Il Campionato si importa dal pannello "Girone".</Text>
       <View style={adminStyles.choices}>
         <Pressable onPress={() => setImportMode('csv')} style={[adminStyles.choice, importMode === 'csv' && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, importMode === 'csv' && adminStyles.choiceTextActive]}>CSV / Testo</Text></Pressable>
         <Pressable onPress={() => setImportMode('json')} style={[adminStyles.choice, importMode === 'json' && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, importMode === 'json' && adminStyles.choiceTextActive]}>JSON</Text></Pressable>
@@ -178,7 +186,8 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
     </View>
 
     <View style={adminStyles.panel}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={adminStyles.title}>Calendario Prato</Text><Text style={{ fontSize: 11, color: colors.muted }}>{schedule.length} partite</Text></View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={adminStyles.title}>Coppa Italia e Amichevoli</Text><Text style={{ fontSize: 11, color: colors.muted }}>{schedule.length} partite</Text></View>
+      <Text style={adminStyles.copy}>Il Campionato (306 partite) si gestisce nel pannello "Girone".</Text>
       <View style={adminStyles.list}>{schedule.map((match) => <View key={match.id} style={adminStyles.listRow}>
         <View style={{ width: 54, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: match.competition === 'Coppa Italia' ? colors.navy : match.competition === 'Amichevole' ? colors.success : colors.accentStrong }}><Text style={{ color: colors.paper, fontSize: 9, fontWeight: '900' }}>{match.competition === 'Coppa Italia' ? 'COPPA' : match.competition === 'Amichevole' ? 'AMIC' : 'CAMP'}</Text></View>
         <View style={adminStyles.listBody}>
