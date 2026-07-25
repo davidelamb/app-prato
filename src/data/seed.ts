@@ -1,5 +1,9 @@
 import { AppContent, MediaItem, Player } from '../types';
-import { simulatedPratoSchedule, simulatedStandings } from './simulated-season';
+import { fullSeasonMatches } from './full-season-2026-27';
+import { serieDTeams2026 } from './season-2026-27';
+import { calculateStandingSets } from '../utils/standings';
+
+const seasonStandingSets = calculateStandingSets(fullSeasonMatches, [...serieDTeams2026]);
 
 const tm = (path: string) => `https://img.a.transfermarkt.technology/portrait/medium/${path}?lm=1`;
 const ytThumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
@@ -45,9 +49,12 @@ export const seedContent: AppContent = {
       { id: 'demo-start', type: 'kickoff', label: 'Inizio partita', minute: 1, score: '0-0', createdAt: new Date().toISOString() },
     ] },
   ],
-  standings: simulatedStandings,
-  groupMatches: simulatedPratoSchedule,
-  schedule: simulatedPratoSchedule,
+  standings: seasonStandingSets.overall,
+  homeStandings: seasonStandingSets.home,
+  awayStandings: seasonStandingSets.away,
+  formStandings: seasonStandingSets.form,
+  groupMatches: fullSeasonMatches,
+  schedule: fullSeasonMatches,
   players,
   media,
   news: [
