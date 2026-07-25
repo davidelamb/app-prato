@@ -11,7 +11,7 @@ export default function NewsIcon({ size = 22, active = false, hovered = false }:
       {/* Newspaper body */}
       <Path
         d="M2 4h16v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4z"
-        fill={active ? colors.blue : base}
+        fill={active ? colors.accent : base}
       />
       {/* Yellow accent stripe (solo attivo) */}
       {active && (

@@ -16,14 +16,14 @@ export default function LiveIcon({ size = 22, active = false, hovered = false }:
       {/* Radio waves */}
       <Path
         d="M7 8a5 5 0 0 1 10 0"
-        stroke={active ? colors.success : base}
+        stroke={active ? colors.accent : base}
         strokeWidth={2}
         strokeLinecap="round"
         fill="none"
       />
       <Path
         d="M5 5a7 7 0 0 1 14 0"
-        stroke={active ? colors.live : base}
+        stroke={active ? colors.blue : base}
         strokeWidth={2}
         strokeLinecap="round"
         fill="none"

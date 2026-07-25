@@ -18,7 +18,7 @@ export default function MediaIcon({ size = 22, active = false, hovered = false }
           <Defs>
             <LinearGradient id="mediaGrad" x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0" stopColor={colors.accent} />
-              <Stop offset="1" stopColor="#7B3FA3" />
+              <Stop offset="1" stopColor={colors.accentStrong} />
             </LinearGradient>
           </Defs>
           <Path

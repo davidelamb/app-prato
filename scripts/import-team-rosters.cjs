@@ -172,87 +172,90 @@ function extractAthletesFromLD(data, collected = []) {
 }
 
 function parseTmTable(html) {
-  // Cerca una tabella con class contenente "items"
-  const tableRegex = /<table[^>]*class=["'][^"']*items[^"']*["'][^>]*>([\s\S]*?)<\/table>/gi;
+  // Approccio robusto: cerca tutti i blocchi rn_nummer, estrae nome e ruolo dal contesto
   const players = [];
-  let tableMatch;
+  const seenNames = new Set();
 
-  while ((tableMatch = tableRegex.exec(html)) !== null) {
-    const tbody = tableMatch[1];
-    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-    let rowMatch;
-    while ((rowMatch = rowRegex.exec(tbody)) !== null) {
-      const row = rowMatch[1];
-      // Salta header
-      if (/<th/i.test(row)) continue;
+  // Pattern 1: rn_nummer (con o senza numero) + inline-table con nome e ruolo
+  const regexRn = /<div\s+class=rn_nummer\s*>(\d{1,3}|-)<\/div>/gi;
+  let match;
 
-      const cells = [];
-      const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
-      let tdMatch;
-      while ((tdMatch = tdRegex.exec(row)) !== null) {
-        cells.push(tdMatch[1].replace(/<[^>]+>/g, "").trim());
+  while ((match = regexRn.exec(html)) !== null) {
+    const numText = match[1];
+    let number = undefined;
+    if (numText !== "-") {
+      const parsed = Number(numText);
+      if (parsed && parsed <= 99) number = parsed;
+    }
+
+    const snippet = html.substring(match.index, match.index + 3000);
+
+    // Estrai nome dal tag <a> con href contenente /profil/spieler/
+    const nameMatch = snippet.match(/<a[^>]*href="\/[^"]*\/(?:profil|spieler)\/[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i);
+    if (!nameMatch) continue;
+    let name = nameMatch[1].replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
+    if (!name || name.length < 2) continue;
+    if (seenNames.has(name.toLowerCase())) continue;
+
+    // Estrai ruolo dalla inline-table (secondo <tr> dopo rn_nummer)
+    const roleMatch = snippet.match(/<tr[^>]*>\s*<td[^>]*>\s*(Portiere|Difensore|Centrocampista|Attaccante)\s*<\/td>/i);
+    const role = roleMatch ? roleMatch[1] : undefined;
+
+    // Nazionalità: cerca flag dopo rn_nummer
+    let nationality = "";
+    const natMatch = snippet.match(/<img[^>]*class="[^"]*flagge[^"]*"[^>]*title="([^"]+)"/i);
+    if (natMatch) nationality = natMatch[1];
+
+    // Market value
+    let marketValue = "";
+    const mvMatch = snippet.match(/(?:€|&euro;)\s*([\d.,]+\s*(?:mln|mio|[kK]))/i);
+    if (mvMatch) marketValue = mvMatch[1].trim();
+
+    // Nazionalità alternativa: cerca <img> con flaggenrahmen
+    if (!nationality) {
+      const natAlt = snippet.match(/<img[^>]*class="[^"]*flaggenrahmen[^"]*"[^>]*title="([^"]+)"/i);
+      if (natAlt) nationality = natAlt[1];
+    }
+
+    seenNames.add(name.toLowerCase());
+    players.push({
+      name,
+      number,
+      role,
+      nationality: nationality || undefined,
+      marketValue: marketValue || undefined,
+    });
+  }
+
+  // Pattern 2: Se non abbiamo trovato nulla con rn_nummer, cerca inline-table con hauptlink
+  if (players.length === 0) {
+    const regexInline = /<table class="inline-table">([\s\S]*?)<\/table>/gi;
+    let im;
+    while ((im = regexInline.exec(html)) !== null) {
+      const tableHtml = im[0];
+      const nameMatch = tableHtml.match(/<a[^>]*href="\/[^"]*\/(?:profil|spieler)\/[^"]*"[^>]*>\s*([^<]+?)\s*<\/a>/i);
+      if (!nameMatch) continue;
+      let name = nameMatch[1].replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
+      if (!name || name.length < 2 || seenNames.has(name.toLowerCase())) continue;
+      
+      // Cerca ruolo nella inline-table
+      const roleMatch = tableHtml.match(/<td[^>]*>\s*(Portiere|Difensore|Centrocampista|Attaccante)\s*<\/td>/i);
+      const role = roleMatch ? roleMatch[1] : undefined;
+      
+      // Cerca numero nel contesto precedente (rn_nummer)
+      const beforeContext = html.substring(Math.max(0, im.index - 500), im.index);
+      const numMatch = beforeContext.match(/rn_nummer\s*>(\d{1,3}|-)<\/div>/);
+      let number = undefined;
+      if (numMatch && numMatch[1] !== "-") {
+        const parsed = Number(numMatch[1]);
+        if (parsed && parsed <= 99) number = parsed;
       }
-
-      if (cells.length >= 2) {
-        // Tipica struttura TM: numero | immagine | nome | posizione | età | nazionalità | ...
-        const numberCell = cells[0];
-        const number = /^\d{1,3}$/.test(numberCell) ? Number(numberCell) : undefined;
-        // Cerca nome (cella dopo numero o nelle prime 3 celle)
-        let nameCell = "";
-        let nameIdx = number !== undefined ? 1 : 0;
-        // Salta eventuale cella immagine (vuota dopo strip tag)
-        for (let i = nameIdx; i < Math.min(cells.length, nameIdx + 3); i++) {
-          if (cells[i] && cells[i].length > 2 && !/^\d+$/.test(cells[i]) && !/^(kg|cm|m|%)/i.test(cells[i])) {
-            nameCell = cells[i];
-            nameIdx = i;
-            break;
-          }
-        }
-        if (!nameCell) continue;
-
-        // Ruolo: cerca nelle celle successive
-        let role = "";
-        for (let i = nameIdx + 1; i < cells.length; i++) {
-          const c = cells[i];
-          if (/portiere|difensore|centrocampista|attaccante/i.test(c)) {
-            role = c.trim();
-            break;
-          }
-          if (/portiere|difensore|centrocampista|attaccante/i.test(c)) {
-            role = c.trim();
-            break;
-          }
-        }
-
-        // Nazionalità: ultima cella testuale prima di valore mercato
-        let nationality = "";
-        for (let i = cells.length - 1; i > nameIdx; i--) {
-          const c = cells[i];
-          if (c && !/^[€\d.,mln ]+$/i.test(c) && !/^\d+$/.test(c) && !/^(kg|cm|m)/i.test(c) && c.length < 40) {
-            nationality = c;
-            break;
-          }
-        }
-
-        // Market value: cerca pattern € o mln
-        let marketValue = "";
-        for (const c of cells) {
-          if (/[€]|mln|mio/i.test(c)) {
-            marketValue = c.replace(/\s+/g, " ").trim();
-            break;
-          }
-        }
-
-        players.push({
-          name: nameCell,
-          number,
-          role: role || undefined,
-          nationality: nationality || undefined,
-          marketValue: marketValue || undefined,
-        });
-      }
+      
+      seenNames.add(name.toLowerCase());
+      players.push({ name, number, role });
     }
   }
+
   return players;
 }
 

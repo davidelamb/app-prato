@@ -1,0 +1,43 @@
+Report errori importazione rose — 2026-07-22T20:07:32.971Z
+============================================================
+
+Squadra: San Donato Tavarnelle
+Errore:  HTML ricevuto ma nessun giocatore riconosciuto (formato non supportato)
+URL sorgente: https://www.transfermarkt.it/san-donato-tavarnelle/kader/verein/39818/plus/1/saison_id/2026
+Esito:   none
+
+Squadra: Lucchese Calcio
+Errore:  HTML ricevuto ma nessun giocatore riconosciuto (formato non supportato)
+URL sorgente: https://www.transfermarkt.it/lucchese-1905/kader/verein/1253/plus/1/saison_id/2026
+Esito:   none
+
+Squadra: FC Scandicci 1908
+Errore:  HTML ricevuto ma nessun giocatore riconosciuto (formato non supportato)
+URL sorgente: https://www.transfermarkt.it/cs-scandicci-1908/kader/verein/27049/plus/1/saison_id/2026
+Esito:   none
+
+Squadra: Ternana Calcio
+Errore:  HTML ricevuto ma nessun giocatore riconosciuto (formato non supportato)
+URL sorgente: https://www.transfermarkt.it/ternana-calcio/kader/verein/1103/plus/1/saison_id/2026
+Esito:   none
+
+Squadra: ASD Angelana 1930
+Errore:  HTML ricevuto ma nessun giocatore riconosciuto (formato non supportato)
+URL sorgente: https://www.transfermarkt.it/asd-angelana-1930/kader/verein/54611/plus/1/saison_id/2026
+Esito:   none
+
+Squadra: Rondinella Marzocco
+Errore:  HTML ricevuto ma nessun giocatore riconosciuto (formato non supportato)
+URL sorgente: https://www.transfermarkt.it/ac-firenze-rondinella/kader/verein/4569/plus/1/saison_id/2026
+Esito:   none
+
+Squadra: Polisportiva Pietralunghese
+Errore:  HTML ricevuto ma nessun giocatore riconosciuto (formato non supportato)
+URL sorgente: https://www.transfermarkt.it/polisportiva-pietralunghese/kader/verein/54953/plus/1/saison_id/2026
+Esito:   none
+
+Suggerimenti:
+- Verifica che gli URL in scripts/rosters-config.json siano accessibili
+- Usa manualPlayers come fallback per squadre non raggiungibili
+- Aggiungi manualPlayers nell'array della squadra interessata
+- Esegui di nuovo con: npm run import-rosters

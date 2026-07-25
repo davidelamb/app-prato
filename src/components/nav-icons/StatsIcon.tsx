@@ -7,18 +7,17 @@ const BAR_W = 3.5;
 const GAP = 1.5;
 const BASE_X = 3;
 
-type BarDef = { h: number; color: string; activeColor: string };
+type BarDef = { h: number; opacity: number };
 const bars: BarDef[] = [
-  { h: 8,  color: colors.live,   activeColor: colors.live },    // rosso
-  { h: 13, color: colors.success, activeColor: colors.success }, // verde
-  { h: 6,  color: colors.live,   activeColor: colors.live },    // rosso
-  { h: 16, color: colors.success, activeColor: colors.success }, // verde
-  { h: 10, color: colors.live,   activeColor: colors.live },    // rosso
+  { h: 8,  opacity: 0.6 },
+  { h: 13, opacity: 0.75 },
+  { h: 6,  opacity: 0.55 },
+  { h: 16, opacity: 0.9 },
+  { h: 10, opacity: 0.7 },
 ];
 
 export default function StatsIcon({ size = 22, active = false, hovered = false }: Props) {
   const base = hovered ? colors.inkSoft : colors.muted;
-  const maxH = Math.max(...bars.map((b) => b.h));
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -33,8 +32,8 @@ export default function StatsIcon({ size = 22, active = false, hovered = false }
             width={BAR_W}
             height={bar.h}
             rx={1.5}
-            fill={active ? bar.activeColor : base}
-            opacity={active ? 1 : 0.5 + 0.1 * i}
+            fill={active ? colors.accent : base}
+            opacity={active ? bar.opacity : 0.5 + 0.1 * i}
           />
         );
       })}

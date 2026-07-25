@@ -1,0 +1,89 @@
+{
+  "teams": [
+    {
+      "name": "US Città di Pontedera",
+      "sourceUrl": "https://www.transfermarkt.it/us-citta-di-pontedera/kader/verein/14888/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Tau Calcio Altopascio",
+      "sourceUrl": "https://www.transfermarkt.it/asd-tau-calcio-altopascio/kader/verein/43153/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Siena FC",
+      "sourceUrl": "https://www.transfermarkt.it/acn-siena-1904/kader/verein/1387/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "SC Trestina",
+      "sourceUrl": "https://www.transfermarkt.it/sc-trestina/kader/verein/38489/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "US Follonica Gavorrano",
+      "sourceUrl": "https://www.transfermarkt.it/us-follonica-gavorrano/kader/verein/27568/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "San Donato Tavarnelle",
+      "sourceUrl": "https://www.transfermarkt.it/san-donato-tavarnelle/kader/verein/39818/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Aquila Montevarchi",
+      "sourceUrl": "https://www.transfermarkt.it/aquila-1902-montevarchi/kader/verein/4339/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Lucchese Calcio",
+      "sourceUrl": "https://www.transfermarkt.it/lucchese-1905/kader/verein/1253/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Terranuova Traiana",
+      "sourceUrl": "https://www.transfermarkt.it/asd-terranuova-traiana/kader/verein/78454/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Seravezza Pozzi",
+      "sourceUrl": "https://www.transfermarkt.it/seravezza-pozzi-calcio/kader/verein/59318/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "GSD Ghiviborgo VDS",
+      "sourceUrl": "https://www.transfermarkt.it/ghivizzano-borgo-a-mozzano/kader/verein/41692/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "FC Scandicci 1908",
+      "sourceUrl": "https://www.transfermarkt.it/cs-scandicci-1908/kader/verein/27049/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Foligno Calcio 1928",
+      "sourceUrl": "https://www.transfermarkt.it/asd-c4/kader/verein/83391/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Ternana Calcio",
+      "sourceUrl": "https://www.transfermarkt.it/ternana-calcio/kader/verein/1103/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "ASD Angelana 1930",
+      "sourceUrl": "https://www.transfermarkt.it/asd-angelana-1930/kader/verein/54611/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Rondinella Marzocco",
+      "sourceUrl": "https://www.transfermarkt.it/ac-firenze-rondinella/kader/verein/4569/plus/1/saison_id/2026",
+      "manualPlayers": []
+    },
+    {
+      "name": "Polisportiva Pietralunghese",
+      "sourceUrl": "https://www.transfermarkt.it/polisportiva-pietralunghese/kader/verein/54953/plus/1/saison_id/2026",
+      "manualPlayers": []
+    }
+  ]
+}

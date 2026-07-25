@@ -40,7 +40,7 @@ const publicTabKeys = new Set<PublicTab>(allTabs.map((item) => item.key));
 
 type TabItem = typeof allTabs[number];
 function NavTabIcon({ tab, active, hovered }: { tab: PublicTab; active: boolean; hovered: boolean }) {
-  const size = 22;
+  const size = 28;
   switch (tab) {
     case 'news': return <NewsIcon size={size} active={active} hovered={hovered} />;
     case 'media': return <MediaIcon size={size} active={active} hovered={hovered} />;
