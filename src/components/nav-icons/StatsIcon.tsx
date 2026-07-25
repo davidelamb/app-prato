@@ -16,8 +16,8 @@ const bars: BarDef[] = [
   { h: 10, opacity: 0.7 },
 ];
 
-export default function StatsIcon({ size = 22, active = false, hovered = false }: Props) {
-  const base = hovered ? colors.inkSoft : colors.muted;
+export default function StatsIcon({ size = 22 }: Props) {
+  const base = colors.accent;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -32,8 +32,8 @@ export default function StatsIcon({ size = 22, active = false, hovered = false }
             width={BAR_W}
             height={bar.h}
             rx={1.5}
-            fill={active ? colors.accent : base}
-            opacity={active ? bar.opacity : 0.5 + 0.1 * i}
+            fill={base}
+            opacity={bar.opacity}
           />
         );
       })}

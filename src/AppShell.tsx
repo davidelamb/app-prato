@@ -76,7 +76,7 @@ function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean;
       style={[styles.navItem, active && styles.navItemActive, focused && !active && !isClub && styles.navItemFocus]}
     >
       {item.image ? (
-        <Image source={item.image} style={[styles.clubIcon, { opacity: active ? 1 : 0.55 }]} resizeMode="contain" />
+        <Image source={item.image} style={styles.clubIcon} resizeMode="contain" />
       ) : (
         <NavTabIcon tab={item.key} active={active} hovered={highlight} />
       )}
