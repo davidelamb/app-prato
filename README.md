@@ -38,7 +38,7 @@ Il bundle iOS e stato compilato con Metro senza errori. Per aprirlo su iPhone in
 
 ## Dati e pubblicazione
 
-Calendario, classifica e live sono dati demo. La rosa e una fotografia pubblica della stagione 2025/26 tratta da Transfermarkt, senza fotografie o scraping automatico; prima del rilascio va sostituita da una fonte autorizzata o dal dato editoriale del club. L'area admin dimostra il flusso editoriale ma non deve essere esposta in produzione senza autenticazione e un database condiviso.
+Calendario e classifica sono un campionato simulato ma completo e coerente: 18 squadre, 34 giornate, 306 partite (`src/data/full-season-2026-27.ts`, generato con `npm run season:generate` e verificato con `npm run verify:season`). La classifica (generale, casa, trasferta, forma) non è inserita a mano: viene sempre ricalcolata dai risultati tramite `calculateStandingSets`/`recalculateContentStandings`. Il live è dimostrativo. La rosa e una fotografia pubblica della stagione 2025/26 tratta da Transfermarkt, senza fotografie o scraping automatico; prima del rilascio va sostituita da una fonte autorizzata o dal dato editoriale del club. L'area admin dimostra il flusso editoriale ma non deve essere esposta in produzione senza autenticazione e un database condiviso.
 
 Per la fase successiva consiglio Supabase: Auth per gli amministratori, Postgres per `fixtures`, `standings`, `players` e `news`, e una funzione schedulata che aggiorni i dati sportivi. Per Transfermarkt serve un utilizzo autorizzato o un inserimento editoriale: il prototipo non effettua scraping del sito.
 

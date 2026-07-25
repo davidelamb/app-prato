@@ -107,14 +107,25 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
       </View>
 
       {view === 'schedule' ? (
-        <CalendarView
-          schedule={schedule}
-          calFilter={calFilter}
-          onCalFilter={setCalFilter}
-          wide={wide}
-          isMobile={isMobile}
-          onTeamPress={openTeam}
-        />
+        calFilter === 'Coppa Italia' || calFilter === 'Amichevole' ? (
+          <CalendarView
+            schedule={schedule}
+            calFilter={calFilter}
+            onCalFilter={setCalFilter}
+            wide={wide}
+            isMobile={isMobile}
+            onTeamPress={openTeam}
+          />
+        ) : (
+          <MatchdayCalendarView
+            matches={(content.schedule ?? []).filter((m) => (m.competition ?? 'Campionato') === 'Campionato')}
+            calFilter={calFilter}
+            onCalFilter={setCalFilter}
+            wide={wide}
+            isMobile={isMobile}
+            onTeamPress={openTeam}
+          />
+        )
       ) : (
         <StandingsView
           standings={displayStandings.rows}
@@ -293,6 +304,192 @@ function CalendarView({
               </View>
             );
           })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function MatchdayCalendarView({
+  matches,
+  calFilter,
+  onCalFilter,
+  wide,
+  isMobile,
+  onTeamPress,
+}: {
+  matches: SeasonMatch[];
+  calFilter: MatchCompetition | 'Tutte';
+  onCalFilter: (f: MatchCompetition | 'Tutte') => void;
+  wide: boolean;
+  isMobile: boolean;
+  onTeamPress: (clubName: string) => void;
+}) {
+  const bodySize = wide ? 14 : 13;
+  const mutedSize = wide ? 12 : 11;
+  const logoSize = isMobile ? 24 : 28;
+
+  const matchdays = useMemo(
+    () => [...new Set(matches.map((m) => m.matchday).filter((n): n is number => typeof n === 'number'))].sort((a, b) => a - b),
+    [matches],
+  );
+
+  const defaultMatchday = useMemo(() => {
+    if (matchdays.length === 0) return null;
+    // Apre sulla prima giornata non completamente conclusa; se tutte
+    // sono concluse (dataset dimostrativo), apre sull'ultima.
+    for (const md of matchdays) {
+      const roundMatches = matches.filter((m) => m.matchday === md);
+      const allFinal = roundMatches.length > 0 && roundMatches.every((m) => m.status === 'final');
+      if (!allFinal) return md;
+    }
+    return matchdays[matchdays.length - 1];
+  }, [matches, matchdays]);
+
+  const [selected, setSelected] = useState<number | null>(null);
+  const activeMatchday = selected ?? defaultMatchday;
+
+  const roundMatches = useMemo(
+    () => matches.filter((m) => m.matchday === activeMatchday).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+    [matches, activeMatchday],
+  );
+
+  const index = activeMatchday != null ? matchdays.indexOf(activeMatchday) : -1;
+  const goPrev = () => index > 0 && setSelected(matchdays[index - 1]);
+  const goNext = () => index >= 0 && index < matchdays.length - 1 && setSelected(matchdays[index + 1]);
+
+  const roundLabel = roundMatches[0]?.roundLabel
+    || (activeMatchday != null ? `${activeMatchday}ª giornata` : '');
+
+  return (
+    <View>
+      {/* Filtri competizione (condivisi con la vista a lista) */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterContent}
+      >
+        {calendarCompetitionFilters.map((f) => {
+          const active = calFilter === f;
+          return (
+            <Pressable
+              key={f}
+              onPress={() => onCalFilter(f)}
+              style={[styles.filterChip, active && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                {competitionLabels[f]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {matchdays.length === 0 || activeMatchday == null ? (
+        <View style={styles.emptyState}>
+          <MaterialCommunityIcons name="calendar-blank-outline" size={36} color={colors.mutedDark} />
+          <Text style={styles.emptyText}>Nessuna partita in calendario</Text>
+        </View>
+      ) : (
+        <View>
+          {/* Navigazione giornata: precedente / label / successiva */}
+          <View style={styles.mdNavRow}>
+            <Pressable
+              onPress={goPrev}
+              disabled={index <= 0}
+              style={[styles.mdNavButton, index <= 0 && styles.mdNavButtonDisabled]}
+              accessibilityLabel="Giornata precedente"
+            >
+              <MaterialCommunityIcons name="chevron-left" size={22} color={index <= 0 ? colors.mutedDark : colors.accentStrong} />
+            </Pressable>
+            <View style={styles.mdNavLabelBox}>
+              <Text style={styles.mdNavLabel} numberOfLines={1}>{roundLabel}</Text>
+              <Text style={styles.mdNavSubLabel}>{roundMatches[0]?.dateLabel || ''}</Text>
+            </View>
+            <Pressable
+              onPress={goNext}
+              disabled={index < 0 || index >= matchdays.length - 1}
+              style={[styles.mdNavButton, (index < 0 || index >= matchdays.length - 1) && styles.mdNavButtonDisabled]}
+              accessibilityLabel="Giornata successiva"
+            >
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={22}
+                color={index < 0 || index >= matchdays.length - 1 ? colors.mutedDark : colors.accentStrong}
+              />
+            </Pressable>
+          </View>
+
+          {/* Selettore diretto della giornata */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.mdPickerScroll}
+            contentContainerStyle={styles.mdPickerContent}
+          >
+            {matchdays.map((md) => {
+              const active = md === activeMatchday;
+              return (
+                <Pressable
+                  key={md}
+                  onPress={() => setSelected(md)}
+                  style={[styles.mdPickerChip, active && styles.mdPickerChipActive]}
+                >
+                  <Text style={[styles.mdPickerChipText, active && styles.mdPickerChipTextActive]}>{md}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* Le 9 partite della giornata selezionata */}
+          <View style={styles.mdMatchList}>
+            {roundMatches.map((match) => {
+              const hasResult = match.homeScore != null && match.awayScore != null;
+              const isHomePrato = isPrato(match.home);
+              const isAwayPrato = isPrato(match.away);
+              const isPratoRow = isHomePrato || isAwayPrato;
+              return (
+                <View key={match.id} style={[styles.mdMatchRow, isPratoRow && styles.mdMatchRowPrato]}>
+                  <Pressable style={styles.mdTeamCell} onPress={() => onTeamPress(match.home)}>
+                    <TeamLogo name={match.home} size={logoSize} />
+                    <Text
+                      style={[styles.mdTeamName, isHomePrato && styles.calTeamPrato, { fontSize: bodySize - 1 }]}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {match.home}
+                    </Text>
+                  </Pressable>
+
+                  <View style={styles.mdCenterCell}>
+                    {hasResult ? (
+                      <Text style={[styles.mdScoreText, { fontSize: bodySize + 2 }]}>
+                        {match.homeScore} - {match.awayScore}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.mdVsText, { fontSize: mutedSize }]}>{match.time || 'VS'}</Text>
+                    )}
+                  </View>
+
+                  <Pressable style={[styles.mdTeamCell, styles.mdTeamCellAway]} onPress={() => onTeamPress(match.away)}>
+                    <Text
+                      style={[
+                        styles.mdTeamName,
+                        isAwayPrato && styles.calTeamPrato,
+                        { fontSize: bodySize - 1, textAlign: 'right' },
+                      ]}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {match.away}
+                    </Text>
+                    <TeamLogo name={match.away} size={logoSize} />
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
         </View>
       )}
     </View>
@@ -898,5 +1095,118 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontWeight: '600',
     fontSize: mutedSize,
+  },
+
+  // Calendario a giornate — navigazione
+  mdNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
+  },
+  mdNavButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceSoft,
+  },
+  mdNavButtonDisabled: {
+    opacity: 0.4,
+  },
+  mdNavLabelBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  mdNavLabel: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  mdNavSubLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.muted,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  mdPickerScroll: {
+    marginBottom: 12,
+  },
+  mdPickerContent: {
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  mdPickerChip: {
+    minWidth: 32,
+    height: 32,
+    paddingHorizontal: 8,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceSoft,
+  },
+  mdPickerChipActive: {
+    backgroundColor: colors.accentStrong,
+  },
+  mdPickerChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.muted,
+  },
+  mdPickerChipTextActive: {
+    color: colors.paper,
+  },
+  mdMatchList: {
+    gap: 6,
+  },
+  mdMatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.paper,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    minHeight: 44,
+    gap: 8,
+  },
+  mdMatchRowPrato: {
+    backgroundColor: '#F4FAFF',
+    borderColor: colors.accent,
+    borderWidth: 1.5,
+  },
+  mdTeamCell: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+  },
+  mdTeamCellAway: {
+    flexDirection: 'row-reverse',
+  },
+  mdTeamName: {
+    color: colors.ink,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  mdCenterCell: {
+    flexShrink: 0,
+    minWidth: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mdScoreText: {
+    fontWeight: '900',
+    color: colors.ink,
+  },
+  mdVsText: {
+    fontWeight: '700',
+    color: colors.muted,
   },
 });
