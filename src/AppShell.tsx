@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AppState, Image, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LiveIcon from './components/nav-icons/LiveIcon';
 import MediaIcon from './components/nav-icons/MediaIcon';
 import NewsIcon from './components/nav-icons/NewsIcon';
@@ -38,15 +39,9 @@ const allTabs: Array<{ key: PublicTab; label: string; image?: ReturnType<typeof 
 ];
 
 const MIN_HIT_AREA = 44;
-// Clearance generica per l'home indicator su iOS (non legata a un modello
-// specifico di iPhone). In assenza di react-native-safe-area-context nel
-// progetto, usiamo un valore fisso ragionevole per piattaforma anziché per
-// singolo dispositivo. TODO: sostituire con useSafeAreaInsets() quando
-// react-native-safe-area-context sarà aggiunto alle dipendenze native.
-const IOS_HOME_INDICATOR_CLEARANCE = Platform.OS === 'ios' ? 20 : 0;
-
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
+const CONTENT_REFRESH_INTERVAL_MS = 60_000;
 const publicTabKeys = new Set<PublicTab>(allTabs.map((item) => item.key));
 
 type TabItem = typeof allTabs[number];
@@ -97,9 +92,44 @@ export default function AppShell() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [adminStatus, setAdminStatus] = useState<AdminStatus>('locked');
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Alcuni Android edge-to-edge restituiscono inset inferiori nulli: mantieni
+  // comunque spazio per status bar e barra di navigazione di sistema.
+  const safeTop = Platform.OS === 'android' ? Math.max(insets.top, 24) : insets.top;
+  const safeBottom = Platform.OS === 'android' ? Math.max(insets.bottom, 24) : insets.bottom;
   const wide = width >= 860;
 
-  useEffect(() => { loadContent().then(setContent); }, []);
+  useEffect(() => {
+    let mounted = true;
+    let refreshing = false;
+
+    const refreshContent = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const next = await loadContent();
+        if (mounted) setContent(next);
+      } catch (error) {
+        console.warn('Sincronizzazione contenuti non riuscita', error);
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    void refreshContent();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshContent();
+    });
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') void refreshContent();
+    }, CONTENT_REFRESH_INTERVAL_MS);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, []);
   useEffect(() => {
     let active = true;
     AsyncStorage.getItem(TAB_STORAGE_KEY)
@@ -171,15 +201,15 @@ export default function AppShell() {
   }, [liveTabVisible]);
   const publicTab = tab === 'admin' ? 'news' : tab;
 
-  return <SafeAreaView style={styles.safe}>
+  return <View style={[styles.safe, { paddingTop: safeTop }]}>
     <StatusBar style="dark" />
     {wide ? <LinearGradient colors={[colors.canvasRaised, '#E4F1FA', colors.canvasRaised]} style={StyleSheet.absoluteFillObject} /> : null}
 
-    <Pressable accessibilityLabel="Apri amministrazione" onPress={() => void toggleAdmin()} style={styles.adminButton}>
+    <Pressable accessibilityLabel="Apri amministrazione" onPress={() => void toggleAdmin()} style={[styles.adminButton, { top: safeTop + 10 }]}>
       {tab === 'admin' ? <MaterialCommunityIcons name="close" size={20} color={colors.accentStrong} /> : <View style={styles.onlineDot} />}
     </Pressable>
 
-    <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
+    <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: (wide ? 48 : 58) + safeBottom }, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
       <View style={[styles.container, wide && styles.containerWide]}>
         {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
         {tab === 'media' ? <MediaScreen content={content} wide={wide} /> : null}
@@ -191,10 +221,10 @@ export default function AppShell() {
       </View>
     </ScrollView>
 
-    {tab !== 'admin' ? <View style={styles.nav}><View style={styles.navInner}>{tabs.map((item) => <NavTabItem key={item.key} item={item} active={publicTab === item.key} onPress={() => setTab(item.key)} />)}</View></View> : null}
+    {tab !== 'admin' ? <View style={[styles.nav, { paddingBottom: safeBottom }]}><View style={styles.navInner}>{tabs.map((item) => <NavTabItem key={item.key} item={item} active={publicTab === item.key} onPress={() => setTab(item.key)} />)}</View></View> : null}
     <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     <ArticleModal article={selectedNews} onClose={() => setSelectedNews(null)} />
-  </SafeAreaView>;
+  </View>;
 }
 
 function PageHeader({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) {
@@ -203,11 +233,11 @@ function PageHeader({ eyebrow, title, copy }: { eyebrow: string; title: string; 
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvasRaised },
-  adminButton: { position: 'absolute', zIndex: 20, top: 10, right: 12, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.lineSoft },
+  adminButton: { position: 'absolute', zIndex: 20, right: 12, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.lineSoft },
   onlineDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.success },
   scroll: { flex: 1 },
-    scrollContent: { paddingBottom: 58 + IOS_HOME_INDICATOR_CLEARANCE },
-  scrollContentWide: { paddingBottom: 48 + IOS_HOME_INDICATOR_CLEARANCE },
+    scrollContent: {},
+  scrollContentWide: {},
   adminScroll: { paddingBottom: 30 },
   container: { width: '100%', padding: 16 },
   containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 32 },
@@ -215,7 +245,7 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
   pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
   pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 8 },
-  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft, paddingBottom: IOS_HOME_INDICATOR_CLEARANCE },
+  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft },
     navInner: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', minHeight: MIN_HIT_AREA, paddingHorizontal: 3 },
     navItem: { flex: 1, minWidth: 0, minHeight: MIN_HIT_AREA, alignItems: 'center', justifyContent: 'center', gap: 0, paddingTop: 0 },
   navItemActive: { backgroundColor: colors.surfaceRaised },

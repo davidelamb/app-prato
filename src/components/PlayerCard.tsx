@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { useEffect, useState } from 'react';
 
 import { NationalityBadge } from './NationalityBadge';
 import { colors, radii } from '../theme';
@@ -8,11 +9,22 @@ import { nationalityList } from '../utils/nationality';
 import { playerImageStyle } from '../utils/player-image';
 
 export function PlayerCard({ player, onPress, style }: { player: Player; onPress: () => void; style?: StyleProp<ViewStyle> }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [player.imageUrl]);
+
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.card, style, pressed && styles.pressed]}>
       <View style={styles.photoWrap}>
-        {player.imageUrl ? (
-          <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={[styles.photo, playerImageStyle(player)]} />
+        {player.imageUrl && !imageFailed ? (
+          <Image
+            source={{ uri: player.imageUrl }}
+            resizeMode="cover"
+            onError={() => setImageFailed(true)}
+            style={[styles.photo, playerImageStyle(player)]}
+          />
         ) : (
           <View style={styles.placeholder}><MaterialCommunityIcons name="account" size={52} color={colors.mutedDark} /></View>
         )}
@@ -38,9 +50,9 @@ export function PlayerCard({ player, onPress, style }: { player: Player; onPress
 }
 
 const styles = StyleSheet.create({
-  card: { minHeight: 146, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  card: { height: 146, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   pressed: { opacity: 0.88 },
-  photoWrap: { width: 122, minHeight: 146, overflow: 'hidden', backgroundColor: colors.surfaceSoft },
+  photoWrap: { width: 122, height: 146, overflow: 'hidden', backgroundColor: colors.surfaceSoft },
   photo: { width: '100%', height: '100%' },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   numberBadge: { position: 'absolute', left: 9, bottom: 9, minWidth: 42, paddingHorizontal: 9, paddingVertical: 6, borderRadius: radii.sm, backgroundColor: colors.navy },
