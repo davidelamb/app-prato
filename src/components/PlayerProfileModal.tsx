@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { NationalityBadge } from './NationalityBadge';
 import { colors, radii } from '../theme';
 import { Player } from '../types';
 import { nationalityList } from '../utils/nationality';
@@ -39,7 +40,10 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
               </View>
               <View style={styles.heroBody}>
                 <Text style={styles.role}>{player.role}</Text>
-                <Text style={styles.name}>{player.name}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name}>{player.name}</Text>
+                  <NationalityBadge value={player.nationality} />
+                </View>
                 <Text style={styles.subline}>{nationalityList(player.nationality).join(' / ') || 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
               </View>
             </View>
@@ -95,7 +99,8 @@ const styles = StyleSheet.create({
   numberText: { color: colors.paper, fontSize: 14, fontWeight: '900' },
   heroBody: { padding: 20 },
   role: { color: colors.accentStrong, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, textTransform: 'uppercase' },
-  name: { color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900', letterSpacing: -0.6, marginTop: 5 },
+  nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 5 },
+  name: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900', letterSpacing: -0.6 },
   subline: { color: colors.muted, fontSize: 14, marginTop: 7 },
   statsGrid: { flexDirection: 'row', marginHorizontal: 16, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   stat: { flex: 1, alignItems: 'center', paddingVertical: 17, borderRightWidth: 1, borderRightColor: colors.lineSoft },

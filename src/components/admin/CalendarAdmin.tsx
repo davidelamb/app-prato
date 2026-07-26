@@ -6,11 +6,11 @@ import { AppContent, MatchCompetition, SeasonMatch } from '../../types';
 import { synchronizeSchedule } from '../../utils/match-sync';
 import { Button, Field, adminStyles } from './Primitives';
 
-const competitions: MatchCompetition[] = ['Coppa Italia', 'Amichevole'];
+const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia'];
 const number = (value: string | number | undefined) => Number(value) || 0;
 const cleanDate = (value: string) => value === 'Data da definire' ? '' : value;
 const cleanTime = (value: string) => value === '—' ? '' : value;
-const newMatch = (): SeasonMatch => ({ id: '', competition: 'Coppa Italia', roundLabel: '', dateLabel: '', time: '', home: 'AC Prato', away: '', venue: '', sortOrder: Date.now() });
+const newMatch = (): SeasonMatch => ({ id: '', competition: 'Campionato', roundLabel: '', dateLabel: '', time: '', home: 'AC Prato', away: '', venue: '', sortOrder: Date.now() });
 
 function scoreInput(value: string): number | undefined | null {
   if (value === '') return undefined;
@@ -21,7 +21,12 @@ function scoreInput(value: string): number | undefined | null {
 
 function normalizeMatch(match: SeasonMatch, index: number): SeasonMatch {
   const hasResult = Number.isInteger(match.homeScore) && Number.isInteger(match.awayScore);
-  return { ...match, id: match.id || `calendar-${Date.now()}-${index}`, competition: match.competition ?? 'Campionato', roundLabel: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : ''), dateLabel: cleanDate(match.dateLabel ?? ''), time: cleanTime(match.time ?? ''), venue: match.venue ?? '', sortOrder: match.sortOrder ?? index, status: match.status === 'live' ? 'live' : hasResult ? 'final' : 'scheduled' };
+  const competition = match.competition ?? 'Campionato';
+  const roundLabel = match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : '');
+  const inferredMatchday = competition === 'Campionato'
+    ? (Number(match.matchday) || Number(String(roundLabel).match(/\d+/)?.[0]) || undefined)
+    : match.matchday;
+  return { ...match, id: match.id || `calendar-${Date.now()}-${index}`, competition, matchday: inferredMatchday, roundLabel, dateLabel: cleanDate(match.dateLabel ?? ''), time: cleanTime(match.time ?? ''), venue: match.venue ?? '', sortOrder: match.sortOrder ?? index, status: match.status === 'live' ? 'live' : hasResult ? 'final' : 'scheduled' };
 }
 
 function dateKey(match: SeasonMatch): number {
@@ -32,18 +37,16 @@ function dateKey(match: SeasonMatch): number {
 
 function competitionFrom(value: string): MatchCompetition | null {
   const normalized = value.trim().toLowerCase();
-  if (normalized.includes('amichev')) return 'Amichevole';
   if (normalized.includes('coppa')) return 'Coppa Italia';
   if (normalized.includes('campionato') || normalized.includes('serie d')) return 'Campionato';
   return null;
 }
 
 export function CalendarAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  // Il Campionato (306 partite) si gestisce esclusivamente in "Girone" (GroupAdmin):
-  // qui restano solo Coppa Italia e Amichevoli, per avere un'unica fonte dati
-  // autorevole per il campionato e non ricreare le incoerenze del Problema 1.
   const initialSchedule = useMemo<SeasonMatch[]>(
-    () => (content.schedule ?? []).filter((m) => (m.competition ?? 'Campionato') !== 'Campionato').map(normalizeMatch),
+    () => (content.schedule ?? [])
+      .filter((m) => (m.competition ?? 'Campionato') === 'Campionato' || m.competition === 'Coppa Italia')
+      .map(normalizeMatch),
     [content.schedule],
   );
   const [schedule, setSchedule] = useState<SeasonMatch[]>(initialSchedule);
@@ -52,13 +55,29 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
   const [importPreview, setImportPreview] = useState<SeasonMatch[] | null>(null);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<'csv' | 'json'>('csv');
+  const [listCompetition, setListCompetition] = useState<MatchCompetition>('Campionato');
+  const [selectedMatchday, setSelectedMatchday] = useState(1);
+
+  const visibleSchedule = useMemo(
+    () => schedule.filter((match) => {
+      const competition = match.competition ?? 'Campionato';
+      if (competition !== listCompetition) return false;
+      return listCompetition !== 'Campionato' || match.matchday === selectedMatchday;
+    }),
+    [listCompetition, schedule, selectedMatchday],
+  );
 
   const updateDraft = <K extends keyof SeasonMatch>(key: K, value: SeasonMatch[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const updateMatch = (id: string, patch: Partial<SeasonMatch>) => setSchedule((current) => current.map((match) => match.id === id ? { ...match, ...patch } : match));
 
   const addMatch = () => {
     if (!draft.home.trim() || !draft.away.trim()) return Alert.alert('Squadre mancanti', 'Inserisci squadra di casa e squadra ospite.');
+    if (draft.competition === 'Campionato' && (!Number.isInteger(draft.matchday) || Number(draft.matchday) < 1 || Number(draft.matchday) > 34)) {
+      return Alert.alert('Giornata mancante', 'Per il Campionato inserisci una giornata da 1 a 34.');
+    }
     setSchedule((current) => [...current, normalizeMatch({ ...draft, id: `calendar-${Date.now()}`, home: draft.home.trim(), away: draft.away.trim() }, current.length)]);
+    if (draft.competition === 'Campionato' && draft.matchday) setSelectedMatchday(draft.matchday);
+    setListCompetition(draft.competition ?? 'Campionato');
     setDraft(newMatch());
   };
 
@@ -69,10 +88,12 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
       || (match.awayScore !== undefined && (!Number.isInteger(match.awayScore) || match.awayScore < 0)));
     if (invalid) return Alert.alert('Risultato non valido', 'Inserisci due numeri interi non negativi oppure lascia entrambi i campi vuoti.');
     setSchedule(sorted);
-    // Il Campionato (gestito in "Girone") resta invariato: qui si aggiornano
-    // solo Coppa Italia e Amichevoli, poi si ricompone il calendario completo.
-    const campionato = (content.schedule ?? []).filter((m) => (m.competition ?? 'Campionato') === 'Campionato');
-    void onChange(synchronizeSchedule(content, [...campionato, ...sorted]));
+    const activeIds = new Set(sorted.map((match) => match.id));
+    const deletedScheduleMatchIds = [
+      ...(content.deletedScheduleMatchIds ?? []),
+      ...(content.schedule ?? []).filter((match) => !activeIds.has(match.id)).map((match) => match.id),
+    ].filter((matchId, index, ids) => ids.indexOf(matchId) === index && !activeIds.has(matchId));
+    void onChange(synchronizeSchedule({ ...content, deletedScheduleMatchIds }, sorted));
   };
 
   const setMatchScore = (id: string, side: 'homeScore' | 'awayScore', value: string) => {
@@ -97,7 +118,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
         else errors.push(`Riga ${index + 1}: casa o trasferta vuoti.`);
         return;
       }
-      errors.push(`Riga ${index + 1}: il Campionato si importa dal pannello "Girone", non da qui. Specifica esplicitamente "Coppa Italia" o "Amichevole" come prima colonna.`);
+      errors.push(`Riga ${index + 1}: specifica "Campionato" o "Coppa Italia" come prima colonna.`);
     });
     setImportErrors(errors);
     setImportPreview(parsed.length ? parsed : null);
@@ -117,14 +138,14 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
         const home = String(obj.home ?? obj.casa ?? '');
         const away = String(obj.away ?? obj.trasferta ?? '');
         if (!home || !away) { errors.push(`Elemento ${index + 1}: casa o trasferta mancanti.`); return; }
-        if (comp !== 'Coppa Italia' && comp !== 'Amichevole') {
-          errors.push(`Elemento ${index + 1}: specifica "competition": "Coppa Italia" o "Amichevole" — il Campionato si importa dal pannello "Girone".`);
+        if (comp !== 'Coppa Italia' && comp !== 'Campionato') {
+          errors.push(`Elemento ${index + 1}: specifica "competition": "Campionato" o "Coppa Italia".`);
           return;
         }
         const match: SeasonMatch = {
           id: String(obj.id ?? `prev-${index}`),
           matchday: number(String(obj.matchday ?? obj.giornata ?? '')),
-          competition: comp ?? 'Coppa Italia',
+          competition: comp ?? 'Campionato',
           roundLabel: String(obj.roundLabel ?? obj.turno ?? ''),
           dateLabel: String(obj.dateLabel ?? obj.data ?? ''),
           time: String(obj.time ?? obj.ora ?? ''),
@@ -152,7 +173,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
 
   const confirmImport = () => {
     if (!importPreview?.length) return;
-    setSchedule(importPreview.map((m, i) => ({ ...m, id: `calendar-import-${Date.now()}-${i}`, sortOrder: i })));
+    setSchedule(importPreview.map((m, i) => normalizeMatch({ ...m, id: `calendar-import-${Date.now()}-${i}`, sortOrder: i }, i)));
     setImportPreview(null);
     setImportErrors([]);
     setScheduleImport('');
@@ -162,7 +183,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Aggiungi partita</Text>
       <CompetitionChoices value={draft.competition ?? 'Campionato'} onChange={(competition) => updateDraft('competition', competition)} />
-      <View style={adminStyles.row}><Field label="Turno o descrizione" value={draft.roundLabel ?? ''} onChangeText={(v) => updateDraft('roundLabel', v)} placeholder="1ª giornata / Sedicesimi / Test" /><Field label="Data" value={draft.dateLabel} onChangeText={(v) => updateDraft('dateLabel', v)} placeholder="06/09/2026" /><Field label="Ora" value={draft.time} onChangeText={(v) => updateDraft('time', v)} placeholder="15:00" /></View>
+      <View style={adminStyles.row}><Field label="Giornata" value={draft.matchday ? String(draft.matchday) : ''} onChangeText={(v) => updateDraft('matchday', v ? Number(v) : undefined)} keyboardType="numeric" /><Field label="Turno o descrizione" value={draft.roundLabel ?? ''} onChangeText={(v) => updateDraft('roundLabel', v)} placeholder="1ª giornata / Sedicesimi" /><Field label="Data" value={draft.dateLabel} onChangeText={(v) => updateDraft('dateLabel', v)} placeholder="06/09/2026" /><Field label="Ora" value={draft.time} onChangeText={(v) => updateDraft('time', v)} placeholder="15:00" /></View>
       <View style={adminStyles.row}><Field label="Casa" value={draft.home} onChangeText={(v) => updateDraft('home', v)} /><Field label="Trasferta" value={draft.away} onChangeText={(v) => updateDraft('away', v)} /><Field label="Stadio" value={draft.venue ?? ''} onChangeText={(v) => updateDraft('venue', v)} /></View>
       <View style={adminStyles.row}><Field label="Gol casa" value={draft.homeScore === undefined ? '' : String(draft.homeScore)} onChangeText={(v) => { const score = scoreInput(v); if (score !== null) updateDraft('homeScore', score); }} keyboardType="numeric" /><Field label="Gol ospite" value={draft.awayScore === undefined ? '' : String(draft.awayScore)} onChangeText={(v) => { const score = scoreInput(v); if (score !== null) updateDraft('awayScore', score); }} keyboardType="numeric" /></View>
       <Button label="Aggiungi al calendario" icon="calendar-plus" onPress={addMatch} />
@@ -170,12 +191,12 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Importa calendario</Text>
-      <Text style={adminStyles.copy}>Importa partite di Coppa Italia o Amichevole via CSV (competizione;turno;data;ora;casa;trasferta;stadio;golC;golO) o JSON. Il Campionato si importa dal pannello "Girone".</Text>
+      <Text style={adminStyles.copy}>Importa partite di Campionato o Coppa Italia via CSV (competizione;turno;data;ora;casa;trasferta;stadio;golC;golO) o JSON.</Text>
       <View style={adminStyles.choices}>
         <Pressable onPress={() => setImportMode('csv')} style={[adminStyles.choice, importMode === 'csv' && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, importMode === 'csv' && adminStyles.choiceTextActive]}>CSV / Testo</Text></Pressable>
         <Pressable onPress={() => setImportMode('json')} style={[adminStyles.choice, importMode === 'json' && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, importMode === 'json' && adminStyles.choiceTextActive]}>JSON</Text></Pressable>
       </View>
-      <Field label="Dati" value={scheduleImport} onChangeText={setScheduleImport} multiline placeholder={importMode === 'csv' ? 'AC Prato;Vis Artena;04/09/2026;15:00;...' : '[{"home":"AC Prato","away":"Vis Artena","dateLabel":"04/09/2026"}]'} />
+      <Field label="Dati" value={scheduleImport} onChangeText={setScheduleImport} multiline placeholder={importMode === 'csv' ? 'Campionato;1ª giornata;06/09/2026;15:00;AC Prato;Vis Artena;...' : '[{"competition":"Coppa Italia","home":"AC Prato","away":"Vis Artena","dateLabel":"04/09/2026"}]'} />
       <Button label="Anteprima import" icon="eye-outline" secondary onPress={previewImport} />
       {importErrors.length > 0 ? <View style={{ marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: colors.liveSoft }}>{importErrors.map((err, i) => <Text key={i} style={{ color: colors.live, fontSize: 12, fontFamily: 'monospace' }}>⚠️ {err}</Text>)}</View> : null}
       {importPreview ? <View style={{ marginTop: 10 }}>
@@ -186,15 +207,28 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
     </View>
 
     <View style={adminStyles.panel}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={adminStyles.title}>Coppa Italia e Amichevoli</Text><Text style={{ fontSize: 11, color: colors.muted }}>{schedule.length} partite</Text></View>
-      <Text style={adminStyles.copy}>Il Campionato (306 partite) si gestisce nel pannello "Girone".</Text>
-      <View style={adminStyles.list}>{schedule.map((match) => <View key={match.id} style={adminStyles.listRow}>
-        <View style={{ width: 54, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: match.competition === 'Coppa Italia' ? colors.navy : match.competition === 'Amichevole' ? colors.success : colors.accentStrong }}><Text style={{ color: colors.paper, fontSize: 9, fontWeight: '900' }}>{match.competition === 'Coppa Italia' ? 'COPPA' : match.competition === 'Amichevole' ? 'AMIC' : 'CAMP'}</Text></View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={adminStyles.title}>Campionato e Coppa Italia</Text><Text style={{ fontSize: 11, color: colors.muted }}>{schedule.length} partite totali</Text></View>
+      <Text style={adminStyles.copy}>Tutte le partite sono modificabili. I risultati di campionato aggiornano automaticamente la classifica.</Text>
+      <CompetitionChoices value={listCompetition} onChange={setListCompetition} />
+      {listCompetition === 'Campionato' ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <Pressable accessibilityLabel="Giornata precedente" disabled={selectedMatchday <= 1} onPress={() => setSelectedMatchday((day) => Math.max(1, day - 1))} style={adminStyles.choice}>
+            <MaterialCommunityIcons name="chevron-left" size={20} color={selectedMatchday <= 1 ? colors.muted : colors.accentStrong} />
+          </Pressable>
+          <Text style={adminStyles.listTitle}>{selectedMatchday}ª giornata</Text>
+          <Pressable accessibilityLabel="Giornata successiva" disabled={selectedMatchday >= 34} onPress={() => setSelectedMatchday((day) => Math.min(34, day + 1))} style={adminStyles.choice}>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={selectedMatchday >= 34 ? colors.muted : colors.accentStrong} />
+          </Pressable>
+        </View>
+      ) : null}
+      <Text style={adminStyles.listMeta}>{visibleSchedule.length} partite visualizzate</Text>
+      <View style={adminStyles.list}>{visibleSchedule.map((match) => <View key={match.id} style={adminStyles.listRow}>
+        <View style={{ width: 54, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: match.competition === 'Coppa Italia' ? colors.navy : colors.accentStrong }}><Text style={{ color: colors.paper, fontSize: 9, fontWeight: '900' }}>{match.competition === 'Coppa Italia' ? 'COPPA' : 'CAMP'}</Text></View>
         <View style={adminStyles.listBody}>
           <Text style={adminStyles.listTitle}>{match.home} – {match.away}</Text>
           <Text style={adminStyles.listMeta}>{match.roundLabel}{match.venue ? ` · ${match.venue}` : ''}{match.dateLabel ? ` · ${match.dateLabel}` : ''}{match.time ? ` · ${match.time}` : ''}{match.homeScore !== undefined ? ` (${match.homeScore}-${match.awayScore})` : ''}</Text>
           <CompetitionChoices value={match.competition ?? 'Campionato'} onChange={(c) => updateMatch(match.id, { competition: c })} compact />
-          <View style={adminStyles.row}><Field label="Turno" value={match.roundLabel ?? ''} onChangeText={(v) => updateMatch(match.id, { roundLabel: v })} /><Field label="Data" value={match.dateLabel} onChangeText={(v) => updateMatch(match.id, { dateLabel: v })} /><Field label="Ora" value={match.time} onChangeText={(v) => updateMatch(match.id, { time: v })} /></View>
+          <View style={adminStyles.row}><Field label="Giornata" value={match.matchday ? String(match.matchday) : ''} onChangeText={(v) => updateMatch(match.id, { matchday: v ? Number(v) : undefined })} keyboardType="numeric" /><Field label="Turno" value={match.roundLabel ?? ''} onChangeText={(v) => updateMatch(match.id, { roundLabel: v })} /><Field label="Data" value={match.dateLabel} onChangeText={(v) => updateMatch(match.id, { dateLabel: v })} /><Field label="Ora" value={match.time} onChangeText={(v) => updateMatch(match.id, { time: v })} /></View>
           <View style={adminStyles.row}><Field label="Casa" value={match.home} onChangeText={(v) => updateMatch(match.id, { home: v })} /><Field label="Trasferta" value={match.away} onChangeText={(v) => updateMatch(match.id, { away: v })} /><Field label="Stadio" value={match.venue ?? ''} onChangeText={(v) => updateMatch(match.id, { venue: v })} /></View>
           <View style={adminStyles.row}><Field label="Gol casa" value={match.homeScore === undefined ? '' : String(match.homeScore)} onChangeText={(v) => setMatchScore(match.id, 'homeScore', v)} keyboardType="numeric" /><Field label="Gol ospite" value={match.awayScore === undefined ? '' : String(match.awayScore)} onChangeText={(v) => setMatchScore(match.id, 'awayScore', v)} keyboardType="numeric" /></View>
         </View>

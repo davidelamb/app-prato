@@ -3,7 +3,7 @@ export type LivePhase = 'scheduled' | 'first_half' | 'halftime' | 'second_half' 
 export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'fulltime';
 export type PlayerRole = 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
 export type MediaKind = 'Highlights' | 'Intervista' | 'Video' | 'Podcast';
-export type MatchCompetition = 'Campionato' | 'Coppa Italia' | 'Amichevole';
+export type MatchCompetition = 'Campionato' | 'Coppa Italia';
 export type StandingScope = 'overall' | 'home' | 'away' | 'form';
 
 export type MatchLineupPlayer = {
@@ -181,6 +181,7 @@ export type AppContent = {
   awayStandings?: Standing[];
   formStandings?: Standing[];
   schedule?: SeasonMatch[];
+  deletedScheduleMatchIds?: string[];
   groupMatches?: SeasonMatch[];
   teams?: Team[];
   players: Player[];

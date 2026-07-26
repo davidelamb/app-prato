@@ -13,11 +13,9 @@ import { normalizeTeamName } from '../utils/team-names';
 
 type StatsView = 'schedule' | 'standings';
 
-const competitionLabels: Record<MatchCompetition | 'Tutte', string> = {
-  Tutte: 'Tutte',
+const competitionLabels: Record<MatchCompetition, string> = {
   Campionato: 'Campionato',
   'Coppa Italia': 'Coppa Italia',
-  Amichevole: 'Amichevole',
 };
 
 const scopeLabels: Record<StandingScope, string> = {
@@ -27,7 +25,7 @@ const scopeLabels: Record<StandingScope, string> = {
   form: 'Forma',
 };
 
-const calendarCompetitionFilters: Array<MatchCompetition | 'Tutte'> = ['Tutte', 'Campionato', 'Coppa Italia', 'Amichevole'];
+const calendarCompetitionFilters: MatchCompetition[] = ['Campionato', 'Coppa Italia'];
 const scopeFilters: StandingScope[] = ['overall', 'home', 'away', 'form'];
 
 const isPrato = (club: string) => /\bprato\b/i.test(club);
@@ -45,7 +43,7 @@ function formIcon(value: 'W' | 'D' | 'L') {
 
 export function StatsScreen({ content, wide }: { content: AppContent; wide: boolean }) {
   const [view, setView] = useState<StatsView>('schedule');
-  const [calFilter, setCalFilter] = useState<MatchCompetition | 'Tutte'>('Tutte');
+  const [calFilter, setCalFilter] = useState<MatchCompetition>('Campionato');
   const [scope, setScope] = useState<StandingScope>('overall');
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<SeasonMatch | null>(null);
@@ -54,7 +52,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
 
   const schedule = useMemo(() => {
     const items = content.schedule ?? [];
-    const filtered = calFilter === 'Tutte' ? items : items.filter((m) => (m.competition ?? 'Campionato') === calFilter);
+    const filtered = items.filter((m) => (m.competition ?? 'Campionato') === calFilter);
     return [...filtered].sort((a, b) => {
       const d = dateValue(a.dateLabel) - dateValue(b.dateLabel);
       if (d !== 0) return d;
@@ -109,7 +107,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
       </View>
 
       {view === 'schedule' ? (
-        calFilter === 'Coppa Italia' || calFilter === 'Amichevole' ? (
+        calFilter === 'Coppa Italia' ? (
           <CalendarView
             schedule={schedule}
             calFilter={calFilter}
@@ -155,8 +153,8 @@ function CalendarView({
   onMatchPress,
 }: {
   schedule: SeasonMatch[];
-  calFilter: MatchCompetition | 'Tutte';
-  onCalFilter: (f: MatchCompetition | 'Tutte') => void;
+  calFilter: MatchCompetition;
+  onCalFilter: (f: MatchCompetition) => void;
   wide: boolean;
   isMobile: boolean;
   onMatchPress: (match: SeasonMatch) => void;
@@ -199,8 +197,8 @@ function CalendarView({
         <View style={styles.calendarList}>
           {schedule.map((match) => {
             const comp = match.competition ?? 'Campionato';
-            const compColor = comp === 'Coppa Italia' ? colors.yellow : comp === 'Amichevole' ? colors.success : colors.accent;
-            const compBg = comp === 'Coppa Italia' ? colors.yellowSoft : comp === 'Amichevole' ? colors.successSoft : colors.accentSoft;
+            const compColor = comp === 'Coppa Italia' ? colors.yellow : colors.accent;
+            const compBg = comp === 'Coppa Italia' ? colors.yellowSoft : colors.accentSoft;
             const hasResult = match.homeScore != null && match.awayScore != null;
             const isHomePrato = /\bprato\b/i.test(match.home);
             const isAwayPrato = /\bprato\b/i.test(match.away);
@@ -322,8 +320,8 @@ function MatchdayCalendarView({
   onMatchPress,
 }: {
   matches: SeasonMatch[];
-  calFilter: MatchCompetition | 'Tutte';
-  onCalFilter: (f: MatchCompetition | 'Tutte') => void;
+  calFilter: MatchCompetition;
+  onCalFilter: (f: MatchCompetition) => void;
   wide: boolean;
   isMobile: boolean;
   onMatchPress: (match: SeasonMatch) => void;

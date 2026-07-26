@@ -45,6 +45,24 @@ function resultPatch(source: Pick<SeasonMatch, 'homeScore' | 'awayScore' | 'stat
   };
 }
 
+function schedulePatch(source: SeasonMatch): Partial<SeasonMatch> {
+  return {
+    matchday: source.matchday,
+    leg: source.leg,
+    competition: source.competition,
+    roundLabel: source.roundLabel,
+    home: source.home,
+    away: source.away,
+    dateLabel: source.dateLabel,
+    time: source.time,
+    venue: source.venue,
+    homeScore: source.homeScore,
+    awayScore: source.awayScore,
+    sortOrder: source.sortOrder,
+    status: scoreStatus(source.homeScore, source.awayScore, source.status),
+  };
+}
+
 function fixtureResultPatch(source: Pick<Fixture, 'homeScore' | 'awayScore' | 'status'>) {
   return { homeScore: source.homeScore, awayScore: source.awayScore, status: source.status };
 }
@@ -71,10 +89,12 @@ export function synchronizeGroupMatches(content: AppContent, groupMatches: Seaso
 }
 
 export function synchronizeSchedule(content: AppContent, schedule: SeasonMatch[]): AppContent {
-  const groupMatches = (content.groupMatches ?? []).map((match) => {
-    const source = schedule.find((candidate) => sameMatch(match, candidate));
-    return source ? { ...match, ...resultPatch(source) } : match;
-  });
+  const groupMatches = schedule
+    .filter((match) => (match.competition ?? 'Campionato') === 'Campionato')
+    .map((source) => {
+      const existing = (content.groupMatches ?? []).find((match) => sameMatch(match, source));
+      return existing ? { ...existing, ...schedulePatch(source) } : { ...source, competition: 'Campionato' as const };
+    });
   const fixtures = content.fixtures.map((fixture) => {
     const source = schedule.find((candidate) => sameMatch(fixture, candidate));
     if (!source) return fixture;

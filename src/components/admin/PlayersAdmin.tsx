@@ -5,13 +5,21 @@ import { Alert, Image, Pressable, Text, View } from 'react-native';
 
 import { colors } from '../../theme';
 import { AppContent, Player, PlayerRole } from '../../types';
+import { nationalityList } from '../../utils/nationality';
 import { playerImageStyle } from '../../utils/player-image';
+import { NationalityBadge } from '../NationalityBadge';
 import { PlayerPhotoEditor } from './PlayerPhotoEditor';
 import { Button, Field, adminStyles } from './Primitives';
 
 const roles: PlayerRole[] = ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
 const empty: Player = { id: '', name: '', role: 'Attaccante', appearances: 0, goals: 0, assists: 0, source: 'Editoriale', imageScale: 1, imagePositionX: 0, imagePositionY: 0 };
 const id = () => `player-${Date.now()}`;
+const nationalityValue = (value?: string | string[]) => nationalityList(value).join(', ');
+const parsedNationality = (value?: string | string[]) => {
+  const raw = Array.isArray(value) ? value : String(value ?? '').split(',');
+  const nations = raw.map((nation) => nation.trim()).filter(Boolean);
+  return nations.length > 1 ? nations : nations[0];
+};
 
 export function PlayersAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
   const [draft, setDraft] = useState<Player>(empty);
@@ -23,6 +31,7 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
     if (!result.canceled) {
       const asset = result.assets[0];
       update('imageUrl', asset.base64 ? `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}` : asset.uri);
+      update('imageSourceUrl', 'Foto caricata dal pannello admin');
     }
   };
 
@@ -40,6 +49,8 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
       appearances: Number(draft.appearances) || 0,
       goals: Number(draft.goals) || 0,
       assists: Number(draft.assists) || 0,
+      age: draft.age ? Number(draft.age) : undefined,
+      nationality: parsedNationality(draft.nationality),
       imageScale: Math.max(1, Number(draft.imageScale) || 1),
       imagePositionX: Number(draft.imagePositionX) || 0,
       imagePositionY: Number(draft.imagePositionY) || 0,
@@ -66,6 +77,11 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
       )}
       <View style={adminStyles.row}><Field label="Nome" value={draft.name} onChangeText={(value) => update('name', value)} /><Field label="Numero" value={draft.number ? String(draft.number) : ''} onChangeText={(value) => update('number', value ? Number(value) : undefined)} keyboardType="numeric" /></View>
       <View style={adminStyles.choices}>{roles.map((role) => <Pressable key={role} onPress={() => update('role', role)} style={[adminStyles.choice, draft.role === role && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, draft.role === role && adminStyles.choiceTextActive]}>{role}</Text></Pressable>)}</View>
+      <View style={adminStyles.row}><Field label="Nazionalità (separate da virgola)" value={nationalityValue(draft.nationality)} onChangeText={(value) => update('nationality', value)} /><Field label="Età" value={draft.age ? String(draft.age) : ''} onChangeText={(value) => update('age', value ? Number(value) : undefined)} keyboardType="numeric" /></View>
+      <View style={adminStyles.row}><Field label="Data di nascita" value={draft.birthDate ?? ''} onChangeText={(value) => update('birthDate', value)} /><Field label="Luogo di nascita" value={draft.birthplace ?? ''} onChangeText={(value) => update('birthplace', value)} /></View>
+      <View style={adminStyles.row}><Field label="Altezza" value={draft.height ?? ''} onChangeText={(value) => update('height', value)} /><Field label="Piede" value={draft.foot ?? ''} onChangeText={(value) => update('foot', value)} /></View>
+      <View style={adminStyles.row}><Field label="Contratto fino al" value={draft.contractUntil ?? ''} onChangeText={(value) => update('contractUntil', value)} /><Field label="Valore indicativo" value={draft.marketValue ?? ''} onChangeText={(value) => update('marketValue', value)} /></View>
+      <Field label="Fonte foto" value={draft.imageSourceUrl ?? ''} onChangeText={(value) => update('imageSourceUrl', value)} />
       <View style={adminStyles.row}><Field label="Presenze" value={String(draft.appearances)} onChangeText={(value) => update('appearances', Number(value))} keyboardType="numeric" /><Field label="Gol" value={String(draft.goals)} onChangeText={(value) => update('goals', Number(value))} keyboardType="numeric" /><Field label="Assist" value={String(draft.assists ?? 0)} onChangeText={(value) => update('assists', Number(value))} keyboardType="numeric" /></View>
       <Field label="Profilo" value={draft.bio ?? ''} onChangeText={(value) => update('bio', value)} multiline />
       <Button label={editing ? 'Salva modifiche' : 'Aggiungi alla rosa'} icon="content-save-outline" onPress={save} />
@@ -76,6 +92,7 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
       <View style={adminStyles.list}>{content.players.map((player) => <Pressable key={player.id} onPress={() => { setEditing(player.id); setDraft({ ...player, imageScale: player.imageScale ?? 1, imagePositionX: player.imagePositionX ?? 0, imagePositionY: player.imagePositionY ?? 0 }); }} style={adminStyles.listRow}>
         <View style={{ width: 46, height: 50, overflow: 'hidden', borderRadius: 10, backgroundColor: colors.surfaceSoft }}>{player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={[{ width: '100%', height: '100%' }, playerImageStyle(player)]} /> : null}</View>
         <View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{player.name}</Text><Text style={adminStyles.listMeta}>{player.number ? `#${player.number} · ` : ''}{player.role}</Text></View>
+        <NationalityBadge value={player.nationality} compact />
         <MaterialCommunityIcons name="pencil-outline" size={20} color={colors.accentStrong} />
       </Pressable>)}</View>
     </View>

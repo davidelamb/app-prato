@@ -1,9 +1,21 @@
+import { Image } from 'react-native';
+
 import { Player } from '../types';
 
 type PlayerPhotoFallback = Pick<Player, 'imageUrl' | 'imageSourceUrl' | 'imageScale' | 'imagePositionX' | 'imagePositionY'>;
 
-const localPucci = require('../../assets/players/pucci.jpg') as { uri: string };
-const localVerde = require('../../assets/players/verde.jpg') as { uri: string };
+type StaticAsset = number | string | { uri?: string };
+const localPhotoUri = (source: StaticAsset): string => {
+  if (typeof source === 'string') return source;
+  if (typeof source === 'object' && source?.uri) return source.uri;
+  const resolver = (Image as typeof Image & { resolveAssetSource?: (asset: number) => { uri?: string } }).resolveAssetSource;
+  return resolver?.(source)?.uri ?? '';
+};
+const localPucci = localPhotoUri(require('../../assets/players/pucci.jpg'));
+const localVerde = localPhotoUri(require('../../assets/players/verde.jpg'));
+const localBenedetti = localPhotoUri(require('../../assets/players/benedetti-user.jpg'));
+const localEleuteri = localPhotoUri(require('../../assets/players/eleuteri-user.jpg'));
+const localBajic = localPhotoUri(require('../../assets/players/bajic-user.jpg'));
 
 export const playerPhotoFallbacks: Record<string, PlayerPhotoFallback> = {
   biguzzi: {
@@ -19,15 +31,33 @@ export const playerPhotoFallbacks: Record<string, PlayerPhotoFallback> = {
     imagePositionY: -6,
   },
   pucci: {
-    imageUrl: localPucci.uri,
+    imageUrl: localPucci,
     imageSourceUrl: 'Fotografia fornita dall\'utente',
     imageScale: 1.05,
     imagePositionY: -2,
   },
   verde: {
-    imageUrl: localVerde.uri,
+    imageUrl: localVerde,
     imageSourceUrl: 'Fotografia fornita dall\'utente',
     imageScale: 1.05,
     imagePositionY: -2,
+  },
+  benedetti: {
+    imageUrl: localBenedetti,
+    imageSourceUrl: 'Fotografia fornita dall\'utente',
+    imageScale: 1.02,
+    imagePositionY: 12,
+  },
+  eleuteri: {
+    imageUrl: localEleuteri,
+    imageSourceUrl: 'Fotografia fornita dall\'utente',
+    imageScale: 1.02,
+    imagePositionY: 10,
+  },
+  bajic: {
+    imageUrl: localBajic,
+    imageSourceUrl: 'Fotografia fornita dall\'utente',
+    imageScale: 1.04,
+    imagePositionY: 42,
   },
 };
