@@ -231,7 +231,9 @@ Queste regole sono obbligatorie quando il repository viene modificato da Codex, 
 - Prima di continuare un lavoro sospeso eseguire `git fetch`, leggere gli ultimi commit del branch remoto e aggiornare il branch con rebase o fast-forward. Non usare `git reset --hard`, `git checkout --` o comandi che cancellano modifiche locali.
 - Aggiungere allo staging solo i file del task corrente; non includere `.env`, credenziali, build, cache o file temporanei.
 - `AsyncStorage` è locale al singolo dispositivo e non sincronizza contenuti tra utenti o AI. Per dati condivisi tra dispositivi serve un backend/API; non presentare la persistenza locale come sincronizzazione cloud.
-- Il merge in `main` avviene solo dopo CI verde, controllo della preview Cloudflare e approvazione esplicita del proprietario del repository.
+- Quando il task è stato richiesto dal proprietario e CI è verde, l’AI che ha completato il task deve eseguire anche il merge della propria pull request in `main`, attendere il completamento del deploy Cloudflare e riallineare la copia locale con `git switch main` e `git pull --ff-only origin main`. Non lasciare una PR pronta senza completare il merge quando l’autorizzazione è già presente.
+- Il merge resta vietato se CI è rossa, se la PR ha conflitti, se il deploy fallisce o se manca l’autorizzazione esplicita del proprietario.
+- Dopo il merge verificare sempre `git status --short --branch`, il commit remoto di `main` e l’URL Cloudflare. VS Code, Codex e gli altri editor lavorano su copie locali: “online” significa che il branch locale è collegato a `origin`, aggiornato con pull e pubblicato con push/merge; non esiste un file GitHub modificabile direttamente dal filesystem.
 
 Prima di scrivere codice:
 
