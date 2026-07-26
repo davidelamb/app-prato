@@ -1,6 +1,8 @@
 const CONTENT_KEY = 'main';
 const MAX_CONTENT_BYTES = 1_800_000;
 const MAX_IMAGE_BYTES = 5_000_000;
+const DEFAULT_MEDIA_STORAGE_LIMIT_BYTES = 1_000_000_000;
+const DEFAULT_MONTHLY_UPLOAD_LIMIT = 1_000;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const encoder = new TextEncoder();
 
@@ -13,6 +15,14 @@ type StoredDocument = {
 type ImageUpload = {
   dataUrl?: unknown;
   prefix?: unknown;
+};
+
+type MediaStorageUsage = {
+  total_bytes: number;
+};
+
+type MediaMonthlyUsage = {
+  upload_count: number;
 };
 
 function corsHeaders(request: Request): Headers {
@@ -99,6 +109,15 @@ function extensionFor(contentType: string): string {
   return 'jpg';
 }
 
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function currentPeriod(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
 async function getContent(request: Request, env: Env): Promise<Response> {
   const row = await env.CONTENT_DB
     .prepare('SELECT payload, version, updated_at FROM content_documents WHERE document_key = ?')
@@ -170,6 +189,9 @@ async function putContent(request: Request, env: Env): Promise<Response> {
 
 async function uploadImage(request: Request, env: Env): Promise<Response> {
   if (!await isAdminRequest(request, env)) return unauthorized(request);
+  if (env.MEDIA_UPLOADS_ENABLED !== 'true') {
+    return json(request, { error: 'Caricamento immagini temporaneamente disattivato.' }, { status: 503 });
+  }
   let upload: ImageUpload;
   try {
     upload = await request.json<ImageUpload>();
@@ -179,27 +201,71 @@ async function uploadImage(request: Request, env: Env): Promise<Response> {
   const decoded = decodeDataUrl(upload.dataUrl);
   if (!decoded) return json(request, { error: 'Immagine non valida o superiore a 5 MB.' }, { status: 400 });
 
+  const storageLimit = positiveInteger(env.MEDIA_STORAGE_LIMIT_BYTES, DEFAULT_MEDIA_STORAGE_LIMIT_BYTES);
+  const monthlyUploadLimit = positiveInteger(env.MEDIA_MONTHLY_UPLOAD_LIMIT, DEFAULT_MONTHLY_UPLOAD_LIMIT);
+  const period = currentPeriod();
+  const [storageUsage, monthlyUsage] = await Promise.all([
+    env.CONTENT_DB
+      .prepare('SELECT total_bytes FROM media_storage_usage WHERE id = 1')
+      .first<MediaStorageUsage>(),
+    env.CONTENT_DB
+      .prepare('SELECT upload_count FROM media_upload_usage WHERE period = ?')
+      .bind(period)
+      .first<MediaMonthlyUsage>(),
+  ]);
+  if ((monthlyUsage?.upload_count ?? 0) >= monthlyUploadLimit) {
+    return json(request, { error: 'Limite mensile di caricamenti raggiunto.' }, { status: 429 });
+  }
+  if ((storageUsage?.total_bytes ?? 0) + decoded.bytes.byteLength > storageLimit) {
+    return json(request, { error: 'Spazio immagini disponibile esaurito.' }, { status: 507 });
+  }
+
   const key = `${safePrefix(upload.prefix)}/${crypto.randomUUID()}.${extensionFor(decoded.contentType)}`;
-  await env.MEDIA_BUCKET.put(key, decoded.bytes, {
-    httpMetadata: { contentType: decoded.contentType, cacheControl: 'public, max-age=31536000, immutable' },
-    customMetadata: { uploadedAt: new Date().toISOString() },
-  });
+  const uploadedAt = new Date().toISOString();
+  try {
+    await env.MEDIA_BUCKET.put(key, decoded.bytes, {
+      httpMetadata: { contentType: decoded.contentType, cacheControl: 'public, max-age=31536000, immutable' },
+      customMetadata: { uploadedAt },
+    });
+    await env.CONTENT_DB.batch([
+      env.CONTENT_DB
+        .prepare('UPDATE media_storage_usage SET total_bytes = total_bytes + ?, updated_at = ? WHERE id = 1')
+        .bind(decoded.bytes.byteLength, uploadedAt),
+      env.CONTENT_DB
+        .prepare(`INSERT INTO media_upload_usage (period, upload_count, uploaded_bytes, updated_at)
+          VALUES (?, 1, ?, ?)
+          ON CONFLICT(period) DO UPDATE SET
+            upload_count = upload_count + 1,
+            uploaded_bytes = uploaded_bytes + excluded.uploaded_bytes,
+            updated_at = excluded.updated_at`)
+        .bind(period, decoded.bytes.byteLength, uploadedAt),
+    ]);
+  } catch (error) {
+    await env.MEDIA_BUCKET.delete(key);
+    throw error;
+  }
   const url = new URL(request.url);
   return json(request, { url: `${url.origin}/api/images/${key}` }, { status: 201 });
 }
 
-async function serveImage(request: Request, env: Env, key: string): Promise<Response> {
+async function serveImage(request: Request, env: Env, ctx: ExecutionContext, key: string): Promise<Response> {
   if (!key || key.includes('..')) return new Response('Not found', { status: 404 });
+  const cacheKey = new Request(request.url, { method: 'GET' });
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached;
+
   const object = await env.MEDIA_BUCKET.get(key);
   if (!object) return new Response('Not found', { status: 404 });
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('ETag', object.httpEtag);
   headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-  return new Response(object.body, { headers });
+  const response = new Response(object.body, { headers });
+  ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+  return response;
 }
 
-async function handleApi(request: Request, env: Env): Promise<Response> {
+async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return withCors(request, new Response(null, { status: 204 }));
   if (url.pathname === '/api/health' && request.method === 'GET') {
@@ -212,16 +278,16 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   }
   if (url.pathname === '/api/images' && request.method === 'POST') return uploadImage(request, env);
   if (url.pathname.startsWith('/api/images/') && request.method === 'GET') {
-    return serveImage(request, env, decodeURIComponent(url.pathname.slice('/api/images/'.length)));
+    return serveImage(request, env, ctx, decodeURIComponent(url.pathname.slice('/api/images/'.length)));
   }
   return json(request, { error: 'Endpoint non trovato.' }, { status: 404 });
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
       const url = new URL(request.url);
-      if (url.pathname.startsWith('/api/')) return await handleApi(request, env);
+      if (url.pathname.startsWith('/api/')) return await handleApi(request, env, ctx);
       return await env.ASSETS.fetch(request);
     } catch (error) {
       console.error(JSON.stringify({ event: 'request_error', message: error instanceof Error ? error.message : String(error) }));
