@@ -1,45 +1,63 @@
-# AC Prato App
+# APPrato
 
-Prototipo Expo per iOS, Android e web, con palette blu, giallo e bianco ispirata allo stemma fornito.
+App Expo/React Native in TypeScript dedicata ai tifosi del Prato. Il progetto
+funziona su web, iOS e Android e non è presentato come applicazione ufficiale
+del club.
 
-## Cosa e gia pronto
+## Sezioni
 
-- Home con prossima partita, classifica e notizia in evidenza.
-- Calendario, risultati e rosa.
-- Sezione News con dettaglio articolo.
-- Centro Live con diretta, formazione e tabellino dimostrativi.
-- Club con rosa, media, tifosi e stadio, ispirato alla precedente idea grafica.
-- Area admin usabile sia sul web sia da Expo Go: pubblica notizie, modifica il risultato live e aggiunge calciatori.
-- Salvataggio persistente nel browser o nel dispositivo che sta eseguendo l'app.
+- News con caricamento progressivo e dettaglio articolo
+- Media
+- Live collegato alla prossima partita del calendario
+- Statistiche con calendario, risultati, classifica e forma
+- Club con rosa, nazionalità e profili dei giocatori
+- Pannello amministrativo per contenuti, partite, classifica e rosa
 
-## Test con Expo Go
+Il calendario supporta Campionato, Coppa Italia e Amichevoli. Il dataset di
+campionato contiene 18 squadre, 34 giornate e 306 partite; la classifica viene
+ricalcolata dai risultati.
 
-1. Installa Expo Go sul telefono.
-2. Collega telefono e PC alla stessa rete Wi-Fi.
-3. Nel terminale che esegue Expo comparira un QR code: scansionalo con Expo Go su Android oppure con la fotocamera su iPhone.
-
-Per la sessione attuale, l'indirizzo LAN e `exp://192.168.1.84:8081`. L'indirizzo puo cambiare quando cambia la rete Wi-Fi: controlla il valore mostrato da Expo al riavvio.
-
-Il server di sviluppo e gia avviato. Per riavviarlo dalla cartella del progetto:
+## Avvio locale
 
 ```powershell
-npx.cmd expo start --lan
+npm install --no-audit --no-fund
+npx.cmd expo start --web -c
 ```
 
-Per provare la versione web:
+Per Expo Go, telefono e PC devono essere sulla stessa rete:
 
 ```powershell
-npx.cmd expo start --web
+npx.cmd expo start --lan -c
 ```
 
-## Test iPhone
+L'indirizzo LAN e la porta possono cambiare: usare il QR e l'URL mostrati da
+Expo al momento dell'avvio.
 
-Il bundle iOS e stato compilato con Metro senza errori. Per aprirlo su iPhone installa Expo Go dall'App Store, usa la stessa rete Wi-Fi del PC e scansiona il QR che compare con `npx.cmd expo start --lan`. In questa sessione l'URL e `exp://192.168.1.84:8081`.
+## Verifiche
+
+```powershell
+npm run typecheck
+npm run verify:core
+npm run verify:season
+npm run build:web
+```
 
 ## Dati e pubblicazione
 
-Calendario e classifica sono un campionato simulato ma completo e coerente: 18 squadre, 34 giornate, 306 partite (`src/data/full-season-2026-27.ts`, generato con `npm run season:generate` e verificato con `npm run verify:season`). La classifica (generale, casa, trasferta, forma) non è inserita a mano: viene sempre ricalcolata dai risultati tramite `calculateStandingSets`/`recalculateContentStandings`. Il live è dimostrativo. La rosa e una fotografia pubblica della stagione 2025/26 tratta da Transfermarkt, senza fotografie o scraping automatico; prima del rilascio va sostituita da una fonte autorizzata o dal dato editoriale del club. L'area admin dimostra il flusso editoriale ma non deve essere esposta in produzione senza autenticazione e un database condiviso.
+La produzione web è pubblicata su
+`https://app-prato.david3-a.workers.dev`. Cloudflare esegue il deploy dopo il
+merge su `main` usando `wrangler.jsonc`.
 
-Per la fase successiva consiglio Supabase: Auth per gli amministratori, Postgres per `fixtures`, `standings`, `players` e `news`, e una funzione schedulata che aggiorni i dati sportivi. Per Transfermarkt serve un utilizzo autorizzato o un inserimento editoriale: il prototipo non effettua scraping del sito.
+I contenuti amministrativi sono attualmente salvati tramite AsyncStorage:
+restano sul browser o dispositivo che li ha modificati e non si sincronizzano
+tra iPhone, PC e altri utenti. Per la pubblicazione editoriale condivisa serve
+un backend autenticato.
 
-Le news ufficiali possono essere importate dal feed WordPress di AC Prato, lasciando il pannello admin libero per comunicati e contenuti esclusivi.
+Le rose possono essere aggiornate manualmente o con lo strumento di sviluppo
+`npm run import-rosters`, usando fonti autorizzate. L'app non esegue scraping
+automatico di Transfermarkt.
+
+## Collaborazione
+
+Leggere `AGENTS.md` prima di intervenire. Le modifiche non banali passano da un
+branch dedicato, una pull request, i controlli CI e infine il merge in `main`.

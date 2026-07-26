@@ -229,9 +229,9 @@ function normalizePlayer(player: Player): Player {
     assists: migratedPlayer.assists ?? 0,
     imageUrl: fallbackReplacesRemoteSeed ? fallback?.imageUrl : (migratedPlayer.imageUrl || fallback?.imageUrl || seed?.imageUrl || ''),
     imageSourceUrl: fallbackReplacesRemoteSeed ? fallback?.imageSourceUrl : (migratedPlayer.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl),
-    imageScale: fallbackReplacesRemoteSeed ? fallback?.imageScale : (migratedPlayer.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1),
-    imagePositionX: fallbackReplacesRemoteSeed ? fallback?.imagePositionX : (migratedPlayer.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0),
-    imagePositionY: fallbackReplacesRemoteSeed ? fallback?.imagePositionY : (migratedPlayer.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0),
+    imageScale: migratedPlayer.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1,
+    imagePositionX: migratedPlayer.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0,
+    imagePositionY: migratedPlayer.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0,
     nationality: migratedPlayer.nationality ?? 'Italia',
   };
 }

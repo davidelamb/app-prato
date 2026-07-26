@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { MatchDetailModal } from '../components/MatchDetailModal';
 import { TeamProfileModal } from '../components/TeamProfileModal';
@@ -694,11 +694,16 @@ const styles = StyleSheet.create({
   },
   viewTabActive: {
     backgroundColor: colors.paper,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: '0 1px 4px rgba(2, 28, 81, 0.06)' },
+      default: {
+        shadowColor: colors.shadow,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
   },
   viewTabText: {
     fontSize: 13,
@@ -975,11 +980,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F4FAFF',
     borderColor: colors.accent,
     borderWidth: 1.5,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: '0 0 8px rgba(0, 122, 184, 0.08)' },
+      default: {
+        shadowColor: colors.accent,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
+      },
+    }),
   },
 
   // Riga principale: posizione + stemma + nome + PT
