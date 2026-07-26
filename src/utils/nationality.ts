@@ -12,6 +12,7 @@ export function nationalityList(value?: string | string[]): string[] {
 const FLAGS: Record<string, string> = {
   Italia: '🇮🇹',
   Marocco: '🇲🇦',
+  Montenegro: '🇲🇪',
   Albania: '🇦🇱',
   Brasile: '🇧🇷',
   Argentina: '🇦🇷',
