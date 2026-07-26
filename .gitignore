@@ -5,3 +5,9 @@ node_modules/
 .expo-shared/
 dist/
 npm-debug.log*
+
+# File temporanei di scraping/debug: non vanno committati
+temp/
+temp-*
+temp_*
+*.tmp
