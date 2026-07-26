@@ -4,14 +4,18 @@ import { playerPhotoFallbacks } from '../data/player-photo-fallbacks';
 import { preseasonStandings } from '../data/season-2026-27';
 import { seedContent } from '../data/seed';
 import { defaultTeams } from '../data/teams';
-import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup, MediaItem, NewsArticle, Player, SeasonMatch, Team } from '../types';
+import { AppContent, Fixture, LiveEvent, LivePhase, MatchCompetition, MatchLineup, MediaItem, NewsArticle, Player, SeasonMatch, Team } from '../types';
 import { completeStandingRows, emptyStandingRows, normalizeStandingRow, recalculateContentStandings, sortStandingRows } from '../utils/standings';
 import { canonicalTeamName, normalizeTeamName } from '../utils/team-names';
 import { mergeMatchLists } from '../utils/match-merge';
 import { minuteLabelFor, inferLegacyEventPhase } from '../utils/live-match';
 
-const STORAGE_KEY = '@ac-prato/content-v12';
-const LEGACY_KEYS = ['@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v13';
+const LEGACY_KEYS = ['@ac-prato/content-v12', '@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+
+function isSupportedCompetition(value: unknown): value is MatchCompetition {
+  return value === 'Campionato' || value === 'Coppa Italia' || value === 'Amichevole';
+}
 
 function normalizeLineup(lineup: MatchLineup | undefined): MatchLineup | undefined {
   if (!lineup) return undefined;
@@ -190,6 +194,12 @@ function normalizeFixture(fixture: Fixture): Fixture {
 function normalizePlayer(player: Player): Player {
   const seed = seedContent.players.find((item) => item.id === player.id);
   const fallback = playerPhotoFallbacks[player.id];
+  const fallbackReplacesRemoteSeed = !!fallback
+    && (
+      !player.imageUrl
+      || /transfermarkt\.(technology|it)/i.test(player.imageUrl)
+      || player.imageSourceUrl === fallback.imageSourceUrl
+    );
   return {
     ...seed,
     ...player,
@@ -197,11 +207,11 @@ function normalizePlayer(player: Player): Player {
     goals: player.goals ?? 0,
     liveGoals: Math.max(0, Number(player.liveGoals) || 0),
     assists: player.assists ?? 0,
-    imageUrl: player.imageUrl || fallback?.imageUrl || seed?.imageUrl || '',
-    imageSourceUrl: player.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl,
-    imageScale: player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1,
-    imagePositionX: player.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0,
-    imagePositionY: player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0,
+    imageUrl: fallbackReplacesRemoteSeed ? fallback?.imageUrl : (player.imageUrl || fallback?.imageUrl || seed?.imageUrl || ''),
+    imageSourceUrl: fallbackReplacesRemoteSeed ? fallback?.imageSourceUrl : (player.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl),
+    imageScale: fallbackReplacesRemoteSeed ? fallback?.imageScale : (player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1),
+    imagePositionX: fallbackReplacesRemoteSeed ? fallback?.imagePositionX : (player.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0),
+    imagePositionY: fallbackReplacesRemoteSeed ? fallback?.imagePositionY : (player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0),
     nationality: player.nationality ?? 'Italia',
   };
 }
@@ -326,8 +336,18 @@ export function normalizeContent(content: AppContent): AppContent {
   // competizione+giornata+squadre normalizzate, non tramite id grezzo:
   // questo impedisce che un vecchio calendario incompleto (id diversi)
   // duplichi le partite invece di completarle.
-  const seedSchedule = seedContent.schedule?.map(normalizeSchedule) ?? [];
-  const savedSched = Array.isArray(content.schedule) ? content.schedule.map(normalizeSchedule) : [];
+  const deletedScheduleMatchIds = Array.isArray(content.deletedScheduleMatchIds)
+    ? [...new Set(content.deletedScheduleMatchIds.filter((id): id is string => typeof id === 'string' && !!id))]
+    : [];
+  const deletedScheduleMatchIdSet = new Set(deletedScheduleMatchIds);
+  const seedSchedule = seedContent.schedule
+    ?.filter((match) => isSupportedCompetition(match.competition ?? 'Campionato') && !deletedScheduleMatchIdSet.has(match.id))
+    .map(normalizeSchedule) ?? [];
+  const savedSched = Array.isArray(content.schedule)
+    ? content.schedule
+      .filter((match) => isSupportedCompetition(match.competition ?? 'Campionato') && !deletedScheduleMatchIdSet.has(match.id))
+      .map(normalizeSchedule)
+    : [];
   const mergedSchedule = mergeMatchLists(seedSchedule, savedSched);
 
   // Stesso principio per il girone: prima la fonte aggiornata (306 partite),
@@ -335,8 +355,14 @@ export function normalizeContent(content: AppContent): AppContent {
   // qualunque `content.groupMatches` salvato (anche il datataset incompleto
   // pre-v12, con solo le partite del Prato) veniva usato COSÌ COM'ERA,
   // ignorando del tutto il nuovo seed completo.
-  const seedGroupMatches = seedContent.groupMatches?.map(normalizeGroupMatch) ?? [];
-  const savedGroupMatches = Array.isArray(content.groupMatches) ? content.groupMatches.map(normalizeGroupMatch) : [];
+  const seedGroupMatches = seedContent.groupMatches
+    ?.filter((match) => !deletedScheduleMatchIdSet.has(match.id))
+    .map(normalizeGroupMatch) ?? [];
+  const savedGroupMatches = Array.isArray(content.groupMatches)
+    ? content.groupMatches
+      .filter((match) => !deletedScheduleMatchIdSet.has(match.id))
+      .map(normalizeGroupMatch)
+    : [];
   const fixedGroupMatches = mergeMatchLists(seedGroupMatches, savedGroupMatches);
 
   const normalized: AppContent = {
@@ -346,6 +372,7 @@ export function normalizeContent(content: AppContent): AppContent {
     awayStandings: sortStandingRows(completeStandingRows(content.awayStandings, emptyMaster)),
     formStandings: sortStandingRows(completeStandingRows(content.formStandings, emptyMaster)),
     schedule: mergedSchedule,
+    deletedScheduleMatchIds,
     groupMatches: fixedGroupMatches,
     teams: mergedTeams,
     players: mergedPlayers,

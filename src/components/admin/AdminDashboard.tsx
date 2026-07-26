@@ -48,7 +48,7 @@ export function AdminDashboard({ content, onChange, onReset, onClose }: { conten
         <Text style={adminStyles.title}>Azioni rapide</Text>
         <Button label="Pubblica una news" icon="newspaper-plus" onPress={() => setView('news')} />
         <Button label="Aggiungi un media" icon="video-plus-outline" onPress={() => setView('media')} />
-        <Button label="Coppa Italia e Amichevoli" icon="calendar-month-outline" onPress={() => setView('calendar')} />
+        <Button label="Campionato e Coppa Italia" icon="calendar-month-outline" onPress={() => setView('calendar')} />
         <Button label="Calendario campionato (306 partite)" icon="table-row" onPress={() => setView('group')} />
         <Button label="Classifica e penalità" icon="trophy-outline" onPress={() => setView('standings')} />
         <Button label="Aggiorna la diretta" icon="broadcast" onPress={() => setView('live')} />

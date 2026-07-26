@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
+import { NationalityBadge } from './NationalityBadge';
 import { colors, radii } from '../theme';
 import { Player } from '../types';
 import { nationalityList } from '../utils/nationality';
@@ -20,7 +21,10 @@ export function PlayerCard({ player, onPress, style }: { player: Player; onPress
 
       <View style={styles.info}>
         <Text style={styles.role}>{player.role}</Text>
-        <Text numberOfLines={1} style={styles.name}>{player.name}</Text>
+        <View style={styles.nameRow}>
+          <Text numberOfLines={2} style={styles.name}>{player.name}</Text>
+          <NationalityBadge value={player.nationality} compact />
+        </View>
         <Text numberOfLines={1} style={styles.meta}>{nationalityList(player.nationality).join(' / ') || 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
         <View style={styles.statsRow}>
           <View style={styles.stat}><Text style={styles.statValue}>{player.appearances}</Text><Text style={styles.statLabel}>Pres.</Text></View>
@@ -43,7 +47,8 @@ const styles = StyleSheet.create({
   numberText: { color: colors.paper, fontSize: 11, fontWeight: '900', textAlign: 'center' },
   info: { flex: 1, paddingVertical: 15, paddingLeft: 15, paddingRight: 4 },
   role: { color: colors.accentStrong, fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  name: { color: colors.ink, fontSize: 19, lineHeight: 23, fontWeight: '900', marginTop: 5 },
+  nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, marginTop: 5 },
+  name: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 19, lineHeight: 22, fontWeight: '900' },
   meta: { color: colors.muted, fontSize: 11, marginTop: 5 },
   statsRow: { flexDirection: 'row', gap: 20, marginTop: 14 },
   stat: { minWidth: 34 },

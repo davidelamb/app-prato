@@ -2,6 +2,7 @@ import { AppContent, MediaItem, Player } from '../types';
 import { fullSeasonMatches } from './full-season-2026-27';
 import { serieDTeams2026 } from './season-2026-27';
 import { calculateStandingSets } from '../utils/standings';
+import { kickoffIso } from '../utils/fixture-time';
 
 const seasonStandingSets = calculateStandingSets(fullSeasonMatches, [...serieDTeams2026]);
 
@@ -29,8 +30,14 @@ const players: Player[] = [
   { id: 'verde', number: 19, name: 'Francesco Verde', role: 'Attaccante', age: 26, birthDate: '16/08/1999', birthplace: 'Aversa', nationality: 'Italia', height: '1,88 m', foot: 'Destro', appearances: 0, goals: 0, assists: 0, source: 'Transfermarkt', imageSourceUrl: 'https://www.transfermarkt.it/francesco-verde/profil/spieler/395870' },
   { id: 'barranca', number: 9, name: 'Francesco Barranca', role: 'Attaccante', age: 27, birthDate: '22/08/1998', birthplace: 'Palermo', nationality: 'Italia', height: '1,75 m', foot: 'Destro', appearances: 0, goals: 0, assists: 0, source: 'Transfermarkt', imageUrl: tm('568709-1756149710.png'), imageSourceUrl: 'https://www.transfermarkt.it/francesco-barranca/profil/spieler/568709' },
   { id: 'caon', number: 10, name: 'Giammarco Caon', role: 'Attaccante', age: 24, birthDate: '17/12/2001', birthplace: 'Massa', nationality: 'Italia', height: '1,88 m', foot: 'Destro', appearances: 0, goals: 0, assists: 0, source: 'Transfermarkt', imageUrl: tm('537455-1638451709.png'), imageSourceUrl: 'https://www.transfermarkt.it/giammarco-caon/profil/spieler/537455' },
-  { id: 'bajic', name: 'Stefan Bajic', role: 'Difensore', age: 28, nationality: ['Marocco', 'Italia'], appearances: 0, goals: 0, assists: 0, source: 'Editoriale' },
-  { id: 'eleuteri', name: 'Alessandro Eleuteri', role: 'Centrocampista', age: 28, nationality: 'Italia', appearances: 0, goals: 0, assists: 0, source: 'Editoriale' },
+  { id: 'bajic', number: 27, name: 'Stefan Bajic', role: 'Difensore', age: 28, nationality: ['Marocco', 'Italia'], appearances: 0, goals: 0, assists: 0, source: 'Editoriale' },
+  { id: 'eleuteri', number: 24, name: 'Alessandro Eleuteri', role: 'Centrocampista', age: 28, nationality: 'Italia', appearances: 0, goals: 0, assists: 0, source: 'Editoriale' },
+];
+
+const preseasonFriendlies = [
+  { id: 'friendly-san-donato', competition: 'Amichevole' as const, roundLabel: 'Amichevole', dateLabel: '01/08/2026', time: '18:00', kickoffAt: kickoffIso('01/08/2026', '18:00') ?? undefined, home: 'AC Prato', away: 'San Donato Tavarnelle', venue: 'Stadio Lungobisenzio', status: 'scheduled' as const, sortOrder: 1001 },
+  { id: 'friendly-antella', competition: 'Amichevole' as const, roundLabel: 'Amichevole', dateLabel: '08/08/2026', time: '18:00', kickoffAt: kickoffIso('08/08/2026', '18:00') ?? undefined, home: 'AC Prato', away: 'Antella', venue: 'Da definire', status: 'scheduled' as const, sortOrder: 1002 },
+  { id: 'friendly-signa', competition: 'Amichevole' as const, roundLabel: 'Amichevole', dateLabel: '13/08/2026', time: '18:00', kickoffAt: kickoffIso('13/08/2026', '18:00') ?? undefined, home: 'AC Prato', away: 'Signa', venue: 'Da definire', status: 'scheduled' as const, sortOrder: 1003 },
 ];
 
 const media: MediaItem[] = [
@@ -50,13 +57,14 @@ export const seedContent: AppContent = {
       { id: 'demo-goal-1', type: 'goal', label: 'Gol AC Prato', minute: 18, team: 'AC Prato', scorer: 'Francesco Verde', score: '1-0', createdAt: new Date().toISOString() },
       { id: 'demo-start', type: 'kickoff', label: 'Inizio partita', minute: 1, score: '0-0', createdAt: new Date().toISOString() },
     ] },
+    ...preseasonFriendlies.map((match) => ({ ...match, matchday: 'Amichevole' })),
   ],
   standings: seasonStandingSets.overall,
   homeStandings: seasonStandingSets.home,
   awayStandings: seasonStandingSets.away,
   formStandings: seasonStandingSets.form,
   groupMatches: fullSeasonMatches,
-  schedule: fullSeasonMatches,
+  schedule: [...fullSeasonMatches, ...preseasonFriendlies],
   players,
   media,
   news: [

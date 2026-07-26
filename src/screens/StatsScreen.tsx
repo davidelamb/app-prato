@@ -17,7 +17,7 @@ const competitionLabels: Record<MatchCompetition | 'Tutte', string> = {
   Tutte: 'Tutte',
   Campionato: 'Campionato',
   'Coppa Italia': 'Coppa Italia',
-  Amichevole: 'Amichevole',
+  Amichevole: 'Amichevoli',
 };
 
 const scopeLabels: Record<StandingScope, string> = {
@@ -54,7 +54,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
 
   const schedule = useMemo(() => {
     const items = content.schedule ?? [];
-    const filtered = calFilter === 'Tutte' ? items : items.filter((m) => (m.competition ?? 'Campionato') === calFilter);
+    const filtered = items.filter((m) => calFilter === 'Tutte' || (m.competition ?? 'Campionato') === calFilter);
     return [...filtered].sort((a, b) => {
       const d = dateValue(a.dateLabel) - dateValue(b.dateLabel);
       if (d !== 0) return d;
@@ -109,7 +109,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
       </View>
 
       {view === 'schedule' ? (
-        calFilter === 'Coppa Italia' || calFilter === 'Amichevole' ? (
+        calFilter === 'Coppa Italia' || calFilter === 'Amichevole' || calFilter === 'Tutte' ? (
           <CalendarView
             schedule={schedule}
             calFilter={calFilter}

@@ -16,6 +16,7 @@ const icons: Record<LiveEvent['type'], React.ComponentProps<typeof MaterialCommu
 };
 
 function phaseLabel(fixture: Fixture, now: number) {
+  if (fixture.status === 'scheduled') return `${fixture.dateLabel} · ${fixture.time}`;
   if (fixture.livePhase === 'halftime') return 'INTERVALLO';
   if (fixture.livePhase === 'finished' || fixture.status === 'final') return 'FINALE';
   if (fixture.livePhase === 'second_half' || fixture.livePhase === 'first_half') return formatMatchClock(fixture, now);
@@ -31,6 +32,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
   }, [fixture.id, fixture.livePhase, fixture.phaseStartedAt]);
   const events = useMemo(() => sortLiveEvents(fixture.liveEvents ?? []), [fixture.liveEvents]);
   const isLive = fixture.status === 'live';
+  const isScheduled = fixture.status === 'scheduled';
 
   if (compact) {
     return (
@@ -42,8 +44,8 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
           </View>
           <Text style={styles.compactCompetition}>{fixture.competition}</Text>
         </View>
-        <Text style={styles.compactEyebrow}>{isLive ? 'Diretta partita' : fixture.matchday}</Text>
-        <View style={styles.compactTeamsRow}><TeamLogo name={fixture.home} size={28} style={{ borderRadius: 7 }} /><Text style={styles.compactScore}>{fixture.home} {fixture.homeScore ?? 0}–{fixture.awayScore ?? 0} {fixture.away}</Text><TeamLogo name={fixture.away} size={28} style={{ borderRadius: 7 }} /></View>
+        <Text style={styles.compactEyebrow}>{isLive ? 'Diretta partita' : isScheduled ? 'Prossima amichevole' : fixture.matchday}</Text>
+        <View style={styles.compactTeamsRow}><TeamLogo name={fixture.home} size={28} style={{ borderRadius: 7 }} /><Text style={styles.compactScore}>{fixture.home} {isScheduled ? 'VS' : `${fixture.homeScore ?? 0}–${fixture.awayScore ?? 0}`} {fixture.away}</Text><TeamLogo name={fixture.away} size={28} style={{ borderRadius: 7 }} /></View>
         <Text style={styles.compactMeta}>{phaseLabel(fixture, now)} · {fixture.venue}</Text>
       </View>
     );
@@ -59,7 +61,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
           </View>
           <View style={[styles.phasePill, !isLive && styles.phasePillNeutral]}>
             <View style={[styles.phaseDot, !isLive && styles.phaseDotNeutral]} />
-            <Text style={styles.phaseText}>{phaseLabel(fixture, now)}</Text>
+            <Text style={styles.phaseText}>{isScheduled ? 'IN PROGRAMMA' : phaseLabel(fixture, now)}</Text>
           </View>
         </View>
 
@@ -69,9 +71,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
             <Text numberOfLines={2} style={styles.teamName}>{fixture.home}</Text>
           </View>
           <View style={styles.centerScore}>
-            <Text style={styles.score}>{fixture.homeScore ?? 0}</Text>
-            <Text style={styles.scoreDash}>–</Text>
-            <Text style={styles.score}>{fixture.awayScore ?? 0}</Text>
+            {isScheduled ? <Text style={styles.scheduledScore}>VS</Text> : <><Text style={styles.score}>{fixture.homeScore ?? 0}</Text><Text style={styles.scoreDash}>–</Text><Text style={styles.score}>{fixture.awayScore ?? 0}</Text></>}
           </View>
           <View style={[styles.teamBlock, styles.teamBlockRight]}>
             <TeamLogo name={fixture.away} size={54} />
@@ -91,7 +91,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
         <View style={styles.timelineHeader}>
           <View style={styles.timelineTitleBlock}>
             <Text style={styles.timelineEyebrow}>DIRETTA</Text>
-            <Text style={styles.timelineTitle}>Cronaca minuto per minuto</Text>
+            <Text style={styles.timelineTitle}>{isScheduled ? 'Prossima amichevole' : 'Cronaca minuto per minuto'}</Text>
           </View>
           <Text style={styles.timelineCount}>{events.length} eventi</Text>
         </View>
@@ -111,8 +111,8 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
         )) : (
           <View style={styles.empty}>
             <MaterialCommunityIcons name="broadcast-off" size={34} color={colors.mutedDark} />
-            <Text style={styles.emptyTitle}>Cronaca non ancora iniziata</Text>
-            <Text style={styles.emptyCopy}>Gli eventi compariranno qui durante la partita.</Text>
+            <Text style={styles.emptyTitle}>{isScheduled ? 'Partita in programma' : 'Cronaca non ancora iniziata'}</Text>
+            <Text style={styles.emptyCopy}>{isScheduled ? 'La diretta e gli eventi saranno disponibili il giorno della partita.' : 'Gli eventi compariranno qui durante la partita.'}</Text>
           </View>
         )}
       </View>
@@ -172,6 +172,7 @@ const styles = StyleSheet.create({
   teamNameRight: { textAlign: 'right' },
   centerScore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 8 },
   score: { color: colors.ink, fontSize: 40, fontWeight: '900' },
+  scheduledScore: { color: colors.accentStrong, fontSize: 32, fontWeight: '900' },
   scoreDash: { color: colors.mutedDark, fontSize: 28, fontWeight: '700' },
   venue: { color: colors.muted, textAlign: 'center', fontSize: 11, paddingVertical: 18 },
   lineupsCard: { padding: 18, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, gap: 16 },
