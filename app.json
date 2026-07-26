@@ -34,7 +34,8 @@
           "cameraPermission": "Consenti ad APPrato di scattare foto per i contenuti.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

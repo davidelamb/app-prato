@@ -17,3 +17,8 @@ scripts/rosters-errors.log
 player-data.json
 player-positions.json
 scraped-players.json
+
+# Segreti e stato locale Cloudflare
+.dev.vars
+.dev.vars.*
+.wrangler/

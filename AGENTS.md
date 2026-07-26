@@ -157,10 +157,18 @@ Quando si cerca una fotografia sul web, verificare con attenzione che rappresent
 
 ## Persistenza e migrazioni
 
-I contenuti sono salvati localmente tramite AsyncStorage in `src/services/content-store.ts`.
+La fonte condivisa dei contenuti è Cloudflare D1, tramite le API del Worker in
+`worker/index.ts`. Le immagini caricate dall'admin sono salvate in Cloudflare
+R2. `AsyncStorage` resta soltanto una cache offline e una sorgente di migrazione
+per i dati creati prima dell'introduzione del backend.
 
 Regole obbligatorie:
 
+- non sostituire D1 con dati seed o cache locale quando il cloud contiene già un documento;
+- mantenere pubblica la sola lettura dei contenuti e proteggere ogni scrittura con `ADMIN_TOKEN`;
+- non salvare credenziali nel repository, nei log o nel bundle dell'app;
+- aggiungere le modifiche allo schema D1 come nuova migrazione SQL, senza riscrivere quelle già applicate;
+- non eliminare oggetti R2 ancora referenziati dai contenuti senza una procedura esplicita;
 - non cancellare i dati degli utenti durante un aggiornamento;
 - non cambiare la chiave di storage senza una migrazione esplicita;
 - mantenere la lettura delle chiavi precedenti quando si incrementa la versione;
@@ -213,7 +221,9 @@ Una modifica è conclusa soltanto quando:
 
 ## Cloudflare
 
-`wrangler.jsonc` esegue la build web e pubblica la cartella `dist`.
+`wrangler.jsonc` esegue la build web, pubblica la cartella `dist` e collega il
+Worker a D1 (`CONTENT_DB`) e R2 (`MEDIA_BUCKET`). `ADMIN_TOKEN` è un secret
+Cloudflare e non deve mai comparire nel file di configurazione.
 
 Non modificare la configurazione Cloudflare senza una necessità concreta e verificata. Un errore di deploy non deve portare a riprogettare l’app o a rimuovere funzionalità: leggere prima i log della build.
 
@@ -230,7 +240,7 @@ Queste regole sono obbligatorie quando il repository viene modificato da Codex, 
 - Dopo ogni modifica coerente eseguire `git diff --check`, fare un commit descrittivo e fare push del branch. Il commit e la pull request sono la fonte condivisa del lavoro, non una copia locale.
 - Prima di continuare un lavoro sospeso eseguire `git fetch`, leggere gli ultimi commit del branch remoto e aggiornare il branch con rebase o fast-forward. Non usare `git reset --hard`, `git checkout --` o comandi che cancellano modifiche locali.
 - Aggiungere allo staging solo i file del task corrente; non includere `.env`, credenziali, build, cache o file temporanei.
-- `AsyncStorage` è locale al singolo dispositivo e non sincronizza contenuti tra utenti o AI. Per dati condivisi tra dispositivi serve un backend/API; non presentare la persistenza locale come sincronizzazione cloud.
+- D1/R2 e le API del Worker sono la fonte condivisa dei contenuti. `AsyncStorage` è soltanto cache locale: non modificare il flusso in modo che torni a essere la fonte primaria.
 - Quando il task è stato richiesto dal proprietario e CI è verde, l’AI che ha completato il task deve eseguire anche il merge della propria pull request in `main`, attendere il completamento del deploy Cloudflare e riallineare la copia locale con `git switch main` e `git pull --ff-only origin main`. Non lasciare una PR pronta senza completare il merge quando l’autorizzazione è già presente.
 - Il merge resta vietato se CI è rossa, se la PR ha conflitti, se il deploy fallisce o se manca l’autorizzazione esplicita del proprietario.
 - Dopo il merge verificare sempre `git status --short --branch`, il commit remoto di `main` e l’URL Cloudflare. VS Code, Codex e gli altri editor lavorano su copie locali: “online” significa che il branch locale è collegato a `origin`, aggiornato con pull e pubblicato con push/merge; non esiste un file GitHub modificabile direttamente dal filesystem.

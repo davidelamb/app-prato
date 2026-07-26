@@ -68,6 +68,7 @@ export function NewsAdmin({
   const [scale, setScale] = useState(1);
   const [posX, setPosX] = useState(0);
   const [posY, setPosY] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   const dragRef = useRef({ x: 0, y: 0 });
   const panResponder = useRef(
@@ -138,7 +139,7 @@ export function NewsAdmin({
     setPosY(0);
   };
 
-  const save = () => {
+  const save = async () => {
     if (!title.trim() || !summary.trim() || !imageUrl.trim()) {
       return Alert.alert(
         'Campi mancanti',
@@ -171,15 +172,36 @@ export function NewsAdmin({
         : content.news;
       news = [article, ...previous];
     }
-    void onChange({ ...content, news });
-    clearForm();
+    setSaving(true);
+    try {
+      await onChange({ ...content, news });
+      clearForm();
+      Alert.alert('Notizia salvata', 'La notizia è ora disponibile su tutti i dispositivi.');
+    } catch (error) {
+      console.warn('Salvataggio notizia non riuscito', error);
+      Alert.alert('Salvataggio non riuscito', 'La notizia non è stata pubblicata. I campi sono rimasti compilati: riprova.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = (id: string) => {
-    void onChange({
-      ...content,
-      news: content.news.filter((item) => item.id !== id),
-    });
+    Alert.alert('Eliminare la notizia?', 'La rimozione sarà visibile su tutti i dispositivi.', [
+      { text: 'Annulla', style: 'cancel' },
+      {
+        text: 'Elimina',
+        style: 'destructive',
+        onPress: () => {
+          void onChange({
+            ...content,
+            news: content.news.filter((item) => item.id !== id),
+          }).catch((error) => {
+            console.warn('Eliminazione notizia non riuscita', error);
+            Alert.alert('Eliminazione non riuscita', 'La notizia non è stata rimossa.');
+          });
+        },
+      },
+    ]);
   };
 
   const editorTransform = imageTransformStyle({
@@ -306,9 +328,10 @@ export function NewsAdmin({
 
         <View style={styles.formActions}>
           <Button
-            label={editing ? 'Salva modifiche' : 'Pubblica notizia'}
+            label={saving ? 'Salvataggio...' : editing ? 'Salva modifiche' : 'Pubblica notizia'}
             icon="send-outline"
-            onPress={save}
+            disabled={saving}
+            onPress={() => void save()}
           />
           {editing ? (
             <Button label="Annulla" secondary onPress={clearForm} />
