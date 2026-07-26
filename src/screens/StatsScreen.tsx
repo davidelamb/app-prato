@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { MatchDetailModal } from '../components/MatchDetailModal';
 import { TeamProfileModal } from '../components/TeamProfileModal';
 import { TeamLogo } from '../components/TeamLogo';
 import { getSimulatedStandings, isStandingsEmpty, SIMULATED_LABEL } from '../data/simulated-standings';
@@ -47,6 +48,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
   const [calFilter, setCalFilter] = useState<MatchCompetition | 'Tutte'>('Tutte');
   const [scope, setScope] = useState<StandingScope>('overall');
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<SeasonMatch | null>(null);
   const { width } = useWindowDimensions();
   const isMobile = width < 600;
 
@@ -114,7 +116,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
             onCalFilter={setCalFilter}
             wide={wide}
             isMobile={isMobile}
-            onTeamPress={openTeam}
+            onMatchPress={setSelectedMatch}
           />
         ) : (
           <MatchdayCalendarView
@@ -123,7 +125,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
             onCalFilter={setCalFilter}
             wide={wide}
             isMobile={isMobile}
-            onTeamPress={openTeam}
+            onMatchPress={setSelectedMatch}
           />
         )
       ) : (
@@ -139,6 +141,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
       )}
 
       <TeamProfileModal team={selectedTeam} onClose={() => setSelectedTeam(null)} />
+      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
     </View>
   );
 }
@@ -149,14 +152,14 @@ function CalendarView({
   onCalFilter,
   wide,
   isMobile,
-  onTeamPress,
+  onMatchPress,
 }: {
   schedule: SeasonMatch[];
   calFilter: MatchCompetition | 'Tutte';
   onCalFilter: (f: MatchCompetition | 'Tutte') => void;
   wide: boolean;
   isMobile: boolean;
-  onTeamPress: (clubName: string) => void;
+  onMatchPress: (match: SeasonMatch) => void;
 }) {
   const bodySize = wide ? 14 : 13;
   const mutedSize = wide ? 12 : 11;
@@ -202,7 +205,7 @@ function CalendarView({
             const isHomePrato = /\bprato\b/i.test(match.home);
             const isAwayPrato = /\bprato\b/i.test(match.away);
             return (
-              <View key={match.id} style={[styles.calCard, wide && styles.calCardWide]}>
+              <Pressable key={match.id} onPress={() => onMatchPress(match)} style={[styles.calCard, wide && styles.calCardWide]}>
                 {/* Bordo accent sinistro per competizione */}
                 <View style={[styles.calCardAccent, { backgroundColor: compColor }]} />
 
@@ -233,7 +236,7 @@ function CalendarView({
                   {/* Partita */}
                   <View style={styles.calMatchSection}>
                     {/* Squadra casa */}
-                    <Pressable style={styles.calTeam} onPress={() => onTeamPress(match.home)}>
+                    <View style={styles.calTeam}>
                       <TeamLogo name={match.home} size={logoSize} />
                       <Text
                         style={[
@@ -246,7 +249,7 @@ function CalendarView({
                       >
                         {match.home}
                       </Text>
-                    </Pressable>
+                    </View>
 
                     {/* Risultato / VS */}
                     <View style={styles.calResult}>
@@ -268,7 +271,7 @@ function CalendarView({
                     </View>
 
                     {/* Squadra trasferta */}
-                    <Pressable style={styles.calTeam} onPress={() => onTeamPress(match.away)}>
+                    <View style={styles.calTeam}>
                       <Text
                         style={[
                           styles.calTeamName,
@@ -281,7 +284,7 @@ function CalendarView({
                         {match.away}
                       </Text>
                       <TeamLogo name={match.away} size={logoSize} />
-                    </Pressable>
+                    </View>
                   </View>
 
                   {/* Stadio e info extra */}
@@ -301,7 +304,7 @@ function CalendarView({
                     </View>
                   ) : null}
                 </View>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -316,14 +319,14 @@ function MatchdayCalendarView({
   onCalFilter,
   wide,
   isMobile,
-  onTeamPress,
+  onMatchPress,
 }: {
   matches: SeasonMatch[];
   calFilter: MatchCompetition | 'Tutte';
   onCalFilter: (f: MatchCompetition | 'Tutte') => void;
   wide: boolean;
   isMobile: boolean;
-  onTeamPress: (clubName: string) => void;
+  onMatchPress: (match: SeasonMatch) => void;
 }) {
   const bodySize = wide ? 14 : 13;
   const mutedSize = wide ? 12 : 11;
@@ -450,8 +453,8 @@ function MatchdayCalendarView({
               const isAwayPrato = isPrato(match.away);
               const isPratoRow = isHomePrato || isAwayPrato;
               return (
-                <View key={match.id} style={[styles.mdMatchRow, isPratoRow && styles.mdMatchRowPrato]}>
-                  <Pressable style={styles.mdTeamCell} onPress={() => onTeamPress(match.home)}>
+                <Pressable key={match.id} onPress={() => onMatchPress(match)} style={[styles.mdMatchRow, isPratoRow && styles.mdMatchRowPrato]}>
+                  <View style={styles.mdTeamCell}>
                     <TeamLogo name={match.home} size={logoSize} />
                     <Text
                       style={[styles.mdTeamName, isHomePrato && styles.calTeamPrato, { fontSize: bodySize - 1 }]}
@@ -460,7 +463,7 @@ function MatchdayCalendarView({
                     >
                       {match.home}
                     </Text>
-                  </Pressable>
+                  </View>
 
                   <View style={styles.mdCenterCell}>
                     {hasResult ? (
@@ -472,7 +475,7 @@ function MatchdayCalendarView({
                     )}
                   </View>
 
-                  <Pressable style={[styles.mdTeamCell, styles.mdTeamCellAway]} onPress={() => onTeamPress(match.away)}>
+                  <View style={[styles.mdTeamCell, styles.mdTeamCellAway]}>
                     <Text
                       style={[
                         styles.mdTeamName,
@@ -485,8 +488,8 @@ function MatchdayCalendarView({
                       {match.away}
                     </Text>
                     <TeamLogo name={match.away} size={logoSize} />
-                  </Pressable>
-                </View>
+                  </View>
+                </Pressable>
               );
             })}
           </View>
