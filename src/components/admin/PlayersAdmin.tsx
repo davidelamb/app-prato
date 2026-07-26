@@ -24,6 +24,8 @@ const parsedNationality = (value?: string | string[]) => {
 export function PlayersAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
   const [draft, setDraft] = useState<Player>(empty);
   const [editing, setEditing] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const update = <K extends keyof Player>(key: K, value: Player[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
   const pick = async () => {
@@ -36,7 +38,7 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
   };
 
   const reset = () => { setDraft(empty); setEditing(null); };
-    const save = () => {
+  const save = async () => {
     if (!draft.name.trim()) return Alert.alert('Nome mancante', 'Inserisci il nome del calciatore.');
     const num = Number(draft.number);
     if (draft.number !== undefined && draft.number !== null && !(Number.isInteger(num) && num >= 1 && num <= 99)) {
@@ -57,8 +59,19 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
       source: 'Editoriale',
     };
     const players = editing ? content.players.map((item) => item.id === editing ? player : item) : [...content.players, player];
-    void onChange({ ...content, players });
-    reset();
+    setSaving(true);
+    setSaveMessage('');
+    try {
+      await onChange({ ...content, players });
+      setSaveMessage(`Modifiche di ${player.name} salvate.`);
+      reset();
+    } catch (error) {
+      console.warn('Salvataggio calciatore non riuscito', error);
+      setSaveMessage('Salvataggio non riuscito. Riprova senza chiudere la scheda.');
+      Alert.alert('Errore di salvataggio', 'La scheda non è stata salvata. Riprova.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return <View style={{ gap: 14 }}>
@@ -84,7 +97,8 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
       <Field label="Fonte foto" value={draft.imageSourceUrl ?? ''} onChangeText={(value) => update('imageSourceUrl', value)} />
       <View style={adminStyles.row}><Field label="Presenze" value={String(draft.appearances)} onChangeText={(value) => update('appearances', Number(value))} keyboardType="numeric" /><Field label="Gol" value={String(draft.goals)} onChangeText={(value) => update('goals', Number(value))} keyboardType="numeric" /><Field label="Assist" value={String(draft.assists ?? 0)} onChangeText={(value) => update('assists', Number(value))} keyboardType="numeric" /></View>
       <Field label="Profilo" value={draft.bio ?? ''} onChangeText={(value) => update('bio', value)} multiline />
-      <Button label={editing ? 'Salva modifiche' : 'Aggiungi alla rosa'} icon="content-save-outline" onPress={save} />
+      <Button label={saving ? 'Salvataggio...' : editing ? 'Salva modifiche' : 'Aggiungi alla rosa'} icon="content-save-outline" disabled={saving} onPress={() => void save()} />
+      {saveMessage ? <Text style={{ color: saveMessage.startsWith('Modifiche') ? colors.success : colors.live, fontSize: 12, fontWeight: '800', marginTop: 8, textAlign: 'center' }}>{saveMessage}</Text> : null}
     </View>
 
     <View style={adminStyles.panel}>

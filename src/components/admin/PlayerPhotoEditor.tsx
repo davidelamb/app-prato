@@ -5,17 +5,29 @@ import { GestureResponderEvent, Image, PanResponder, Pressable, StyleSheet, Text
 import { colors, radii } from '../../theme';
 import { playerImageStyle } from '../../utils/player-image';
 
-const FRAME_WIDTH = 220;
-const FRAME_HEIGHT = 264; // matches the 122x146 PlayerCard aspect ratio, scaled up for easier editing
+const FRAME_WIDTH = 260;
+const FRAME_HEIGHT = 310;
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
 
 type PhotoValue = { imageScale?: number; imagePositionX?: number; imagePositionY?: number };
+type PhotoState = { imageScale: number; imagePositionX: number; imagePositionY: number };
 
 function distance(touches: GestureResponderEvent['nativeEvent']['touches']): number {
   if (touches.length < 2) return 0;
   const [a, b] = touches;
   return Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY);
+}
+
+function clampPhoto(next: PhotoState): PhotoState {
+  const imageScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next.imageScale));
+  const maxX = (imageScale - 1) * (FRAME_WIDTH / 2);
+  const maxY = (imageScale - 1) * (FRAME_HEIGHT / 2);
+  return {
+    imageScale: Math.round(imageScale * 100) / 100,
+    imagePositionX: Math.round(Math.max(-maxX, Math.min(maxX, next.imagePositionX))),
+    imagePositionY: Math.round(Math.max(-maxY, Math.min(maxY, next.imagePositionY))),
+  };
 }
 
 export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: string; value: PhotoValue; onChange: (next: { imageScale: number; imagePositionX: number; imagePositionY: number }) => void }) {
@@ -24,18 +36,11 @@ export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: st
   const posY = Number(value.imagePositionY) || 0;
 
   const start = useRef({ x: posX, y: posY, scale, pinchDistance: 0 });
+  const latest = useRef({ scale, posX, posY });
+  const changeRef = useRef(onChange);
   const [dragging, setDragging] = useState(false);
-
-  const clamp = (next: { imageScale: number; imagePositionX: number; imagePositionY: number }) => {
-    const boundedScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next.imageScale));
-    // keep the drag range proportional to how far the photo has been zoomed in
-    const maxOffset = (boundedScale - 1) * (Math.max(FRAME_WIDTH, FRAME_HEIGHT) / 2);
-    return {
-      imageScale: Math.round(boundedScale * 100) / 100,
-      imagePositionX: Math.max(-maxOffset, Math.min(maxOffset, next.imagePositionX)),
-      imagePositionY: Math.max(-maxOffset, Math.min(maxOffset, next.imagePositionY)),
-    };
-  };
+  latest.current = { scale, posX, posY };
+  changeRef.current = onChange;
 
   const panResponder = useMemo(
     () =>
@@ -44,7 +49,7 @@ export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: st
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: (event) => {
           setDragging(true);
-          start.current = { x: posX, y: posY, scale, pinchDistance: distance(event.nativeEvent.touches) };
+          start.current = { x: latest.current.posX, y: latest.current.posY, scale: latest.current.scale, pinchDistance: distance(event.nativeEvent.touches) };
         },
         onPanResponderMove: (event, gesture) => {
           const touches = event.nativeEvent.touches;
@@ -52,21 +57,21 @@ export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: st
             const currentDistance = distance(touches);
             if (start.current.pinchDistance > 0) {
               const ratio = currentDistance / start.current.pinchDistance;
-              onChange(clamp({ imageScale: start.current.scale * ratio, imagePositionX: posX, imagePositionY: posY }));
+              changeRef.current(clampPhoto({ imageScale: start.current.scale * ratio, imagePositionX: start.current.x, imagePositionY: start.current.y }));
             }
             return;
           }
-          onChange(clamp({ imageScale: scale, imagePositionX: start.current.x + gesture.dx, imagePositionY: start.current.y + gesture.dy }));
+          changeRef.current(clampPhoto({ imageScale: start.current.scale, imagePositionX: start.current.x + gesture.dx, imagePositionY: start.current.y + gesture.dy }));
         },
         onPanResponderRelease: () => setDragging(false),
         onPanResponderTerminate: () => setDragging(false),
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [posX, posY, scale],
+    [],
   );
 
-  const nudgeZoom = (delta: number) => onChange(clamp({ imageScale: scale + delta, imagePositionX: posX, imagePositionY: posY }));
-  const nudgePosition = (deltaX: number, deltaY: number) => onChange(clamp({ imageScale: scale, imagePositionX: posX + deltaX, imagePositionY: posY + deltaY }));
+  const nudgeZoom = (delta: number) => onChange(clampPhoto({ imageScale: scale + delta, imagePositionX: posX, imagePositionY: posY }));
+  const nudgePosition = (deltaX: number, deltaY: number) => onChange(clampPhoto({ imageScale: scale, imagePositionX: posX + deltaX, imagePositionY: posY + deltaY }));
+  const centerPosition = () => onChange({ imageScale: scale, imagePositionX: 0, imagePositionY: 0 });
   const recenter = () => onChange({ imageScale: 1, imagePositionX: 0, imagePositionY: 0 });
 
   return (
@@ -91,13 +96,15 @@ export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: st
           <Text style={styles.resetText}>Reset</Text>
         </Pressable>
       </View>
+      <Text style={styles.positionValue}>Posizione X {Math.round(posX)} · Y {Math.round(posY)}</Text>
       <View style={styles.positionControls}>
-        <Pressable accessibilityLabel="Sposta in alto" onPress={() => nudgePosition(0, -4)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-up" size={20} color={colors.ink} /></Pressable>
+        <Pressable accessibilityLabel="Sposta in alto" onPress={() => nudgePosition(0, -3)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-up" size={24} color={colors.ink} /></Pressable>
         <View style={styles.horizontalControls}>
-          <Pressable accessibilityLabel="Sposta a sinistra" onPress={() => nudgePosition(-4, 0)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-left" size={20} color={colors.ink} /></Pressable>
-          <Pressable accessibilityLabel="Sposta a destra" onPress={() => nudgePosition(4, 0)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-right" size={20} color={colors.ink} /></Pressable>
+          <Pressable accessibilityLabel="Sposta a sinistra" onPress={() => nudgePosition(-3, 0)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-left" size={24} color={colors.ink} /></Pressable>
+          <Pressable accessibilityLabel="Centra posizione" onPress={centerPosition} style={[styles.positionBtn, styles.centerBtn]}><MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.paper} /></Pressable>
+          <Pressable accessibilityLabel="Sposta a destra" onPress={() => nudgePosition(3, 0)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-right" size={24} color={colors.ink} /></Pressable>
         </View>
-        <Pressable accessibilityLabel="Sposta in basso" onPress={() => nudgePosition(0, 4)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-down" size={20} color={colors.ink} /></Pressable>
+        <Pressable accessibilityLabel="Sposta in basso" onPress={() => nudgePosition(0, 3)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-down" size={24} color={colors.ink} /></Pressable>
       </View>
     </View>
   );
@@ -123,8 +130,10 @@ const styles = StyleSheet.create({
   guide: { position: 'absolute', top: '50%', left: '50%', width: 1, height: 1 },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   positionControls: { alignItems: 'center', gap: 4 },
-  horizontalControls: { flexDirection: 'row', gap: 34 },
-  positionBtn: { width: 36, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.line },
+  positionValue: { color: colors.muted, fontSize: 11, fontWeight: '800' },
+  horizontalControls: { flexDirection: 'row', gap: 6 },
+  positionBtn: { width: 44, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.line },
+  centerBtn: { backgroundColor: colors.accentStrong, borderColor: colors.accentStrong },
   zoomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minWidth: 40, minHeight: 40, paddingHorizontal: 10, borderRadius: radii.md, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.line },
   zoomValue: { color: colors.ink, fontWeight: '900', minWidth: 42, textAlign: 'center' },
   resetBtn: { backgroundColor: colors.accentStrong, borderColor: colors.accentStrong },

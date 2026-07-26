@@ -10,11 +10,18 @@ import { canonicalTeamName, normalizeTeamName } from '../utils/team-names';
 import { mergeMatchLists } from '../utils/match-merge';
 import { minuteLabelFor, inferLegacyEventPhase } from '../utils/live-match';
 
-const STORAGE_KEY = '@ac-prato/content-v13';
-const LEGACY_KEYS = ['@ac-prato/content-v12', '@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v14';
+const LEGACY_KEYS = ['@ac-prato/content-v13', '@ac-prato/content-v12', '@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function isSupportedCompetition(value: unknown): value is MatchCompetition {
   return value === 'Campionato' || value === 'Coppa Italia' || value === 'Amichevole';
+}
+
+function isLegacyDemoFixture(fixture: Fixture): boolean {
+  return fixture.isDemo === true
+    || fixture.id === 'fixture-1'
+    || /demo|dimostrativa/i.test(fixture.matchday)
+    || /demo|dimostrativa/i.test(fixture.dateLabel);
 }
 
 function normalizeLineup(lineup: MatchLineup | undefined): MatchLineup | undefined {
@@ -180,7 +187,7 @@ function normalizeFixture(fixture: Fixture): Fixture {
     matchday: demoMatchday ? '1ª giornata' : fixture.matchday,
     dateLabel: demoDate ? '' : fixture.dateLabel,
     kickoffAt: fixture.kickoffAt || undefined,
-    isDemo: false,
+    isDemo: fixture.isDemo === true || demoMatchday || demoDate,
     livePhase: normalizedLivePhase,
     liveEvents,
     phaseStartedAt: validPhaseStartedAt,
@@ -209,9 +216,9 @@ function normalizePlayer(player: Player): Player {
     assists: player.assists ?? 0,
     imageUrl: fallbackReplacesRemoteSeed ? fallback?.imageUrl : (player.imageUrl || fallback?.imageUrl || seed?.imageUrl || ''),
     imageSourceUrl: fallbackReplacesRemoteSeed ? fallback?.imageSourceUrl : (player.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl),
-    imageScale: fallbackReplacesRemoteSeed ? fallback?.imageScale : (player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1),
-    imagePositionX: fallbackReplacesRemoteSeed ? fallback?.imagePositionX : (player.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0),
-    imagePositionY: fallbackReplacesRemoteSeed ? fallback?.imagePositionY : (player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0),
+    imageScale: player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1,
+    imagePositionX: player.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0,
+    imagePositionY: player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0,
     nationality: player.nationality ?? 'Italia',
   };
 }
@@ -322,9 +329,9 @@ export function normalizeContent(content: AppContent): AppContent {
   }
 
   // Merge fixtures: completa dal seed le partite mancanti (per id)
-  const savedFixtures = Array.isArray(content.fixtures) ? content.fixtures.map(normalizeFixture) : [];
+  const savedFixtures = Array.isArray(content.fixtures) ? content.fixtures.filter((fixture) => !isLegacyDemoFixture(fixture)).map(normalizeFixture) : [];
   const savedFixMap = new Map(savedFixtures.map((f) => [f.id, f]));
-  const mergedFixtures = seedContent.fixtures.map((seed) => savedFixMap.get(seed.id) ?? normalizeFixture(seed));
+  const mergedFixtures = seedContent.fixtures.filter((fixture) => !isLegacyDemoFixture(fixture)).map((seed) => savedFixMap.get(seed.id) ?? normalizeFixture(seed));
   for (const saved of savedFixtures) {
     if (!mergedFixtures.some((f) => f.id === saved.id)) mergedFixtures.push(saved);
   }

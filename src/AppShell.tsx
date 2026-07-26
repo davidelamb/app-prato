@@ -108,7 +108,11 @@ export default function AppShell() {
   useEffect(() => {
     if (tabReady && tab !== 'admin') void AsyncStorage.setItem(TAB_STORAGE_KEY, tab);
   }, [tab, tabReady]);
-  const commit = async (next: AppContent) => { const stamped = { ...next, updatedAt: stamp() }; setContent(stamped); await saveContent(stamped); };
+  const commit = async (next: AppContent) => {
+    const stamped = { ...next, updatedAt: stamp() };
+    await saveContent(stamped);
+    setContent(stamped);
+  };
   const liveFixture = useMemo(() => {
     const real = content.fixtures.filter((item) => !item.isDemo);
     const live = real.find((item) => item.status === 'live');
@@ -143,7 +147,7 @@ export default function AppShell() {
     if (!liveFixture) return false;
     if (liveFixture.isDemo) return false;
     if (liveFixture.status === 'live') return true;
-    return isLiveWindow(liveFixture) || (liveFixture.competition === 'Amichevole' && liveFixture.status === 'scheduled');
+    return liveFixture.status === 'scheduled' || isLiveWindow(liveFixture);
   }, [liveFixture]);
   const tabs = useMemo(() => {
     return liveTabVisible ? allTabs : allTabs.filter((item) => item.key !== 'live');
