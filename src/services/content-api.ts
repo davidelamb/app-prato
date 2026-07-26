@@ -80,8 +80,11 @@ async function uploadDataImage(dataUrl: string, prefix: string, token: string): 
 }
 
 async function persistentImageUrl(value: string | undefined, prefix: string, token: string): Promise<string | undefined> {
-  if (!value?.startsWith('data:image/')) return value;
-  return uploadDataImage(value, prefix, token);
+  if (!value) return undefined;
+  if (value.startsWith('data:image/')) return uploadDataImage(value, prefix, token);
+  if (/^https?:\/\//i.test(value)) return value;
+  // file://, blob: and bundled asset URIs only exist on the current device.
+  return undefined;
 }
 
 export async function materializeContentImages(content: AppContent, token: string): Promise<AppContent> {
