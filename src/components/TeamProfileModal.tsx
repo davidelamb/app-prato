@@ -3,6 +3,7 @@ import { Image, Linking, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet,
 
 import { colors, radii } from '../theme';
 import { Team } from '../types';
+import { flagFor, nationalityList } from '../utils/nationality';
 import { TeamLogo } from './TeamLogo';
 
 export function TeamProfileModal({ team, onClose }: { team: Team | null; onClose: () => void }) {
@@ -20,13 +21,25 @@ export function TeamProfileModal({ team, onClose }: { team: Team | null; onClose
       </View>
       <View style={styles.panel}>
         <Text style={styles.eyebrow}>ROSA</Text>
-        {players.length ? players.map((player) => <View key={player.id} style={styles.playerRow}>
+        {players.length ? players.map((player) => {
+          const nations = nationalityList(player.nationality);
+          return <View key={player.id} style={styles.playerRow}>
           <View style={styles.avatar}>
             {player.imageUrl ? <Image source={{ uri: player.imageUrl }} style={styles.avatarImage} resizeMode="cover" /> : <MaterialCommunityIcons name="account-outline" size={22} color={colors.muted} />}
           </View>
           <Text style={styles.number}>{player.number ?? '—'}</Text>
-          <View style={styles.playerBody}><Text style={styles.playerName}>{player.name}</Text><Text style={styles.playerMeta}>{[player.role, player.nationality].filter(Boolean).join(' · ')}</Text></View>
-        </View>) : <View style={styles.empty}><MaterialCommunityIcons name="account-group-outline" size={34} color={colors.mutedDark} /><Text style={styles.emptyText}>Rosa non ancora disponibile</Text></View>}
+          <View style={styles.playerBody}><Text style={styles.playerName}>{player.name}</Text><Text style={styles.playerMeta}>{player.role}</Text></View>
+          {nations.length ? (
+            <View style={styles.nationBadge}>
+              {nations.map((nation) => (
+                <Text key={nation} style={styles.nationBadgeText}>
+                  {flagFor(nation) ?? ''} {nation}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>;
+        }) : <View style={styles.empty}><MaterialCommunityIcons name="account-group-outline" size={34} color={colors.mutedDark} /><Text style={styles.emptyText}>Rosa non ancora disponibile</Text></View>}
       </View>
       {team.sourceUrl ? <Pressable onPress={() => void Linking.openURL(team.sourceUrl!)} style={styles.source}><MaterialCommunityIcons name="open-in-new" size={19} color={colors.accentStrong} /><Text style={styles.sourceText}>Apri la fonte della squadra</Text></Pressable> : null}
     </ScrollView> : null}</SafeAreaView>
@@ -52,6 +65,8 @@ const styles = StyleSheet.create({
   playerBody: { flex: 1 },
   playerName: { color: colors.ink, fontWeight: '900' },
   playerMeta: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  nationBadge: { flexShrink: 0, alignItems: 'flex-end', gap: 2, marginLeft: 8 },
+  nationBadgeText: { fontSize: 11, fontWeight: '800', color: colors.inkSoft },
   empty: { alignItems: 'center', paddingVertical: 30 },
   emptyText: { color: colors.muted, fontWeight: '800', marginTop: 9 },
   source: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: radii.md, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },

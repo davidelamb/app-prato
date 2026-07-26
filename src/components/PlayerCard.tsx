@@ -3,6 +3,7 @@ import { Image, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from '
 
 import { colors, radii } from '../theme';
 import { Player } from '../types';
+import { nationalityList } from '../utils/nationality';
 import { playerImageStyle } from '../utils/player-image';
 
 export function PlayerCard({ player, onPress, style }: { player: Player; onPress: () => void; style?: StyleProp<ViewStyle> }) {
@@ -20,7 +21,7 @@ export function PlayerCard({ player, onPress, style }: { player: Player; onPress
       <View style={styles.info}>
         <Text style={styles.role}>{player.role}</Text>
         <Text numberOfLines={1} style={styles.name}>{player.name}</Text>
-        <Text numberOfLines={1} style={styles.meta}>{player.nationality ?? 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
+        <Text numberOfLines={1} style={styles.meta}>{nationalityList(player.nationality).join(' / ') || 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
         <View style={styles.statsRow}>
           <View style={styles.stat}><Text style={styles.statValue}>{player.appearances}</Text><Text style={styles.statLabel}>Pres.</Text></View>
           <View style={styles.stat}><Text style={styles.statValue}>{player.goals}</Text><Text style={styles.statLabel}>Gol</Text></View>
