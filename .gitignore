@@ -11,3 +11,9 @@ temp/
 temp-*
 temp_*
 *.tmp
+
+# Output locali degli strumenti editoriali
+scripts/rosters-errors.log
+player-data.json
+player-positions.json
+scraped-players.json

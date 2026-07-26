@@ -12,7 +12,15 @@ const keyRegex = /"([^"]+)"\s*:\s*\[/g;
 let match;
 while ((match = keyRegex.exec(rostersRaw)) !== null) {
   const key = match[1];
-  const block = rostersRaw.slice(match.index);
+  const blockStart = rostersRaw.indexOf('[', match.index);
+  let cursor = blockStart + 1;
+  let depth = 1;
+  while (cursor < rostersRaw.length && depth > 0) {
+    if (rostersRaw[cursor] === '[') depth++;
+    if (rostersRaw[cursor] === ']') depth--;
+    cursor++;
+  }
+  const block = rostersRaw.slice(blockStart, cursor);
   const count = (block.match(/\bid:\s*"/g) || []).length;
   rosterKeys.push({ key, count });
 }
@@ -61,8 +69,10 @@ console.log('\n=== Matching Nomi Squadre -> Chiavi Import ===');
 for (const t of teams) {
   const key = teamRosterKey(t);
   const has = rosterKeySet.has(key);
+  const usesMainRoster = t === 'AC Prato';
   console.log(`  ${t}`);
-  console.log(`    => "${key}" ${has ? '✅ OK' : '❌ MISSING'}`);
+  console.log(`    => "${key}" ${has ? '✅ OK' : usesMainRoster ? '✅ ROSA PRINCIPALE' : '❌ MISSING'}`);
+  if (!has && !usesMainRoster) process.exitCode = 1;
 }
 
 // Reverse: quali chiavi non matchano nessuna squadra?
@@ -73,6 +83,7 @@ for (const r of rosterKeys) {
   if (!teamKeys.has(r.key)) {
     console.log(`  ❌ "${r.key}" — nessuna squadra corrisponde`);
     orphans++;
+    process.exitCode = 1;
   }
 }
 if (orphans === 0) console.log('  ✅ Tutte le chiavi hanno un match');

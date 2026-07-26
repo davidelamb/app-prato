@@ -9,7 +9,7 @@ import MediaIcon from './components/nav-icons/MediaIcon';
 import NewsIcon from './components/nav-icons/NewsIcon';
 import StatsIcon from './components/nav-icons/StatsIcon';
 
-import { AdminDashboard } from './components/AdminDashboard';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import { ArticleModal } from './components/ArticleModal';
 import { LivePanel } from './components/LivePanel';
 import { PlayerProfileModal } from './components/PlayerProfileModal';

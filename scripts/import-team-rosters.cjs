@@ -348,6 +348,13 @@ function normalizeRole(raw) {
   return undefined;
 }
 
+function isPlausiblePlayerName(name) {
+  if (!name) return false;
+  if (/[€$£]/.test(name)) return false;
+  if (/^\d+(?:[.,]\d+)?\s*(?:mila|mln|mio|k)\b/i.test(name)) return false;
+  return /[a-zA-ZÀ-ÖØ-öø-ÿ]/.test(name);
+}
+
 function playerIdFromName(name) {
   return name
     .toLowerCase()
@@ -465,7 +472,7 @@ async function importTeam(config, index, total, options) {
   }
 
   // 3. Clean, normalize, deduplicate, sort
-  const cleaned = players.map(cleanPlayer).filter((p) => p.name);
+  const cleaned = players.map(cleanPlayer).filter((p) => isPlausiblePlayerName(p.name));
   const deduped = deduplicatePlayers(cleaned);
   const sorted = sortPlayers(deduped);
 

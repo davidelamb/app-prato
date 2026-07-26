@@ -22,10 +22,10 @@ function NationFlag({ nation }: { nation: string }) {
   }
   if (nation === 'Montenegro') {
     return (
-      <View accessibilityLabel="Bandiera Montenegro" style={styles.flagFrame}>
-        <View style={[styles.verticalStripe, { backgroundColor: '#D81E05' }]} />
-        <View style={[styles.verticalStripe, { backgroundColor: '#FFFFFF' }]} />
-        <View style={[styles.verticalStripe, { backgroundColor: '#D81E05' }]} />
+      <View accessibilityLabel="Bandiera Montenegro" style={[styles.flagFrame, styles.montenegroFlag]}>
+        <View style={styles.montenegroEmblem}>
+          <Text style={styles.montenegroMark}>◆</Text>
+        </View>
       </View>
     );
   }
@@ -79,6 +79,22 @@ const styles = StyleSheet.create({
   verticalStripe: { flex: 1 },
   moroccoFlag: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#C1272D' },
   moroccoStar: { color: '#006233', fontSize: 10, lineHeight: 11, fontWeight: '900' },
+  montenegroFlag: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#C40308',
+    borderWidth: 1.5,
+    borderColor: '#D4AF37',
+  },
+  montenegroEmblem: {
+    width: 7,
+    height: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    backgroundColor: '#D4AF37',
+  },
+  montenegroMark: { color: '#1F4E79', fontSize: 5, lineHeight: 6 },
   flags: { fontSize: 16, lineHeight: 19 },
   label: { flexShrink: 1, color: colors.ink, fontSize: 10, fontWeight: '800' },
 });

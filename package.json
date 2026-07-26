@@ -14,7 +14,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-svg": "^15.15.5",
+    "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
@@ -37,6 +37,7 @@
     "typecheck": "tsc --noEmit",
     "import-rosters": "node scripts/import-team-rosters.cjs",
     "verify:core": "node scripts/verify-core-match-system.cjs",
+    "verify:rosters": "node scripts/verify-roster-matching.cjs",
     "verify:season": "node scripts/verify-full-season.cjs",
     "season:generate": "node scripts/generate-full-season.cjs > src/data/full-season-2026-27.ts"
   },
