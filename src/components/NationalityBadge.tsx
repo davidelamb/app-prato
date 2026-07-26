@@ -20,6 +20,15 @@ function NationFlag({ nation }: { nation: string }) {
       </View>
     );
   }
+  if (nation === 'Montenegro') {
+    return (
+      <View accessibilityLabel="Bandiera Montenegro" style={styles.flagFrame}>
+        <View style={[styles.verticalStripe, { backgroundColor: '#D81E05' }]} />
+        <View style={[styles.verticalStripe, { backgroundColor: '#FFFFFF' }]} />
+        <View style={[styles.verticalStripe, { backgroundColor: '#D81E05' }]} />
+      </View>
+    );
+  }
   return <Text style={styles.flags}>{flagFor(nation) ?? '🌐'}</Text>;
 }
 
