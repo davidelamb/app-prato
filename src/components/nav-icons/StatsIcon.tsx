@@ -5,5 +5,5 @@ import { colors } from '../../theme';
 type Props = { size?: number; active?: boolean; hovered?: boolean };
 
 export default function StatsIcon({ size = 22 }: Props) {
-  return <MaterialCommunityIcons name="chart-box-outline" size={size} color={colors.accent} />;
+  return <MaterialCommunityIcons name="chart-box-outline" size={size} color={colors.success} />;
 }
