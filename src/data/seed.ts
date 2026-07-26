@@ -51,12 +51,6 @@ const media: MediaItem[] = [
 export const seedContent: AppContent = {
   updatedAt: '20 lug 2026 · stagione 2026-27',
   fixtures: [
-    { id: 'fixture-1', competition: 'Serie D · Girone E', matchday: 'Diretta dimostrativa', dateLabel: 'LIVE DEMO', time: "67'", home: 'AC Prato', away: 'Tau Altopascio', homeScore: 1, awayScore: 1, status: 'live', minute: 67, venue: 'Stadio Lungobisenzio', isDemo: true, livePhase: 'second_half', liveEvents: [
-      { id: 'demo-goal-2', type: 'goal', label: 'Gol Tau Altopascio', minute: 54, team: 'Tau Altopascio', scorer: 'Rossi', score: '1-1', createdAt: new Date().toISOString() },
-      { id: 'demo-half', type: 'second_half', label: 'Inizio secondo tempo', minute: 46, score: '1-0', createdAt: new Date().toISOString() },
-      { id: 'demo-goal-1', type: 'goal', label: 'Gol AC Prato', minute: 18, team: 'AC Prato', scorer: 'Francesco Verde', score: '1-0', createdAt: new Date().toISOString() },
-      { id: 'demo-start', type: 'kickoff', label: 'Inizio partita', minute: 1, score: '0-0', createdAt: new Date().toISOString() },
-    ] },
     ...preseasonFriendlies.map((match) => ({ ...match, matchday: 'Amichevole' })),
   ],
   standings: seasonStandingSets.overall,
