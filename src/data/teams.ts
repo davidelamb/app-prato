@@ -3,6 +3,7 @@ import { teamLogos } from './team-logos';
 import { serieDTeams2026 } from './season-2026-27';
 import { Player, Team, TeamPlayer } from '../types';
 import { normalizeTeamName } from '../utils/team-names';
+import { nationalityList } from '../utils/nationality';
 
 function teamId(name: string): string {
   return normalizeTeamName(name).replace(/\s+/g, '-');
@@ -26,7 +27,7 @@ function pratoPlayer(player: Player): TeamPlayer {
     name: player.name,
     number: player.number,
     role: player.role,
-    nationality: player.nationality,
+    nationality: nationalityList(player.nationality).join(' / ') || undefined,
     birthDate: player.birthDate,
     marketValue: player.marketValue,
     imageUrl: player.imageUrl,

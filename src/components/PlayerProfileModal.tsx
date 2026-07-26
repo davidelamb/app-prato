@@ -3,6 +3,7 @@ import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, Vi
 
 import { colors, radii } from '../theme';
 import { Player } from '../types';
+import { nationalityList } from '../utils/nationality';
 import { playerImageStyle } from '../utils/player-image';
 
 function Stat({ value, label }: { value: string | number; label: string }) {
@@ -39,7 +40,7 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
               <View style={styles.heroBody}>
                 <Text style={styles.role}>{player.role}</Text>
                 <Text style={styles.name}>{player.name}</Text>
-                <Text style={styles.subline}>{player.nationality ?? 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
+                <Text style={styles.subline}>{nationalityList(player.nationality).join(' / ') || 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
               </View>
             </View>
 

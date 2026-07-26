@@ -109,7 +109,7 @@ export type Player = {
   age?: number;
   birthDate?: string;
   birthplace?: string;
-  nationality?: string;
+  nationality?: string | string[];
   height?: string;
   foot?: string;
   contractUntil?: string;
