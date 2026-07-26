@@ -80,6 +80,30 @@ const totalGoalsFor = [...stats.values()].reduce((sum, s) => sum + s.gf, 0);
 const totalGoalsAgainst = [...stats.values()].reduce((sum, s) => sum + s.ga, 0);
 check('gol fatti totali = gol subiti totali (simmetria campionato)', totalGoalsFor === totalGoalsAgainst);
 
+// Sistema punti: 3 vittoria, 1 pareggio, 0 sconfitta — verificato per
+// OGNI squadra (non solo sui totali), usando la stessa aritmetica della
+// funzione reale calculateStandingSets/toStanding.
+const winsLossesDraws = new Map([...teams].map((t) => [t, { w: 0, d: 0, l: 0 }]));
+for (const m of matches) {
+  if (m.status !== 'final' || !Number.isInteger(m.homeScore) || !Number.isInteger(m.awayScore)) continue;
+  const h = winsLossesDraws.get(m.home);
+  const a = winsLossesDraws.get(m.away);
+  if (m.homeScore > m.awayScore) { h.w++; a.l++; }
+  else if (m.homeScore < m.awayScore) { a.w++; h.l++; }
+  else { h.d++; a.d++; }
+}
+let pointsOk = true;
+for (const [team, wdl] of winsLossesDraws) {
+  const expectedPoints = wdl.w * 3 + wdl.d;
+  const actualPoints = stats.get(team).points;
+  const expectedPlayed = wdl.w + wdl.d + wdl.l;
+  if (expectedPoints !== actualPoints || expectedPlayed !== stats.get(team).played) {
+    pointsOk = false;
+    console.log(`  ⚠️  ${team}: atteso ${expectedPoints}pt/${expectedPlayed}g, trovato ${actualPoints}pt/${stats.get(team).played}g`);
+  }
+}
+check('punti = 3×vittorie + pareggi per OGNI squadra (18/18)', pointsOk);
+
 const pratoStats = stats.get('AC Prato');
 console.log(`\nAC Prato: ${pratoStats.played} giocate, ${pratoStats.points} punti, ${pratoStats.gf}-${pratoStats.ga}`);
 
