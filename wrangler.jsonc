@@ -6,8 +6,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "MEDIA_UPLOADS_ENABLED": "true",
-    "MEDIA_STORAGE_LIMIT_BYTES": "1000000000",
-    "MEDIA_MONTHLY_UPLOAD_LIMIT": "1000"
+    "MEDIA_STORAGE_LIMIT_BYTES": "9500000000",
+    "MEDIA_MONTHLY_UPLOAD_LIMIT": "50000"
   },
   "secrets": {
     "required": ["ADMIN_TOKEN"]
