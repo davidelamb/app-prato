@@ -200,19 +200,32 @@ function normalizePlayer(player: Player): Player {
       || /transfermarkt\.(technology|it)/i.test(player.imageUrl)
       || player.imageSourceUrl === fallback.imageSourceUrl
     );
+  const migratedPlayer = player.id === 'bajic'
+    ? {
+        ...player,
+        nationality: (() => {
+          const savedNationality = Array.isArray(player.nationality)
+            ? player.nationality
+            : [player.nationality].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+          const hasLegacyMarocco = savedNationality.includes('Marocco');
+          return hasLegacyMarocco ? (seed?.nationality ?? ['Montenegro', 'Italia']) : (player.nationality ?? seed?.nationality ?? 'Italia');
+        })(),
+      }
+    : player;
+
   return {
     ...seed,
-    ...player,
-    appearances: player.appearances ?? 0,
-    goals: player.goals ?? 0,
-    liveGoals: Math.max(0, Number(player.liveGoals) || 0),
-    assists: player.assists ?? 0,
-    imageUrl: fallbackReplacesRemoteSeed ? fallback?.imageUrl : (player.imageUrl || fallback?.imageUrl || seed?.imageUrl || ''),
-    imageSourceUrl: fallbackReplacesRemoteSeed ? fallback?.imageSourceUrl : (player.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl),
-    imageScale: fallbackReplacesRemoteSeed ? fallback?.imageScale : (player.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1),
-    imagePositionX: fallbackReplacesRemoteSeed ? fallback?.imagePositionX : (player.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0),
-    imagePositionY: fallbackReplacesRemoteSeed ? fallback?.imagePositionY : (player.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0),
-    nationality: player.nationality ?? 'Italia',
+    ...migratedPlayer,
+    appearances: migratedPlayer.appearances ?? 0,
+    goals: migratedPlayer.goals ?? 0,
+    liveGoals: Math.max(0, Number(migratedPlayer.liveGoals) || 0),
+    assists: migratedPlayer.assists ?? 0,
+    imageUrl: fallbackReplacesRemoteSeed ? fallback?.imageUrl : (migratedPlayer.imageUrl || fallback?.imageUrl || seed?.imageUrl || ''),
+    imageSourceUrl: fallbackReplacesRemoteSeed ? fallback?.imageSourceUrl : (migratedPlayer.imageSourceUrl || fallback?.imageSourceUrl || seed?.imageSourceUrl),
+    imageScale: fallbackReplacesRemoteSeed ? fallback?.imageScale : (migratedPlayer.imageScale ?? fallback?.imageScale ?? seed?.imageScale ?? 1),
+    imagePositionX: fallbackReplacesRemoteSeed ? fallback?.imagePositionX : (migratedPlayer.imagePositionX ?? fallback?.imagePositionX ?? seed?.imagePositionX ?? 0),
+    imagePositionY: fallbackReplacesRemoteSeed ? fallback?.imagePositionY : (migratedPlayer.imagePositionY ?? fallback?.imagePositionY ?? seed?.imagePositionY ?? 0),
+    nationality: migratedPlayer.nationality ?? 'Italia',
   };
 }
 
