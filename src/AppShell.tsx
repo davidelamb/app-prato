@@ -20,7 +20,7 @@ import { RosterScreen } from './screens/RosterScreen';
 import { StatsScreen } from './screens/StatsScreen';
 import { loadContent, resetContent, saveContent } from './services/content-store';
 import { colors, radii } from './theme';
-import { AppContent, NewsArticle, Player } from './types';
+import { AppContent, Fixture, NewsArticle, Player } from './types';
 import { isLiveWindow, kickoffTimestamp } from './utils/fixture-time';
 
 export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
@@ -117,10 +117,28 @@ export default function AppShell() {
     if (inWindow.length > 0) {
       return [...inWindow].sort((a, b) => (a.kickoffAt ? Date.parse(a.kickoffAt) : 0) - (b.kickoffAt ? Date.parse(b.kickoffAt) : 0))[0];
     }
-    return real
-      .filter((item) => item.competition === 'Amichevole' && item.status === 'scheduled' && kickoffTimestamp(item) != null)
-      .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER))[0] ?? null;
-  }, [content.fixtures]);
+    const calendarFixtures: Fixture[] = (content.schedule ?? [])
+      .filter((match) => match.status !== 'final' && match.home.trim() && match.away.trim())
+      .map((match) => ({
+        id: match.fixtureId ?? `calendar-live-${match.id}`,
+        scheduleMatchId: match.id,
+        competition: match.competition ?? 'Campionato',
+        matchday: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : match.competition ?? 'Partita'),
+        dateLabel: match.dateLabel,
+        time: match.time,
+        kickoffAt: undefined,
+        home: match.home,
+        away: match.away,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+        status: match.status ?? 'scheduled',
+        venue: match.venue ?? 'Stadio da definire',
+      }));
+    const candidates = [...real.filter((item) => item.status === 'scheduled'), ...calendarFixtures]
+      .filter((item) => kickoffTimestamp(item) != null)
+      .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER));
+    return candidates[0] ?? null;
+  }, [content.fixtures, content.schedule]);
   const liveTabVisible = useMemo(() => {
     if (!liveFixture) return false;
     if (liveFixture.isDemo) return false;
