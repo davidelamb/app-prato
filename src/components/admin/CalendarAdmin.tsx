@@ -58,6 +58,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
   const [importMode, setImportMode] = useState<'csv' | 'json'>('csv');
   const [listCompetition, setListCompetition] = useState<MatchCompetition>('Campionato');
   const [selectedMatchday, setSelectedMatchday] = useState(1);
+  const [saving, setSaving] = useState(false);
 
   const visibleSchedule = useMemo(
     () => schedule.filter((match) => {
@@ -82,7 +83,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
     setDraft(newMatch());
   };
 
-  const saveSchedule = () => {
+  const saveSchedule = async () => {
     const sorted = schedule.map(normalizeMatch).sort((a, b) => dateKey(a) - dateKey(b)).map((match, index) => ({ ...match, sortOrder: index }));
     const invalid = sorted.some((match) => (match.homeScore === undefined) !== (match.awayScore === undefined)
       || (match.homeScore !== undefined && (!Number.isInteger(match.homeScore) || match.homeScore < 0))
@@ -94,7 +95,16 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
       ...(content.deletedScheduleMatchIds ?? []),
       ...(content.schedule ?? []).filter((match) => !activeIds.has(match.id)).map((match) => match.id),
     ].filter((matchId, index, ids) => ids.indexOf(matchId) === index && !activeIds.has(matchId));
-    void onChange(synchronizeSchedule({ ...content, deletedScheduleMatchIds }, sorted));
+    setSaving(true);
+    try {
+      await onChange(synchronizeSchedule({ ...content, deletedScheduleMatchIds }, sorted));
+      Alert.alert('Calendario salvato', 'Le partite sono state sincronizzate su tutti i dispositivi.');
+    } catch (error) {
+      console.warn('Salvataggio calendario non riuscito', error);
+      Alert.alert('Salvataggio non riuscito', 'Il calendario non è stato aggiornato nel cloud. Riprova.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const setMatchScore = (id: string, side: 'homeScore' | 'awayScore', value: string) => {
@@ -235,7 +245,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
         </View>
         <Pressable onPress={() => setSchedule((c) => c.filter((item) => item.id !== match.id))}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable>
       </View>)}</View>
-      <Button label="Salva calendario" icon="content-save-outline" onPress={saveSchedule} />
+      <Button label={saving ? 'Salvataggio...' : 'Salva calendario'} icon="content-save-outline" disabled={saving} onPress={() => void saveSchedule()} />
     </View>
   </View>;
 }

@@ -9,6 +9,12 @@ import { completeStandingRows, emptyStandingRows, normalizeStandingRow, recalcul
 import { canonicalTeamName, normalizeTeamName } from '../utils/team-names';
 import { mergeMatchLists } from '../utils/match-merge';
 import { minuteLabelFor, inferLegacyEventPhase } from '../utils/live-match';
+import {
+  loadAdminToken,
+  loadRemoteContent,
+  materializeContentImages,
+  saveRemoteContent,
+} from './content-api';
 
 const STORAGE_KEY = '@ac-prato/content-v14';
 const LEGACY_KEYS = ['@ac-prato/content-v13', '@ac-prato/content-v12', '@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
@@ -403,7 +409,7 @@ export function normalizeContent(content: AppContent): AppContent {
   return normalized.groupMatches?.length ? recalculateContentStandings(normalized, normalized.groupMatches) : normalized;
 }
 
-export async function loadContent(): Promise<AppContent> {
+async function loadLocalContent(): Promise<AppContent> {
   try {
     const current = await AsyncStorage.getItem(STORAGE_KEY);
     if (current) return normalizeContent(JSON.parse(current) as AppContent);
@@ -422,11 +428,32 @@ export async function loadContent(): Promise<AppContent> {
   }
 }
 
-export async function saveContent(content: AppContent): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeContent(content)));
+export async function loadContent(): Promise<AppContent> {
+  const local = await loadLocalContent();
+  try {
+    const remote = await loadRemoteContent();
+    if (!remote) return local;
+    const normalized = normalizeContent(remote);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    return normalized;
+  } catch (error) {
+    console.warn('Contenuti cloud non raggiungibili, uso la cache locale', error);
+    return local;
+  }
+}
+
+export async function saveContent(content: AppContent): Promise<AppContent> {
+  const token = await loadAdminToken();
+  if (!token) throw new Error('Accesso amministratore richiesto.');
+  const normalized = normalizeContent(content);
+  const materialized = await materializeContentImages(normalized, token);
+  const saved = normalizeContent(await saveRemoteContent(materialized, token));
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  return saved;
 }
 
 export async function resetContent(): Promise<AppContent> {
-  await Promise.all([AsyncStorage.removeItem(STORAGE_KEY), ...LEGACY_KEYS.map((key) => AsyncStorage.removeItem(key))]);
-  return normalizeContent(seedContent);
+  const reset = await saveContent(normalizeContent(seedContent));
+  await Promise.all(LEGACY_KEYS.map((key) => AsyncStorage.removeItem(key)));
+  return reset;
 }

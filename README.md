@@ -37,6 +37,7 @@ Expo al momento dell'avvio.
 
 ```powershell
 npm run typecheck
+npm run typecheck:worker
 npm run verify:core
 npm run verify:season
 npm run build:web
@@ -48,10 +49,33 @@ La produzione web è pubblicata su
 `https://app-prato.david3-a.workers.dev`. Cloudflare esegue il deploy dopo il
 merge su `main` usando `wrangler.jsonc`.
 
-I contenuti amministrativi sono attualmente salvati tramite AsyncStorage:
-restano sul browser o dispositivo che li ha modificati e non si sincronizzano
-tra iPhone, PC e altri utenti. Per la pubblicazione editoriale condivisa serve
-un backend autenticato.
+I contenuti amministrativi sono condivisi tramite un backend Cloudflare:
+
+- D1 conserva il documento editoriale corrente e le revisioni precedenti;
+- R2 conserva le immagini caricate dal pannello admin;
+- il Worker espone la lettura pubblica e protegge le scritture con
+  `ADMIN_TOKEN`;
+- AsyncStorage resta una cache offline e mantiene compatibili i dati locali
+  creati dalle versioni precedenti.
+
+La chiave amministratore viene conservata in SecureStore su iOS/Android e
+nello storage locale del browser sul web. Non deve essere inserita nel codice
+o committata nel repository.
+
+## Configurazione Cloudflare
+
+```powershell
+npm run cf:types
+npm run db:migrate:local
+npm run db:migrate:remote
+npx wrangler r2 bucket create app-prato-media
+npx wrangler secret put ADMIN_TOKEN
+```
+
+Per il test locale creare un file `.dev.vars` non versionato con
+`ADMIN_TOKEN=...`, quindi avviare `npx wrangler dev`. L'endpoint
+`/api/health` verifica la disponibilità del Worker; il primo salvataggio
+autenticato nell'admin inizializza D1 con l'intero contenuto corrente.
 
 Le rose possono essere aggiornate manualmente o con lo strumento di sviluppo
 `npm run import-rosters`, usando fonti autorizzate. L'app non esegue scraping

@@ -10,6 +10,7 @@ import NewsIcon from './components/nav-icons/NewsIcon';
 import StatsIcon from './components/nav-icons/StatsIcon';
 
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { AdminLogin } from './components/admin/AdminLogin';
 import { ArticleModal } from './components/ArticleModal';
 import { LivePanel } from './components/LivePanel';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
@@ -19,12 +20,14 @@ import { NewsScreen } from './screens/NewsScreen';
 import { RosterScreen } from './screens/RosterScreen';
 import { StatsScreen } from './screens/StatsScreen';
 import { loadContent, resetContent, saveContent } from './services/content-store';
+import { clearAdminToken, loadAdminToken, verifyAdminToken } from './services/content-api';
 import { colors, radii } from './theme';
 import { AppContent, Fixture, NewsArticle, Player } from './types';
 import { isLiveWindow, kickoffTimestamp } from './utils/fixture-time';
 
 export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
+type AdminStatus = 'checking' | 'locked' | 'ready';
 const clubIcon = require('../assets/club-tab-icon-44.png');
 const allTabs: Array<{ key: PublicTab; label: string; image?: ReturnType<typeof require> }> = [
   { key: 'news', label: 'News' },
@@ -92,6 +95,7 @@ export default function AppShell() {
   const [tabReady, setTabReady] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [adminStatus, setAdminStatus] = useState<AdminStatus>('locked');
   const { width } = useWindowDimensions();
   const wide = width >= 860;
 
@@ -110,8 +114,21 @@ export default function AppShell() {
   }, [tab, tabReady]);
   const commit = async (next: AppContent) => {
     const stamped = { ...next, updatedAt: stamp() };
-    await saveContent(stamped);
-    setContent(stamped);
+    setContent(await saveContent(stamped));
+  };
+  const toggleAdmin = async () => {
+    if (tab === 'admin') {
+      setTab('news');
+      return;
+    }
+    setTab('admin');
+    setAdminStatus('checking');
+    const token = await loadAdminToken();
+    setAdminStatus(token && await verifyAdminToken(token) ? 'ready' : 'locked');
+  };
+  const logoutAdmin = async () => {
+    await clearAdminToken();
+    setAdminStatus('locked');
   };
   const liveFixture = useMemo(() => {
     const real = content.fixtures.filter((item) => !item.isDemo);
@@ -158,7 +175,7 @@ export default function AppShell() {
     <StatusBar style="dark" />
     {wide ? <LinearGradient colors={[colors.canvasRaised, '#E4F1FA', colors.canvasRaised]} style={StyleSheet.absoluteFillObject} /> : null}
 
-    <Pressable accessibilityLabel="Apri amministrazione" onPress={() => setTab(tab === 'admin' ? 'news' : 'admin')} style={styles.adminButton}>
+    <Pressable accessibilityLabel="Apri amministrazione" onPress={() => void toggleAdmin()} style={styles.adminButton}>
       {tab === 'admin' ? <MaterialCommunityIcons name="close" size={20} color={colors.accentStrong} /> : <View style={styles.onlineDot} />}
     </Pressable>
 
@@ -169,7 +186,8 @@ export default function AppShell() {
         {tab === 'live' && liveFixture ? <View style={styles.stack}><PageHeader eyebrow="MATCH CENTER" title="Diretta partita" copy="Risultato, cronaca e aggiornamenti minuto per minuto." /><LivePanel fixture={liveFixture} players={content.players} /></View> : null}
         {tab === 'stats' ? <StatsScreen content={content} wide={wide} /> : null}
         {tab === 'club' ? <RosterScreen content={content} wide={wide} onPlayer={setSelectedPlayer} /> : null}
-        {tab === 'admin' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('news')} /> : null}
+        {tab === 'admin' && adminStatus !== 'ready' ? <AdminLogin checking={adminStatus === 'checking'} onAuthenticated={() => setAdminStatus('ready')} /> : null}
+        {tab === 'admin' && adminStatus === 'ready' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('news')} onLogout={() => void logoutAdmin()} /> : null}
       </View>
     </ScrollView>
 

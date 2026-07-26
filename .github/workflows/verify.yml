@@ -20,6 +20,7 @@ jobs:
         id: typecheck
         run: |
           npm run typecheck > tsc-errors.txt 2>&1
+          npm run typecheck:worker >> tsc-errors.txt 2>&1
           cat tsc-errors.txt
       - name: Upload TypeScript errors
         if: failure() && steps.typecheck.outcome == 'failure'
