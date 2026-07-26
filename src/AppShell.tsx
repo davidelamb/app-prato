@@ -21,7 +21,7 @@ import { StatsScreen } from './screens/StatsScreen';
 import { loadContent, resetContent, saveContent } from './services/content-store';
 import { colors, radii } from './theme';
 import { AppContent, NewsArticle, Player } from './types';
-import { isLiveWindow } from './utils/fixture-time';
+import { isLiveWindow, kickoffTimestamp } from './utils/fixture-time';
 
 export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
@@ -117,13 +117,15 @@ export default function AppShell() {
     if (inWindow.length > 0) {
       return [...inWindow].sort((a, b) => (a.kickoffAt ? Date.parse(a.kickoffAt) : 0) - (b.kickoffAt ? Date.parse(b.kickoffAt) : 0))[0];
     }
-    return null;
+    return real
+      .filter((item) => item.competition === 'Amichevole' && item.status === 'scheduled' && kickoffTimestamp(item) != null)
+      .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER))[0] ?? null;
   }, [content.fixtures]);
   const liveTabVisible = useMemo(() => {
     if (!liveFixture) return false;
     if (liveFixture.isDemo) return false;
     if (liveFixture.status === 'live') return true;
-    return isLiveWindow(liveFixture);
+    return isLiveWindow(liveFixture) || (liveFixture.competition === 'Amichevole' && liveFixture.status === 'scheduled');
   }, [liveFixture]);
   const tabs = useMemo(() => {
     return liveTabVisible ? allTabs : allTabs.filter((item) => item.key !== 'live');

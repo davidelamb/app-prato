@@ -63,12 +63,11 @@ Non rimuovere `scripts/apply-logo-assets.cjs`: genera e verifica gli asset del l
 
 Le sezioni principali sono:
 
-1. Home
-2. News
-3. Media
-4. Live
-5. Stats
-6. Club
+1. News
+2. Media
+3. Live
+4. Statistiche
+5. Club
 
 Non rinominare o rimuovere queste sezioni senza richiesta esplicita.
 
@@ -98,7 +97,7 @@ Non aggiungere contenuti inventati presentandoli come ufficiali. Quando si usano
 
 ## Calendario e classifica
 
-`Stats` contiene due viste:
+`Statistiche` contiene due viste:
 
 - Calendario
 - Classifica
@@ -141,9 +140,10 @@ Ogni `Player` può contenere:
 - `imageUrl`;
 - `imageSourceUrl`;
 - `imageScale`;
+- `imagePositionX`;
 - `imagePositionY`.
 
-`imageScale` e `imagePositionY` servono a ingrandire e riposizionare il ritratto nelle card e nei profili. Usare sempre `playerImageStyle()` da `src/utils/player-image.ts` nei nuovi punti dell’interfaccia che mostrano fotografie dei giocatori.
+`imageScale`, `imagePositionX` e `imagePositionY` servono a ingrandire e riposizionare il ritratto nelle card e nei profili. Usare sempre `playerImageStyle()` da `src/utils/player-image.ts` nei nuovi punti dell’interfaccia che mostrano fotografie dei giocatori.
 
 Dall’admin devono restare disponibili:
 
@@ -218,6 +218,20 @@ Una modifica è conclusa soltanto quando:
 Non modificare la configurazione Cloudflare senza una necessità concreta e verificata. Un errore di deploy non deve portare a riprogettare l’app o a rimuovere funzionalità: leggere prima i log della build.
 
 ## Modalità di lavoro richiesta
+
+## Coordinamento tra più AI
+
+Queste regole sono obbligatorie quando il repository viene modificato da Codex, ChatGPT, Claude o altri agenti:
+
+- Prima di iniziare eseguire `git status --short --branch`, `git fetch origin --prune` e controllare `git log -5 --oneline`.
+- Non lavorare direttamente su `main`. Usare un branch dedicato con prefisso `codex/` o `agent/` e aprire una pull request.
+- Prima di modificare un file controllare `git diff` e `git diff origin/main...HEAD`. Se il file contiene modifiche di un altro agente, conservarle e integrare solo la parte necessaria.
+- Un agente deve dichiarare nel riepilogo quali file ha modificato e non deve riscrivere file modificati da un altro agente senza prima riallinearsi al branch remoto.
+- Dopo ogni modifica coerente eseguire `git diff --check`, fare un commit descrittivo e fare push del branch. Il commit e la pull request sono la fonte condivisa del lavoro, non una copia locale.
+- Prima di continuare un lavoro sospeso eseguire `git fetch`, leggere gli ultimi commit del branch remoto e aggiornare il branch con rebase o fast-forward. Non usare `git reset --hard`, `git checkout --` o comandi che cancellano modifiche locali.
+- Aggiungere allo staging solo i file del task corrente; non includere `.env`, credenziali, build, cache o file temporanei.
+- `AsyncStorage` è locale al singolo dispositivo e non sincronizza contenuti tra utenti o AI. Per dati condivisi tra dispositivi serve un backend/API; non presentare la persistenza locale come sincronizzazione cloud.
+- Il merge in `main` avviene solo dopo CI verde, controllo della preview Cloudflare e approvazione esplicita del proprietario del repository.
 
 Prima di scrivere codice:
 

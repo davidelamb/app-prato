@@ -6,7 +6,7 @@ import { AppContent, MatchCompetition, SeasonMatch } from '../../types';
 import { synchronizeSchedule } from '../../utils/match-sync';
 import { Button, Field, adminStyles } from './Primitives';
 
-const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia'];
+const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia', 'Amichevole'];
 const number = (value: string | number | undefined) => Number(value) || 0;
 const cleanDate = (value: string) => value === 'Data da definire' ? '' : value;
 const cleanTime = (value: string) => value === '—' ? '' : value;
@@ -38,6 +38,7 @@ function dateKey(match: SeasonMatch): number {
 function competitionFrom(value: string): MatchCompetition | null {
   const normalized = value.trim().toLowerCase();
   if (normalized.includes('coppa')) return 'Coppa Italia';
+  if (normalized.includes('amichevol')) return 'Amichevole';
   if (normalized.includes('campionato') || normalized.includes('serie d')) return 'Campionato';
   return null;
 }
@@ -45,7 +46,7 @@ function competitionFrom(value: string): MatchCompetition | null {
 export function CalendarAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
   const initialSchedule = useMemo<SeasonMatch[]>(
     () => (content.schedule ?? [])
-      .filter((m) => (m.competition ?? 'Campionato') === 'Campionato' || m.competition === 'Coppa Italia')
+      .filter((m) => (m.competition ?? 'Campionato') === 'Campionato' || m.competition === 'Coppa Italia' || m.competition === 'Amichevole')
       .map(normalizeMatch),
     [content.schedule],
   );
@@ -118,7 +119,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
         else errors.push(`Riga ${index + 1}: casa o trasferta vuoti.`);
         return;
       }
-      errors.push(`Riga ${index + 1}: specifica "Campionato" o "Coppa Italia" come prima colonna.`);
+      errors.push(`Riga ${index + 1}: specifica "Campionato", "Coppa Italia" o "Amichevole" come prima colonna.`);
     });
     setImportErrors(errors);
     setImportPreview(parsed.length ? parsed : null);
@@ -138,8 +139,8 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
         const home = String(obj.home ?? obj.casa ?? '');
         const away = String(obj.away ?? obj.trasferta ?? '');
         if (!home || !away) { errors.push(`Elemento ${index + 1}: casa o trasferta mancanti.`); return; }
-        if (comp !== 'Coppa Italia' && comp !== 'Campionato') {
-          errors.push(`Elemento ${index + 1}: specifica "competition": "Campionato" o "Coppa Italia".`);
+        if (comp !== 'Coppa Italia' && comp !== 'Campionato' && comp !== 'Amichevole') {
+          errors.push(`Elemento ${index + 1}: specifica "competition": "Campionato", "Coppa Italia" o "Amichevole".`);
           return;
         }
         const match: SeasonMatch = {
@@ -191,7 +192,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Importa calendario</Text>
-      <Text style={adminStyles.copy}>Importa partite di Campionato o Coppa Italia via CSV (competizione;turno;data;ora;casa;trasferta;stadio;golC;golO) o JSON.</Text>
+      <Text style={adminStyles.copy}>Importa partite di Campionato, Coppa Italia o Amichevole via CSV (competizione;turno;data;ora;casa;trasferta;stadio;golC;golO) o JSON.</Text>
       <View style={adminStyles.choices}>
         <Pressable onPress={() => setImportMode('csv')} style={[adminStyles.choice, importMode === 'csv' && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, importMode === 'csv' && adminStyles.choiceTextActive]}>CSV / Testo</Text></Pressable>
         <Pressable onPress={() => setImportMode('json')} style={[adminStyles.choice, importMode === 'json' && adminStyles.choiceActive]}><Text style={[adminStyles.choiceText, importMode === 'json' && adminStyles.choiceTextActive]}>JSON</Text></Pressable>
@@ -207,7 +208,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
     </View>
 
     <View style={adminStyles.panel}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={adminStyles.title}>Campionato e Coppa Italia</Text><Text style={{ fontSize: 11, color: colors.muted }}>{schedule.length} partite totali</Text></View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={adminStyles.title}>Calendario competizioni</Text><Text style={{ fontSize: 11, color: colors.muted }}>{schedule.length} partite totali</Text></View>
       <Text style={adminStyles.copy}>Tutte le partite sono modificabili. I risultati di campionato aggiornano automaticamente la classifica.</Text>
       <CompetitionChoices value={listCompetition} onChange={setListCompetition} />
       {listCompetition === 'Campionato' ? (

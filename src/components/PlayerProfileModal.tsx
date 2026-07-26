@@ -39,10 +39,10 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
                 <View style={styles.numberBadge}><Text style={styles.numberText}>{player.number ? `#${player.number}` : 'AC'}</Text></View>
               </View>
               <View style={styles.heroBody}>
+                <View style={styles.nationalityTopRight}><NationalityBadge value={player.nationality} /></View>
                 <Text style={styles.role}>{player.role}</Text>
                 <View style={styles.nameRow}>
                   <Text style={styles.name}>{player.name}</Text>
-                  <NationalityBadge value={player.nationality} />
                 </View>
                 <Text style={styles.subline}>{nationalityList(player.nationality).join(' / ') || 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
               </View>
@@ -97,10 +97,11 @@ const styles = StyleSheet.create({
   heroPlaceholderLogo: { width: 120, height: 120, borderRadius: 34, opacity: 0.7 },
   numberBadge: { position: 'absolute', left: 16, bottom: 16, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.sm, backgroundColor: colors.navy },
   numberText: { color: colors.paper, fontSize: 14, fontWeight: '900' },
-  heroBody: { padding: 20 },
+  heroBody: { position: 'relative', padding: 20 },
+  nationalityTopRight: { position: 'absolute', top: 16, right: 16, zIndex: 2 },
   role: { color: colors.accentStrong, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, textTransform: 'uppercase' },
   nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 5 },
-  name: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900', letterSpacing: -0.6 },
+  name: { flex: 1, minWidth: 0, paddingRight: 54, color: colors.ink, fontSize: 31, lineHeight: 36, fontWeight: '900', letterSpacing: -0.6 },
   subline: { color: colors.muted, fontSize: 14, marginTop: 7 },
   statsGrid: { flexDirection: 'row', marginHorizontal: 16, overflow: 'hidden', borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   stat: { flex: 1, alignItems: 'center', paddingVertical: 17, borderRightWidth: 1, borderRightColor: colors.lineSoft },

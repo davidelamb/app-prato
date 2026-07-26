@@ -29,7 +29,7 @@ export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: st
   const clamp = (next: { imageScale: number; imagePositionX: number; imagePositionY: number }) => {
     const boundedScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next.imageScale));
     // keep the drag range proportional to how far the photo has been zoomed in
-    const maxOffset = (boundedScale - 1) * (FRAME_WIDTH / 2) + 40;
+    const maxOffset = (boundedScale - 1) * (Math.max(FRAME_WIDTH, FRAME_HEIGHT) / 2);
     return {
       imageScale: Math.round(boundedScale * 100) / 100,
       imagePositionX: Math.max(-maxOffset, Math.min(maxOffset, next.imagePositionX)),
@@ -66,11 +66,12 @@ export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: st
   );
 
   const nudgeZoom = (delta: number) => onChange(clamp({ imageScale: scale + delta, imagePositionX: posX, imagePositionY: posY }));
+  const nudgePosition = (deltaX: number, deltaY: number) => onChange(clamp({ imageScale: scale, imagePositionX: posX + deltaX, imagePositionY: posY + deltaY }));
   const recenter = () => onChange({ imageScale: 1, imagePositionX: 0, imagePositionY: 0 });
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Trascina per centrare la foto, usa +/- per lo zoom</Text>
+      <Text style={styles.label}>Trascina per centrare la foto, usa i controlli per una regolazione precisa</Text>
       <View style={[styles.frame, dragging && styles.frameActive]} {...panResponder.panHandlers}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} resizeMode="cover" style={[styles.image, playerImageStyle({ imageScale: scale, imagePositionX: posX, imagePositionY: posY })]} />
@@ -82,13 +83,21 @@ export function PlayerPhotoEditor({ imageUrl, value, onChange }: { imageUrl?: st
         <View style={styles.guide} pointerEvents="none" />
       </View>
       <View style={styles.controls}>
-        <Pressable onPress={() => nudgeZoom(-0.1)} style={styles.zoomBtn}><MaterialCommunityIcons name="magnify-minus-outline" size={20} color={colors.ink} /></Pressable>
+        <Pressable accessibilityLabel="Riduci zoom" onPress={() => nudgeZoom(-0.05)} style={styles.zoomBtn}><MaterialCommunityIcons name="magnify-minus-outline" size={20} color={colors.ink} /></Pressable>
         <Text style={styles.zoomValue}>{Math.round(scale * 100)}%</Text>
-        <Pressable onPress={() => nudgeZoom(0.1)} style={styles.zoomBtn}><MaterialCommunityIcons name="magnify-plus-outline" size={20} color={colors.ink} /></Pressable>
+        <Pressable accessibilityLabel="Aumenta zoom" onPress={() => nudgeZoom(0.05)} style={styles.zoomBtn}><MaterialCommunityIcons name="magnify-plus-outline" size={20} color={colors.ink} /></Pressable>
         <Pressable onPress={recenter} style={[styles.zoomBtn, styles.resetBtn]}>
           <MaterialCommunityIcons name="image-filter-center-focus" size={18} color={colors.paper} />
           <Text style={styles.resetText}>Reset</Text>
         </Pressable>
+      </View>
+      <View style={styles.positionControls}>
+        <Pressable accessibilityLabel="Sposta in alto" onPress={() => nudgePosition(0, -4)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-up" size={20} color={colors.ink} /></Pressable>
+        <View style={styles.horizontalControls}>
+          <Pressable accessibilityLabel="Sposta a sinistra" onPress={() => nudgePosition(-4, 0)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-left" size={20} color={colors.ink} /></Pressable>
+          <Pressable accessibilityLabel="Sposta a destra" onPress={() => nudgePosition(4, 0)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-right" size={20} color={colors.ink} /></Pressable>
+        </View>
+        <Pressable accessibilityLabel="Sposta in basso" onPress={() => nudgePosition(0, 4)} style={styles.positionBtn}><MaterialCommunityIcons name="chevron-down" size={20} color={colors.ink} /></Pressable>
       </View>
     </View>
   );
@@ -113,6 +122,9 @@ const styles = StyleSheet.create({
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   guide: { position: 'absolute', top: '50%', left: '50%', width: 1, height: 1 },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  positionControls: { alignItems: 'center', gap: 4 },
+  horizontalControls: { flexDirection: 'row', gap: 34 },
+  positionBtn: { width: 36, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.line },
   zoomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minWidth: 40, minHeight: 40, paddingHorizontal: 10, borderRadius: radii.md, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.line },
   zoomValue: { color: colors.ink, fontWeight: '900', minWidth: 42, textAlign: 'center' },
   resetBtn: { backgroundColor: colors.accentStrong, borderColor: colors.accentStrong },

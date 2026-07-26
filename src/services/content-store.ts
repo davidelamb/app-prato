@@ -14,7 +14,7 @@ const STORAGE_KEY = '@ac-prato/content-v13';
 const LEGACY_KEYS = ['@ac-prato/content-v12', '@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function isSupportedCompetition(value: unknown): value is MatchCompetition {
-  return value === 'Campionato' || value === 'Coppa Italia';
+  return value === 'Campionato' || value === 'Coppa Italia' || value === 'Amichevole';
 }
 
 function normalizeLineup(lineup: MatchLineup | undefined): MatchLineup | undefined {
