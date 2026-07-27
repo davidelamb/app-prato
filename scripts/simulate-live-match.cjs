@@ -146,9 +146,29 @@ function main() {
     checkEqual('Punteggio dopo il gol vittoria: 2-1', [fixture.homeScore, fixture.awayScore], [2, 1]);
     checkEqual('minuteLabelFor all\'87\'', liveMatch.minuteLabelFor('second_half', 42 * 60), "87'");
 
-    // ordine cronologico eventi (kickoff, 23', ht, 2h-start, 61', 87')
+    // ── 6b. Cambio AC Prato al 70' ──
+    console.log('\n── Fase 6b: cambio AC Prato al 70\' ──');
+    const subEvent = { id: 'ev-sub-1', type: 'substitution', label: 'Cambio: esce Verde, entra Marzierli', phase: 'second_half', phaseElapsedSeconds: 25 * 60, team: 'AC Prato', playerOutId: 'verde', playerInId: 'marzierli', createdAt: new Date('2026-11-15T15:55:00.000Z').toISOString() };
+    fixture = { ...fixture, liveEvents: [...fixture.liveEvents, subEvent] };
+    checkEqual('Il cambio non altera il punteggio (resta 2-1)', liveMatch.scoreFromGoalEvents(fixture), [2, 1]);
+    check('Evento cambio con playerOutId/playerInId corretti', fixture.liveEvents.find((e) => e.id === 'ev-sub-1').playerOutId === 'verde' && fixture.liveEvents.find((e) => e.id === 'ev-sub-1').playerInId === 'marzierli');
+
+    // ── 6c. Cartellino giallo avversario al 75' ──
+    console.log('\n── Fase 6c: cartellino giallo avversario al 75\' ──');
+    const yellowEvent = { id: 'ev-yellow-1', type: 'yellow_card', label: 'Cartellino giallo: Difensore Tau', phase: 'second_half', phaseElapsedSeconds: 30 * 60, team: 'Tau Calcio Altopascio', scorer: 'Difensore Tau', createdAt: new Date('2026-11-15T16:00:00.000Z').toISOString() };
+    fixture = { ...fixture, liveEvents: [...fixture.liveEvents, yellowEvent] };
+    check('Cartellino giallo registrato con la squadra corretta', fixture.liveEvents.find((e) => e.id === 'ev-yellow-1').team === 'Tau Calcio Altopascio');
+
+    // ── 6d. Cartellino rosso AC Prato all'80' ──
+    console.log('\n── Fase 6d: cartellino rosso AC Prato all\'80\' ──');
+    const redEvent = { id: 'ev-red-1', type: 'red_card', label: 'Cartellino rosso: Caon', phase: 'second_half', phaseElapsedSeconds: 35 * 60, team: 'AC Prato', playerId: 'caon', createdAt: new Date('2026-11-15T16:05:00.000Z').toISOString() };
+    fixture = { ...fixture, liveEvents: [...fixture.liveEvents, redEvent] };
+    check('Cartellino rosso registrato con il giocatore corretto', fixture.liveEvents.find((e) => e.id === 'ev-red-1').playerId === 'caon');
+    checkEqual('Punteggio invariato dopo cambio+cartellini: 2-1', liveMatch.scoreFromGoalEvents(fixture), [2, 1]);
+
+    // ordine cronologico eventi (kickoff, 23', ht, 2h-start, 61', sub 70', giallo 75', rosso 80', 87')
     const sorted = liveMatch.sortLiveEvents(fixture.liveEvents);
-    checkEqual('Gli eventi restano in ordine cronologico', sorted.map((e) => e.id), ['ev-kickoff', 'ev-goal-1', 'ev-ht', 'ev-2h', 'ev-goal-2', 'ev-goal-3']);
+    checkEqual('Cambio e cartellini nell\'ordine cronologico corretto', sorted.map((e) => e.id), ['ev-kickoff', 'ev-goal-1', 'ev-ht', 'ev-2h', 'ev-goal-2', 'ev-sub-1', 'ev-yellow-1', 'ev-red-1', 'ev-goal-3']);
 
     // ── 7. Triplice fischio: la partita diventa finale ──
     console.log('\n── Fase 7: triplice fischio ──');
@@ -192,6 +212,27 @@ function main() {
     checkEqual('Nessuna nuova fixture creata', contentAgain.fixtures.length, 1);
     checkEqual('Nessuna nuova partita creata nel calendario', contentAgain.schedule.length, 1);
     checkEqual('Il risultato resta 2-1 anche dopo una seconda sincronizzazione', [contentAgain.schedule[0].homeScore, contentAgain.schedule[0].awayScore], [2, 1]);
+
+    // ── 11. Modalità post-partita: correggere il minuto di un evento ──
+    console.log('\n── Fase 11: modalità post-partita, correzione minuto ──');
+    // Il gol del pareggio (ev-goal-2) era registrato al 61'; lo si corregge al 63'.
+    const corrected = liveMatch.updateEventMinute(fixture, 'ev-goal-2', 'second_half', 18 * 60);
+    const correctedGoal = corrected.liveEvents.find((e) => e.id === 'ev-goal-2');
+    checkEqual('Il minuto del gol viene corretto a 63\'', correctedGoal.minuteLabel, "63'");
+    checkEqual('Il punteggio finale resta 2-1 dopo la correzione (solo il minuto cambia)', [corrected.homeScore, corrected.awayScore], [2, 1]);
+    const correctedSortedIds = liveMatch.sortLiveEvents(corrected.liveEvents).map((e) => e.id);
+    checkEqual('Gli eventi restano ordinati correttamente dopo la correzione', correctedSortedIds, ['ev-kickoff', 'ev-goal-1', 'ev-ht', 'ev-2h', 'ev-goal-2', 'ev-sub-1', 'ev-yellow-1', 'ev-red-1', 'ev-goal-3', 'ev-ft']);
+
+    // ── 12. Modalità post-partita: eliminare un evento qualunque (non solo un gol) ──
+    console.log('\n── Fase 12: modalità post-partita, eliminazione di un cartellino ──');
+    const withoutYellow = liveMatch.removeEvent(fixture, 'ev-yellow-1');
+    checkEqual('Il cartellino giallo viene rimosso dalla cronologia', withoutYellow.liveEvents.some((e) => e.id === 'ev-yellow-1'), false);
+    checkEqual('Il punteggio resta 2-1 (un cartellino non lo modifica)', [withoutYellow.homeScore, withoutYellow.awayScore], [2, 1]);
+    checkEqual('Il cambio e il cartellino rosso restano presenti', withoutYellow.liveEvents.some((e) => e.id === 'ev-sub-1') && withoutYellow.liveEvents.some((e) => e.id === 'ev-red-1'), true);
+
+    // Eliminare un GOL in modalità post-partita deve ricalcolare il punteggio
+    const withoutSecondGoal = liveMatch.removeEvent(fixture, 'ev-goal-2');
+    checkEqual('Eliminando il gol del pareggio il punteggio torna 2-0', [withoutSecondGoal.homeScore, withoutSecondGoal.awayScore], [2, 0]);
 
     console.log(`\n📊 ${passed} passed, ${failed} failed`);
     if (failed > 0) process.exit(1);

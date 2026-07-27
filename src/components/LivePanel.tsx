@@ -13,6 +13,9 @@ const icons: Record<LiveEvent['type'], React.ComponentProps<typeof MaterialCommu
   second_half: 'play',
   goal: 'soccer',
   fulltime: 'flag-checkered',
+  substitution: 'swap-horizontal',
+  yellow_card: 'card',
+  red_card: 'card',
 };
 
 function phaseLabel(fixture: Fixture, now: number) {
@@ -100,7 +103,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
           <View key={event.id} style={styles.eventRow}>
             <View style={styles.minuteBox}><Text style={styles.minute}>{event.minuteLabel ?? (event.minute !== undefined ? `${event.minute}'` : '—')}</Text></View>
             <View style={[styles.iconBox, event.type === 'goal' && styles.goalIconBox]}>
-              <MaterialCommunityIcons name={icons[event.type]} size={22} color={event.type === 'goal' ? colors.success : colors.accentStrong} />
+              <MaterialCommunityIcons name={icons[event.type]} size={22} color={event.type === 'goal' ? colors.success : event.type === 'yellow_card' ? colors.yellow : event.type === 'red_card' ? colors.live : colors.accentStrong} />
             </View>
             <View style={styles.eventBody}>
               <Text style={styles.eventTitle}>{event.label}</Text>
