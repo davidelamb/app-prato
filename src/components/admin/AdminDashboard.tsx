@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, radii } from '../../theme';
 import { AppContent } from '../../types';
 import { CalendarAdmin } from './CalendarAdmin';
@@ -13,7 +13,7 @@ import { StandingsAdmin } from './StandingsAdmin';
 import { Button, IconName, adminStyles } from './Primitives';
 
 type ViewName = 'overview' | 'players' | 'news' | 'media' | 'calendar' | 'group' | 'standings' | 'live';
-export function AdminDashboard({ content, onChange, onReset, onClose, onLogout }: { content: AppContent; onChange: (next: AppContent) => Promise<void>; onReset: () => Promise<void>; onClose: () => void; onLogout: () => void }) {
+export function AdminDashboard({ content, onChange, onReset, onClose, onLogout, onScrollToTop }: { content: AppContent; onChange: (next: AppContent) => Promise<void>; onReset: () => Promise<void>; onClose: () => void; onLogout: () => void; onScrollToTop: () => void }) {
   const [view, setView] = useState<ViewName>('overview');
   const live = useMemo(() => content.fixtures.find((item) => item.status === 'live') ?? content.fixtures[0], [content.fixtures]);
   const tabs: Array<{ key: ViewName; label: string; icon: IconName }> = [
@@ -54,7 +54,7 @@ export function AdminDashboard({ content, onChange, onReset, onClose, onLogout }
         <Pressable accessibilityLabel="Chiudi area amministrativa" onPress={onClose} style={styles.close}><MaterialCommunityIcons name="close" size={22} color={colors.ink} /></Pressable>
       </View>
     </View>
-    <View style={styles.tabs}>{tabs.map((tab) => <Pressable key={tab.key} onPress={() => setView(tab.key)} style={[styles.tab, view === tab.key && styles.tabActive]}><MaterialCommunityIcons name={tab.icon} size={18} color={view === tab.key ? colors.paper : colors.muted} /><Text style={[styles.tabText, view === tab.key && styles.tabTextActive]}>{tab.label}</Text></Pressable>)}</View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabs}>{tabs.map((tab) => <Pressable key={tab.key} onPress={() => setView(tab.key)} style={[styles.tab, view === tab.key && styles.tabActive]}><MaterialCommunityIcons name={tab.icon} size={18} color={view === tab.key ? colors.paper : colors.muted} /><Text style={[styles.tabText, view === tab.key && styles.tabTextActive]}>{tab.label}</Text></Pressable>)}</ScrollView>
 
     {view === 'overview' ? <View style={styles.stack}>
       <View style={styles.metrics}>
@@ -76,8 +76,8 @@ export function AdminDashboard({ content, onChange, onReset, onClose, onLogout }
       </View>
     </View> : null}
 
-    {view === 'players' ? <PlayersAdmin content={content} onChange={onChange} /> : null}
-    {view === 'news' ? <NewsAdmin content={content} onChange={onChange} /> : null}
+    {view === 'players' ? <PlayersAdmin content={content} onChange={onChange} onScrollToTop={onScrollToTop} /> : null}
+    {view === 'news' ? <NewsAdmin content={content} onChange={onChange} onScrollToTop={onScrollToTop} /> : null}
     {view === 'media' ? <MediaAdmin content={content} onChange={onChange} /> : null}
     {view === 'calendar' ? <CalendarAdmin content={content} onChange={onChange} /> : null}
     {view === 'group' ? <GroupAdmin content={content} onChange={onChange} /> : null}
@@ -86,4 +86,4 @@ export function AdminDashboard({ content, onChange, onReset, onClose, onLogout }
   </View>;
 }
 function Metric({ value, label }: { value: number | string; label: string }) { return <View style={styles.metric}><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricLabel}>{label}</Text></View>; }
-const styles = StyleSheet.create({ shell: { gap: 18, paddingBottom: 40 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 12 }, headerActions: { flexDirection: 'row', gap: 7 }, logo: { width: 58, height: 58, borderRadius: 17 }, eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900' }, heading: { color: colors.ink, fontSize: 32, fontWeight: '900', marginTop: 4 }, close: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }, tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, tab: { flexGrow: 1, minWidth: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, padding: 10, borderRadius: radii.md, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }, tabActive: { backgroundColor: colors.accentStrong }, tabText: { color: colors.muted, fontSize: 10, fontWeight: '900' }, tabTextActive: { color: colors.paper }, stack: { gap: 14 }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 }, metric: { flexGrow: 1, minWidth: 90, padding: 15, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }, metricValue: { color: colors.accentStrong, fontSize: 25, fontWeight: '900' }, metricLabel: { color: colors.muted, fontSize: 11, marginTop: 3 } });
+const styles = StyleSheet.create({ shell: { gap: 18, paddingBottom: 40 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 12 }, headerActions: { flexDirection: 'row', gap: 7 }, logo: { width: 58, height: 58, borderRadius: 17 }, eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900' }, heading: { color: colors.ink, fontSize: 32, fontWeight: '900', marginTop: 4 }, close: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }, tabsScroll: { flexGrow: 0 }, tabs: { flexDirection: 'row', gap: 7, paddingRight: 4, paddingBottom: 2 }, tab: { minWidth: 84, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radii.md, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }, tabActive: { backgroundColor: colors.accentStrong }, tabText: { color: colors.muted, fontSize: 10, fontWeight: '900' }, tabTextActive: { color: colors.paper }, stack: { gap: 14 }, metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 }, metric: { flexGrow: 1, minWidth: 90, padding: 15, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }, metricValue: { color: colors.accentStrong, fontSize: 25, fontWeight: '900' }, metricLabel: { color: colors.muted, fontSize: 11, marginTop: 3 } });
