@@ -42,6 +42,7 @@
     "verify:core": "node scripts/verify-core-match-system.cjs",
     "verify:rosters": "node scripts/verify-roster-matching.cjs",
     "verify:season": "node scripts/verify-full-season.cjs",
+    "verify:live-sim": "node scripts/simulate-live-match.cjs",
     "typecheck:worker": "tsc -p worker/tsconfig.json --noEmit",
     "cf:types": "wrangler types worker/worker-configuration.d.ts",
     "db:migrate:local": "wrangler d1 migrations apply app-prato-content --local",
