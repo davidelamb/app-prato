@@ -136,34 +136,57 @@ export function inferLegacyEventPhase(event: LiveEvent, allEvents: LiveEvent[]):
   return 'first_half';
 }
 
-export function removeGoal(fixture: Fixture, eventId: string): Fixture {
-  const originalEvents = fixture.liveEvents ?? [];
-  const filteredEvents = originalEvents.filter((event) => event.id !== eventId);
-
-  // Replay events in chronological order to compute correct scores
-  const sortedEvents = sortLiveEvents(filteredEvents);
+// Ricalcola il campo "score" (progressione punteggio) di ogni evento in
+// ordine cronologico, ripartendo dal punteggio del kickoff. Condivisa da
+// removeEvent/removeGoal e da updateEventMinute, così la sequenza di
+// punteggi resta coerente qualunque modifica venga fatta agli eventi.
+function replayScores(events: LiveEvent[], home: string, away: string): Map<string, string> {
+  const sortedEvents = sortLiveEvents(events);
   let [runningHome, runningAway] = parseScore(
     sortedEvents.find((event) => event.type === 'kickoff')?.score,
   ) ?? [0, 0];
-
-  const scoredEvents = sortedEvents.map((event) => {
+  const scoredMap = new Map<string, string>();
+  for (const event of sortedEvents) {
     if (event.type === 'goal') {
-      if (event.team && teamNamesEqual(event.team, fixture.home)) runningHome += 1;
-      else if (event.team && teamNamesEqual(event.team, fixture.away)) runningAway += 1;
+      if (event.team && teamNamesEqual(event.team, home)) runningHome += 1;
+      else if (event.team && teamNamesEqual(event.team, away)) runningAway += 1;
     }
-    return { ...event, score: `${runningHome}-${runningAway}` };
-  });
+    scoredMap.set(event.id, `${runningHome}-${runningAway}`);
+  }
+  return scoredMap;
+}
 
-  // Build lookup for updated scores
-  const scoredMap = new Map(scoredEvents.map((e) => [e.id, e]));
+export function removeEvent(fixture: Fixture, eventId: string): Fixture {
+  const originalEvents = fixture.liveEvents ?? [];
+  const filteredEvents = originalEvents.filter((event) => event.id !== eventId);
+  const scoredMap = replayScores(filteredEvents, fixture.home, fixture.away);
+  const resultEvents = filteredEvents.map((event) => ({ ...event, score: scoredMap.get(event.id) ?? event.score }));
+  const [runningHome, runningAway] = parseScore(resultEvents[resultEvents.length - 1]?.score) ?? [fixture.homeScore ?? 0, fixture.awayScore ?? 0];
+  return { ...fixture, liveEvents: resultEvents, homeScore: runningHome, awayScore: runningAway };
+}
 
-  // Preserve original event order
-  const resultEvents = filteredEvents.map((event) => scoredMap.get(event.id) ?? event);
+export function removeGoal(fixture: Fixture, eventId: string): Fixture {
+  return removeEvent(fixture, eventId);
+}
 
-  return {
-    ...fixture,
-    liveEvents: resultEvents,
-    homeScore: runningHome,
-    awayScore: runningAway,
-  };
+// Modalità post-partita: corregge il minuto (e di conseguenza fase/etichetta)
+// di un evento già registrato, senza toccare gli altri campi. Ricalcola
+// anche la progressione punteggio, perché spostare un gol nel tempo può
+// cambiarne la posizione cronologica rispetto agli altri eventi.
+export function updateEventMinute(fixture: Fixture, eventId: string, phase: LivePhase, phaseElapsedSeconds: number): Fixture {
+  const originalEvents = fixture.liveEvents ?? [];
+  const safeElapsed = Math.max(0, Math.round(phaseElapsedSeconds));
+  const updatedEvents = originalEvents.map((event) => event.id === eventId
+    ? {
+      ...event,
+      phase,
+      phaseElapsedSeconds: safeElapsed,
+      minuteLabel: minuteLabelFor(phase, safeElapsed),
+      minute: Math.floor((phase === 'second_half' || phase === 'finished' ? FIRST_HALF_SECONDS + safeElapsed : safeElapsed) / 60),
+    }
+    : event);
+  const scoredMap = replayScores(updatedEvents, fixture.home, fixture.away);
+  const resultEvents = updatedEvents.map((event) => ({ ...event, score: scoredMap.get(event.id) ?? event.score }));
+  const [runningHome, runningAway] = parseScore(resultEvents[resultEvents.length - 1]?.score) ?? [fixture.homeScore ?? 0, fixture.awayScore ?? 0];
+  return { ...fixture, liveEvents: resultEvents, homeScore: runningHome, awayScore: runningAway };
 }

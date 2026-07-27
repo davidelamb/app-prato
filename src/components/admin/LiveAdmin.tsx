@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { colors } from '../../theme';
-import { AppContent, Fixture, LiveEvent, MatchLineup } from '../../types';
+import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup } from '../../types';
 import { kickoffInput, kickoffIso, kickoffTimestamp } from '../../utils/fixture-time';
-import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeGoal, sortLiveEvents } from '../../utils/live-match';
+import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, removeGoal, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
 import { synchronizeFixture } from '../../utils/match-sync';
 import { isPratoTeam } from '../../utils/team-names';
 import { Button, Field, adminStyles } from './Primitives';
@@ -35,6 +35,12 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
   const [substitutes, setSubstitutes] = useState<string[]>([]);
   const [scorerId, setScorerId] = useState('');
   const [opponentScorer, setOpponentScorer] = useState('');
+  const [subOutId, setSubOutId] = useState('');
+  const [subInId, setSubInId] = useState('');
+  const [cardPlayerId, setCardPlayerId] = useState('');
+  const [opponentCardPlayer, setOpponentCardPlayer] = useState('');
+  const [editEventsMode, setEditEventsMode] = useState(false);
+  const [minuteDrafts, setMinuteDrafts] = useState<Record<string, string>>({});
   const [now, setNow] = useState(Date.now());
 
   const players = useMemo(() => [...content.players].sort((a, b) => roleOrder[a.role] - roleOrder[b.role]
@@ -52,6 +58,12 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     setSubstitutes(lineup?.substitutes.map((item) => item.playerId) ?? []);
     setScorerId('');
     setOpponentScorer('');
+    setSubOutId('');
+    setSubInId('');
+    setCardPlayerId('');
+    setOpponentCardPlayer('');
+    setEditEventsMode(false);
+    setMinuteDrafts({});
   }, [fixture?.id, fixture?.kickoffAt, fixture?.dateLabel, fixture?.time, fixture?.homeLineup, fixture?.awayLineup]);
 
   useEffect(() => {
@@ -173,7 +185,95 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     ]);
   };
 
+  // Giocatori Prato attualmente in campo: titolari meno chi è già stato
+  // sostituito, più chi è già entrato dalla panchina.
   const savedLineup = lineupForPrato(fixture);
+
+  const onPitchIds = useMemo(() => {
+    const subEvents = (fixture.liveEvents ?? []).filter((event) => event.type === 'substitution');
+    const set = new Set(savedLineup?.starters.map((item) => item.playerId) ?? []);
+    for (const event of subEvents) {
+      if (event.playerOutId) set.delete(event.playerOutId);
+      if (event.playerInId) set.add(event.playerInId);
+    }
+    return set;
+  }, [fixture.liveEvents, savedLineup]);
+
+  const onPitchPlayers = players.filter((player) => onPitchIds.has(player.id));
+  const benchAvailable = players.filter((player) => {
+    const isSub = savedLineup?.substitutes.some((item) => item.playerId === player.id);
+    return isSub && !onPitchIds.has(player.id);
+  });
+
+  const addSubstitution = async () => {
+    if (!liveActive) return Alert.alert('Timer fermo', 'Avvia il tempo di gioco prima di registrare un cambio.');
+    const playerOut = players.find((item) => item.id === subOutId);
+    const playerIn = players.find((item) => item.id === subInId);
+    if (!playerOut || !playerIn) return Alert.alert('Cambio incompleto', 'Seleziona sia il giocatore che esce sia quello che entra.');
+    const pratoTeam = isPratoTeam(fixture.home) ? fixture.home : fixture.away;
+    const createdAt = new Date().toISOString();
+    const timing = currentEventTiming(fixture, Date.parse(createdAt));
+    const event: LiveEvent = {
+      id: eventId(),
+      type: 'substitution',
+      label: `Cambio: esce ${playerOut.name}, entra ${playerIn.name}`,
+      ...timing,
+      team: pratoTeam,
+      playerOutId: playerOut.id,
+      playerInId: playerIn.id,
+      score: currentScore(),
+      createdAt,
+    };
+    await commitFixture(addEvent({ ...fixture, minute: timing.minute }, event));
+    setSubOutId('');
+    setSubInId('');
+  };
+
+  const addCard = async (pratoSide: boolean, cardType: 'yellow_card' | 'red_card') => {
+    if (!liveActive) return Alert.alert('Timer fermo', 'Avvia il tempo di gioco prima di registrare un cartellino.');
+    const pratoHome = isPratoTeam(fixture.home);
+    const team = pratoSide ? (pratoHome ? fixture.home : fixture.away) : (pratoHome ? fixture.away : fixture.home);
+    const player = pratoSide ? players.find((item) => item.id === cardPlayerId) : undefined;
+    if (pratoSide && !player) return Alert.alert('Giocatore mancante', 'Scegli il giocatore ammonito/espulso.');
+    const createdAt = new Date().toISOString();
+    const timing = currentEventTiming(fixture, Date.parse(createdAt));
+    const cardLabel = cardType === 'yellow_card' ? 'Cartellino giallo' : 'Cartellino rosso';
+    const name = pratoSide ? player?.name : opponentCardPlayer.trim() || undefined;
+    const event: LiveEvent = {
+      id: eventId(),
+      type: cardType,
+      label: name ? `${cardLabel}: ${name}` : `${cardLabel} (${team})`,
+      ...timing,
+      team,
+      playerId: player?.id,
+      scorer: name,
+      score: currentScore(),
+      createdAt,
+    };
+    await commitFixture(addEvent({ ...fixture, minute: timing.minute }, event));
+    setCardPlayerId('');
+    setOpponentCardPlayer('');
+  };
+
+  // ── Modalità post-partita: modifica/elimina qualunque evento ──
+  const deleteAnyEvent = (event: LiveEvent) => {
+    Alert.alert('Eliminare questo evento?', `${event.minuteLabel ?? ''} ${event.label}`.trim(), [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Elimina', style: 'destructive', onPress: () => void commitFixture(removeEvent(fixture, event.id)) },
+    ]);
+  };
+
+  const saveEventMinute = async (event: LiveEvent) => {
+    const raw = minuteDrafts[event.id];
+    const minuteValue = Number(raw);
+    if (!raw || !Number.isInteger(minuteValue) || minuteValue < 0 || minuteValue > 130) {
+      return Alert.alert('Minuto non valido', 'Inserisci un numero intero fra 0 e 130.');
+    }
+    const phase: LivePhase = minuteValue > 45 ? 'second_half' : 'first_half';
+    const elapsedSeconds = (phase === 'second_half' ? minuteValue - 45 : minuteValue) * 60;
+    await commitFixture(updateEventMinute(fixture, event.id, phase, elapsedSeconds));
+  };
+
   const scorerIds = new Set([...(savedLineup?.starters ?? []), ...(savedLineup?.substitutes ?? [])].map((item) => item.playerId));
   const eligibleScorers = players.filter((player) => scorerIds.has(player.id));
   const liveActive = fixture.livePhase === 'first_half' || fixture.livePhase === 'second_half';
@@ -240,11 +340,68 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     </View>
 
     <View style={adminStyles.panel}>
-      <Text style={adminStyles.title}>Cronologia eventi</Text>
-      <View style={adminStyles.list}>{events.map((event) => <View key={event.id} style={adminStyles.listRow}>
-        <MaterialCommunityIcons name={event.type === 'goal' ? 'soccer' : 'circle-medium'} size={21} color={event.type === 'goal' ? colors.success : colors.accentStrong} />
-        <View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{event.minuteLabel ? `${event.minuteLabel} · ` : ''}{event.label}</Text><Text style={adminStyles.listMeta}>{event.scorer ? `${event.scorer} · ` : ''}{event.score ?? ''}</Text></View>
-        {event.type === 'goal' ? <Pressable accessibilityLabel="Elimina gol" onPress={() => deleteGoal(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} /></Pressable> : null}
+      <Text style={adminStyles.title}>Registra cambio (AC Prato)</Text>
+      <Text style={adminStyles.copy}>Il minuto viene preso automaticamente dal timer. Puoi scegliere solo fra chi è attualmente in campo e chi è in panchina e non è ancora entrato.</Text>
+      <Text style={[adminStyles.listTitle, { marginTop: 8 }]}>Esce</Text>
+      <View style={adminStyles.choices}>{onPitchPlayers.map((player) => <Pressable key={`out-${player.id}`} onPress={() => setSubOutId(player.id)} style={[adminStyles.choice, subOutId === player.id && adminStyles.choiceActive]}>
+        <Text style={[adminStyles.choiceText, subOutId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+      </Pressable>)}</View>
+      <Text style={[adminStyles.listTitle, { marginTop: 8 }]}>Entra</Text>
+      <View style={adminStyles.choices}>{benchAvailable.map((player) => <Pressable key={`in-${player.id}`} onPress={() => setSubInId(player.id)} style={[adminStyles.choice, subInId === player.id && adminStyles.choiceActive]}>
+        <Text style={[adminStyles.choiceText, subInId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+      </Pressable>)}</View>
+      {!benchAvailable.length ? <Text style={adminStyles.copy}>Nessuna riserva disponibile: salva prima la formazione ufficiale.</Text> : null}
+      <Button label="Registra cambio" icon="swap-horizontal" disabled={!liveActive || !subOutId || !subInId} onPress={() => void addSubstitution()} />
+    </View>
+
+    <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Cartellino AC Prato</Text>
+      <View style={adminStyles.choices}>{onPitchPlayers.map((player) => <Pressable key={`card-${player.id}`} onPress={() => setCardPlayerId(player.id)} style={[adminStyles.choice, cardPlayerId === player.id && adminStyles.choiceActive]}>
+        <Text style={[adminStyles.choiceText, cardPlayerId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+      </Pressable>)}</View>
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+        <View style={{ flex: 1 }}><Button label="Giallo" icon="card" disabled={!liveActive || !cardPlayerId} onPress={() => void addCard(true, 'yellow_card')} /></View>
+        <View style={{ flex: 1 }}><Button label="Rosso" icon="card" danger disabled={!liveActive || !cardPlayerId} onPress={() => void addCard(true, 'red_card')} /></View>
+      </View>
+    </View>
+
+    <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Cartellino avversario</Text>
+      <Field label="Giocatore (facoltativo)" value={opponentCardPlayer} onChangeText={setOpponentCardPlayer} />
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+        <View style={{ flex: 1 }}><Button label="Giallo" icon="card" secondary disabled={!liveActive} onPress={() => void addCard(false, 'yellow_card')} /></View>
+        <View style={{ flex: 1 }}><Button label="Rosso" icon="card" danger disabled={!liveActive} onPress={() => void addCard(false, 'red_card')} /></View>
+      </View>
+    </View>
+
+    <View style={adminStyles.panel}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={adminStyles.title}>Cronologia eventi</Text>
+        {fixture.status === 'final' ? (
+          <Pressable onPress={() => setEditEventsMode((v) => !v)} style={[adminStyles.choice, editEventsMode && adminStyles.choiceActive]}>
+            <Text style={[adminStyles.choiceText, editEventsMode && adminStyles.choiceTextActive]}>{editEventsMode ? 'Fine modifica' : 'Modifica eventi'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {editEventsMode ? <Text style={adminStyles.copy}>Modalità post-partita: puoi correggere il minuto di ogni evento o eliminarlo. Il punteggio si ricalcola automaticamente.</Text> : null}
+      <View style={adminStyles.list}>{events.map((event) => <View key={event.id} style={[adminStyles.listRow, { alignItems: editEventsMode ? 'flex-start' : 'center' }]}>
+        <MaterialCommunityIcons
+          name={event.type === 'goal' ? 'soccer' : event.type === 'substitution' ? 'swap-horizontal' : event.type === 'yellow_card' || event.type === 'red_card' ? 'card' : 'circle-medium'}
+          size={21}
+          color={event.type === 'goal' ? colors.success : event.type === 'yellow_card' ? colors.yellow : event.type === 'red_card' ? colors.live : colors.accentStrong}
+        />
+        <View style={adminStyles.listBody}>
+          <Text style={adminStyles.listTitle}>{event.minuteLabel ? `${event.minuteLabel} · ` : ''}{event.label}</Text>
+          <Text style={adminStyles.listMeta}>{event.scorer ? `${event.scorer} · ` : ''}{event.score ?? ''}</Text>
+          {editEventsMode ? (
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' }}>
+              <View style={{ width: 90 }}><Field label="Minuto" value={minuteDrafts[event.id] ?? String(event.minute ?? '')} onChangeText={(value) => setMinuteDrafts((current) => ({ ...current, [event.id]: value }))} keyboardType="numeric" /></View>
+              <Pressable onPress={() => void saveEventMinute(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="content-save-check-outline" size={19} color={colors.accentStrong} /></Pressable>
+              <Pressable accessibilityLabel="Elimina evento" onPress={() => deleteAnyEvent(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} /></Pressable>
+            </View>
+          ) : null}
+        </View>
+        {!editEventsMode && event.type === 'goal' ? <Pressable accessibilityLabel="Elimina gol" onPress={() => deleteGoal(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} /></Pressable> : null}
       </View>)}</View>
     </View>
   </View>;

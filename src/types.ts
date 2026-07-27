@@ -1,6 +1,6 @@
 export type FixtureStatus = 'scheduled' | 'live' | 'final';
 export type LivePhase = 'scheduled' | 'first_half' | 'halftime' | 'second_half' | 'finished';
-export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'fulltime';
+export type LiveEventType = 'kickoff' | 'halftime' | 'second_half' | 'goal' | 'fulltime' | 'substitution' | 'yellow_card' | 'red_card';
 export type PlayerRole = 'Portiere' | 'Difensore' | 'Centrocampista' | 'Attaccante';
 export type MediaKind = 'Highlights' | 'Intervista' | 'Video' | 'Podcast';
 export type MatchCompetition = 'Campionato' | 'Coppa Italia' | 'Amichevole';
@@ -29,6 +29,8 @@ export type LiveEvent = {
   phaseElapsedSeconds?: number;
   team?: string;
   playerId?: string;
+  playerOutId?: string;
+  playerInId?: string;
   scorer?: string;
   score?: string;
   createdAt: string;
