@@ -206,7 +206,7 @@ export default function AppShell() {
     <StatusBar style="dark" />
     {wide ? <LinearGradient colors={[colors.canvasRaised, '#E4F1FA', colors.canvasRaised]} style={StyleSheet.absoluteFillObject} /> : null}
 
-    <Pressable accessibilityLabel="Apri amministrazione" onPress={() => void toggleAdmin()} style={[styles.adminButton, { top: safeTop + 10 }]}>
+    <Pressable accessibilityLabel="Apri amministrazione" onPress={() => void toggleAdmin()} style={[styles.adminButton, { top: 10 }]}>
       {tab === 'admin' ? <MaterialCommunityIcons name="close" size={20} color={colors.accentStrong} /> : <View style={styles.onlineDot} />}
     </Pressable>
 
