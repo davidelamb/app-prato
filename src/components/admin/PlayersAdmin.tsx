@@ -21,7 +21,7 @@ const parsedNationality = (value?: string | string[]) => {
   return nations.length > 1 ? nations : nations[0];
 };
 
-export function PlayersAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
+export function PlayersAdmin({ content, onChange, onScrollToTop }: { content: AppContent; onChange: (next: AppContent) => Promise<void>; onScrollToTop?: () => void }) {
   const [draft, setDraft] = useState<Player>(empty);
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -103,7 +103,7 @@ export function PlayersAdmin({ content, onChange }: { content: AppContent; onCha
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Rosa pubblicata</Text>
-      <View style={adminStyles.list}>{content.players.map((player) => <Pressable key={player.id} onPress={() => { setEditing(player.id); setDraft({ ...player, imageScale: player.imageScale ?? 1, imagePositionX: player.imagePositionX ?? 0, imagePositionY: player.imagePositionY ?? 0 }); }} style={adminStyles.listRow}>
+      <View style={adminStyles.list}>{content.players.map((player) => <Pressable key={player.id} onPress={() => { setEditing(player.id); setDraft({ ...player, imageScale: player.imageScale ?? 1, imagePositionX: player.imagePositionX ?? 0, imagePositionY: player.imagePositionY ?? 0 }); onScrollToTop?.(); }} style={adminStyles.listRow}>
         <View style={{ width: 46, height: 50, overflow: 'hidden', borderRadius: 10, backgroundColor: colors.surfaceSoft }}>{player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={[{ width: '100%', height: '100%' }, playerImageStyle(player)]} /> : null}</View>
         <View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{player.name}</Text><Text style={adminStyles.listMeta}>{player.number ? `#${player.number} · ` : ''}{player.role}</Text></View>
         <NationalityBadge value={player.nationality} compact />

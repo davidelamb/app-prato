@@ -53,9 +53,11 @@ function buildArticle(overrides: Partial<NewsArticle>): NewsArticle {
 export function NewsAdmin({
   content,
   onChange,
+  onScrollToTop,
 }: {
   content: AppContent;
   onChange: (next: AppContent) => Promise<void>;
+  onScrollToTop?: () => void;
 }) {
   const [editing, setEditing] = useState<NewsArticle | null>(null);
   const [title, setTitle] = useState('');
@@ -111,6 +113,7 @@ export function NewsAdmin({
     setScale(article.imageScale ?? 1);
     setPosX(article.imagePositionX ?? 0);
     setPosY(article.imagePositionY ?? 0);
+    onScrollToTop?.();
   };
 
   const pick = async () => {

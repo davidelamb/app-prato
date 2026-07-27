@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Image, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LiveIcon from './components/nav-icons/LiveIcon';
@@ -87,6 +87,7 @@ function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean;
 export default function AppShell() {
   const [content, setContent] = useState<AppContent>(seedContent);
   const [tab, setTab] = useState<Tab>('news');
+  const scrollRef = useRef<ScrollView>(null);
   const [tabReady, setTabReady] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -209,7 +210,7 @@ export default function AppShell() {
       {tab === 'admin' ? <MaterialCommunityIcons name="close" size={20} color={colors.accentStrong} /> : <View style={styles.onlineDot} />}
     </Pressable>
 
-    <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: (wide ? 48 : 58) + safeBottom }, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
+    <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: (wide ? 48 : 58) + safeBottom }, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
       <View style={[styles.container, wide && styles.containerWide]}>
         {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
         {tab === 'media' ? <MediaScreen content={content} wide={wide} /> : null}
@@ -217,7 +218,7 @@ export default function AppShell() {
         {tab === 'stats' ? <StatsScreen content={content} wide={wide} /> : null}
         {tab === 'club' ? <RosterScreen content={content} wide={wide} onPlayer={setSelectedPlayer} /> : null}
         {tab === 'admin' && adminStatus !== 'ready' ? <AdminLogin checking={adminStatus === 'checking'} onAuthenticated={() => setAdminStatus('ready')} /> : null}
-        {tab === 'admin' && adminStatus === 'ready' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('news')} onLogout={() => void logoutAdmin()} /> : null}
+        {tab === 'admin' && adminStatus === 'ready' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('news')} onLogout={() => void logoutAdmin()} onScrollToTop={() => scrollRef.current?.scrollTo({ y: 0, animated: true })} /> : null}
       </View>
     </ScrollView>
 
