@@ -63,8 +63,18 @@ function schedulePatch(source: SeasonMatch): Partial<SeasonMatch> {
   };
 }
 
-function fixtureResultPatch(source: Pick<Fixture, 'homeScore' | 'awayScore' | 'status'>) {
-  return { homeScore: source.homeScore, awayScore: source.awayScore, status: source.status };
+function fixtureResultPatch(source: Pick<Fixture, 'homeScore' | 'awayScore' | 'status' | 'liveEvents' | 'homeLineup' | 'awayLineup'>) {
+  const base = { homeScore: source.homeScore, awayScore: source.awayScore, status: source.status };
+  // Tabellino e formazioni finiscono nel calendario/girone solo a partita
+  // conclusa, così restano collegati permanentemente alla partita anche
+  // dopo che il Live smette di seguirla.
+  if (source.status !== 'final') return base;
+  return {
+    ...base,
+    ...(source.liveEvents?.length ? { liveEvents: source.liveEvents } : {}),
+    ...(source.homeLineup ? { homeLineup: source.homeLineup } : {}),
+    ...(source.awayLineup ? { awayLineup: source.awayLineup } : {}),
+  };
 }
 
 export function synchronizeGroupMatches(content: AppContent, groupMatches: SeasonMatch[]): AppContent {

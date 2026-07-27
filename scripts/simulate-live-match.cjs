@@ -170,10 +170,20 @@ function main() {
     const sorted = liveMatch.sortLiveEvents(fixture.liveEvents);
     checkEqual('Cambio e cartellini nell\'ordine cronologico corretto', sorted.map((e) => e.id), ['ev-kickoff', 'ev-goal-1', 'ev-ht', 'ev-2h', 'ev-goal-2', 'ev-sub-1', 'ev-yellow-1', 'ev-red-1', 'ev-goal-3']);
 
+    // ── 6e. Correzione/eliminazione eventi mentre la partita è ANCORA IN CORSO (non finale) ──
+    console.log('\n── Fase 6e: modifica ed eliminazione eventi a partita ancora in corso ──');
+    check('La partita non è ancora finale in questa fase', fixture.status !== 'final');
+    const liveCorrected = liveMatch.updateEventMinute(fixture, 'ev-yellow-1', 'second_half', 32 * 60);
+    checkEqual('Il minuto del cartellino giallo si corregge anche live (77\')', liveCorrected.liveEvents.find((e) => e.id === 'ev-yellow-1').minuteLabel, "77'");
+    const liveWithoutSub = liveMatch.removeEvent(fixture, 'ev-sub-1');
+    checkEqual('Il cambio si può eliminare anche live (partita non ancora finale)', liveWithoutSub.liveEvents.some((e) => e.id === 'ev-sub-1'), false);
+    checkEqual('Il punteggio resta invariato eliminando un cambio live: 2-1', [liveWithoutSub.homeScore, liveWithoutSub.awayScore], [2, 1]);
+
     // ── 7. Triplice fischio: la partita diventa finale ──
     console.log('\n── Fase 7: triplice fischio ──');
     fixture = {
       ...fixture,
+      homeLineup: { formation: '4-3-3', starters: [{ playerId: 'caon', starter: true }, { playerId: 'verde', starter: true }], substitutes: [{ playerId: 'marzierli', starter: false }] },
       status: 'final',
       livePhase: 'finished',
       liveEvents: [...fixture.liveEvents, { id: 'ev-ft', type: 'fulltime', label: 'Triplice fischio', phase: 'finished', createdAt: new Date('2026-11-15T16:20:00.000Z').toISOString() }],
@@ -187,6 +197,9 @@ function main() {
     check('Il calendario riceve il risultato finale (2-1)', finalMatch.homeScore === 2 && finalMatch.awayScore === 1 && finalMatch.status === 'final');
     const finalGroupMatch = content.groupMatches.find((m) => m.id === 'sched-1');
     check('Anche il girone riceve lo stesso risultato finale', finalGroupMatch.homeScore === 2 && finalGroupMatch.awayScore === 1);
+    check('Il tabellino (eventi) finisce nel calendario a fine partita', Array.isArray(finalMatch.liveEvents) && finalMatch.liveEvents.length === fixture.liveEvents.length);
+    check('La formazione del Prato finisce nel calendario a fine partita', finalMatch.homeLineup?.formation === '4-3-3' && finalMatch.homeLineup?.starters.length === 2);
+    check('Tabellino e formazione finiscono anche nel girone', Array.isArray(finalGroupMatch.liveEvents) && finalGroupMatch.homeLineup?.formation === '4-3-3');
 
     // ── 8. Statistiche giocatori aggiornate dai gol Live ──
     console.log('\n── Fase 8: statistiche giocatori ──');

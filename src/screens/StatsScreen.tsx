@@ -141,7 +141,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
       )}
 
       <TeamProfileModal team={selectedTeam} onClose={() => setSelectedTeam(null)} />
-      <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
+      <MatchDetailModal match={selectedMatch} players={content.players} onClose={() => setSelectedMatch(null)} />
     </View>
   );
 }
