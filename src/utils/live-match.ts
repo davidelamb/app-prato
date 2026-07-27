@@ -156,12 +156,23 @@ function replayScores(events: LiveEvent[], home: string, away: string): Map<stri
   return scoredMap;
 }
 
+function finalScoreFromEvents(events: LiveEvent[], home: string, away: string): [number, number] {
+  let homeGoals = 0;
+  let awayGoals = 0;
+  for (const event of events) {
+    if (event.type !== 'goal' || !event.team) continue;
+    if (teamNamesEqual(event.team, home)) homeGoals += 1;
+    else if (teamNamesEqual(event.team, away)) awayGoals += 1;
+  }
+  return [homeGoals, awayGoals];
+}
+
 export function removeEvent(fixture: Fixture, eventId: string): Fixture {
   const originalEvents = fixture.liveEvents ?? [];
   const filteredEvents = originalEvents.filter((event) => event.id !== eventId);
   const scoredMap = replayScores(filteredEvents, fixture.home, fixture.away);
   const resultEvents = filteredEvents.map((event) => ({ ...event, score: scoredMap.get(event.id) ?? event.score }));
-  const [runningHome, runningAway] = parseScore(resultEvents[resultEvents.length - 1]?.score) ?? [fixture.homeScore ?? 0, fixture.awayScore ?? 0];
+  const [runningHome, runningAway] = finalScoreFromEvents(resultEvents, fixture.home, fixture.away);
   return { ...fixture, liveEvents: resultEvents, homeScore: runningHome, awayScore: runningAway };
 }
 
@@ -172,7 +183,9 @@ export function removeGoal(fixture: Fixture, eventId: string): Fixture {
 // Modalità post-partita: corregge il minuto (e di conseguenza fase/etichetta)
 // di un evento già registrato, senza toccare gli altri campi. Ricalcola
 // anche la progressione punteggio, perché spostare un gol nel tempo può
-// cambiarne la posizione cronologica rispetto agli altri eventi.
+// cambiarne la posizione cronologica rispetto agli altri eventi (che
+// possono essere stati registrati fuori ordine se un evento viene
+// corretto/aggiunto retroattivamente).
 export function updateEventMinute(fixture: Fixture, eventId: string, phase: LivePhase, phaseElapsedSeconds: number): Fixture {
   const originalEvents = fixture.liveEvents ?? [];
   const safeElapsed = Math.max(0, Math.round(phaseElapsedSeconds));
@@ -187,6 +200,6 @@ export function updateEventMinute(fixture: Fixture, eventId: string, phase: Live
     : event);
   const scoredMap = replayScores(updatedEvents, fixture.home, fixture.away);
   const resultEvents = updatedEvents.map((event) => ({ ...event, score: scoredMap.get(event.id) ?? event.score }));
-  const [runningHome, runningAway] = parseScore(resultEvents[resultEvents.length - 1]?.score) ?? [fixture.homeScore ?? 0, fixture.awayScore ?? 0];
+  const [runningHome, runningAway] = finalScoreFromEvents(resultEvents, fixture.home, fixture.away);
   return { ...fixture, liveEvents: resultEvents, homeScore: runningHome, awayScore: runningAway };
 }

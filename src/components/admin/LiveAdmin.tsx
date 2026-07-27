@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../theme';
 import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup } from '../../types';
@@ -255,7 +255,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     setOpponentCardPlayer('');
   };
 
-  // ── Modalità post-partita: modifica/elimina qualunque evento ──
+  // ── Modifica/eliminazione di qualunque evento (disponibile anche a partita in corso, non solo a fine partita) ──
   const deleteAnyEvent = (event: LiveEvent) => {
     Alert.alert('Eliminare questo evento?', `${event.minuteLabel ?? ''} ${event.label}`.trim(), [
       { text: 'Annulla', style: 'cancel' },
@@ -375,33 +375,40 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     </View>
 
     <View style={adminStyles.panel}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <Text style={adminStyles.title}>Cronologia eventi</Text>
-        {fixture.status === 'final' ? (
-          <Pressable onPress={() => setEditEventsMode((v) => !v)} style={[adminStyles.choice, editEventsMode && adminStyles.choiceActive]}>
-            <Text style={[adminStyles.choiceText, editEventsMode && adminStyles.choiceTextActive]}>{editEventsMode ? 'Fine modifica' : 'Modifica eventi'}</Text>
-          </Pressable>
-        ) : null}
+        <Pressable onPress={() => setEditEventsMode((v) => !v)} style={[adminStyles.choice, editEventsMode && adminStyles.choiceActive]}>
+          <Text style={[adminStyles.choiceText, editEventsMode && adminStyles.choiceTextActive]}>{editEventsMode ? 'Fine modifica' : 'Modifica eventi'}</Text>
+        </Pressable>
       </View>
-      {editEventsMode ? <Text style={adminStyles.copy}>Modalità post-partita: puoi correggere il minuto di ogni evento o eliminarlo. Il punteggio si ricalcola automaticamente.</Text> : null}
-      <View style={adminStyles.list}>{events.map((event) => <View key={event.id} style={[adminStyles.listRow, { alignItems: editEventsMode ? 'flex-start' : 'center' }]}>
-        <MaterialCommunityIcons
-          name={event.type === 'goal' ? 'soccer' : event.type === 'substitution' ? 'swap-horizontal' : event.type === 'yellow_card' || event.type === 'red_card' ? 'card' : 'circle-medium'}
-          size={21}
-          color={event.type === 'goal' ? colors.success : event.type === 'yellow_card' ? colors.yellow : event.type === 'red_card' ? colors.live : colors.accentStrong}
-        />
-        <View style={adminStyles.listBody}>
-          <Text style={adminStyles.listTitle}>{event.minuteLabel ? `${event.minuteLabel} · ` : ''}{event.label}</Text>
-          <Text style={adminStyles.listMeta}>{event.scorer ? `${event.scorer} · ` : ''}{event.score ?? ''}</Text>
-          {editEventsMode ? (
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' }}>
-              <View style={{ width: 90 }}><Field label="Minuto" value={minuteDrafts[event.id] ?? String(event.minute ?? '')} onChangeText={(value) => setMinuteDrafts((current) => ({ ...current, [event.id]: value }))} keyboardType="numeric" /></View>
-              <Pressable onPress={() => void saveEventMinute(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="content-save-check-outline" size={19} color={colors.accentStrong} /></Pressable>
-              <Pressable accessibilityLabel="Elimina evento" onPress={() => deleteAnyEvent(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} /></Pressable>
-            </View>
-          ) : null}
+      {editEventsMode ? <Text style={adminStyles.copy}>Puoi correggere il minuto di ogni evento o eliminarlo, anche a partita in corso. Il punteggio si ricalcola automaticamente.</Text> : null}
+      <View style={adminStyles.list}>{events.map((event) => <View key={event.id} style={[adminStyles.listRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <MaterialCommunityIcons
+            name={event.type === 'goal' ? 'soccer' : event.type === 'substitution' ? 'swap-horizontal' : event.type === 'yellow_card' || event.type === 'red_card' ? 'card' : 'circle-medium'}
+            size={21}
+            color={event.type === 'goal' ? colors.success : event.type === 'yellow_card' ? colors.yellow : event.type === 'red_card' ? colors.live : colors.accentStrong}
+          />
+          <View style={adminStyles.listBody}>
+            <Text style={adminStyles.listTitle}>{event.minuteLabel ? `${event.minuteLabel} · ` : ''}{event.label}</Text>
+            <Text style={adminStyles.listMeta}>{event.scorer ? `${event.scorer} · ` : ''}{event.score ?? ''}</Text>
+          </View>
+          {!editEventsMode && event.type === 'goal' ? <Pressable accessibilityLabel="Elimina gol" onPress={() => deleteGoal(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} /></Pressable> : null}
         </View>
-        {!editEventsMode && event.type === 'goal' ? <Pressable accessibilityLabel="Elimina gol" onPress={() => deleteGoal(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} /></Pressable> : null}
+        {editEventsMode ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.lineSoft }}>
+            <Text style={{ color: colors.inkSoft, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' }}>Minuto</Text>
+            <TextInput
+              value={minuteDrafts[event.id] ?? String(event.minute ?? '')}
+              onChangeText={(value) => setMinuteDrafts((current) => ({ ...current, [event.id]: value }))}
+              keyboardType="numeric"
+              style={{ width: 56, minHeight: 38, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.canvasRaised, color: colors.ink, fontWeight: '800', textAlign: 'center' }}
+            />
+            <Pressable onPress={() => void saveEventMinute(event)} style={{ padding: 8 }} accessibilityLabel="Salva minuto"><MaterialCommunityIcons name="content-save-check-outline" size={20} color={colors.accentStrong} /></Pressable>
+            <View style={{ flex: 1 }} />
+            <Pressable accessibilityLabel="Elimina evento" onPress={() => deleteAnyEvent(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable>
+          </View>
+        ) : null}
       </View>)}</View>
     </View>
   </View>;

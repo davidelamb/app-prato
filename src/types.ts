@@ -78,6 +78,9 @@ export type SeasonMatch = {
   sortOrder?: number;
   status?: FixtureStatus;
   fixtureId?: string;
+  liveEvents?: LiveEvent[];
+  homeLineup?: MatchLineup;
+  awayLineup?: MatchLineup;
 };
 
 export type Standing = {
