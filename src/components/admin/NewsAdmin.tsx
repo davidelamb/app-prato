@@ -195,9 +195,11 @@ export function NewsAdmin({
         text: 'Elimina',
         style: 'destructive',
         onPress: () => {
+          const deletedNewsIds = [...new Set([...(content.deletedNewsIds ?? []), id])];
           void onChange({
             ...content,
             news: content.news.filter((item) => item.id !== id),
+            deletedNewsIds,
           }).catch((error) => {
             console.warn('Eliminazione notizia non riuscita', error);
             Alert.alert('Eliminazione non riuscita', 'La notizia non è stata rimossa.');
@@ -325,7 +327,8 @@ export function NewsAdmin({
           <Switch
             value={featured}
             onValueChange={setFeatured}
-            trackColor={{ true: colors.accentStrong }}
+            trackColor={{ false: colors.lineSoft, true: colors.accentStrong }}
+            thumbColor={colors.paper}
           />
         </View>
 

@@ -83,9 +83,11 @@ export function MediaAdmin({ content, onChange }: { content: AppContent; onChang
         text: 'Elimina',
         style: 'destructive',
         onPress: () => {
+          const deletedMediaIds = [...new Set([...(content.deletedMediaIds ?? []), item.id])];
           void onChange({
             ...content,
             media: content.media.filter((entry) => entry.id !== item.id),
+            deletedMediaIds,
           }).catch((error) => {
             console.warn('Eliminazione media non riuscita', error);
             Alert.alert('Eliminazione non riuscita', 'Il media non è stato rimosso.');

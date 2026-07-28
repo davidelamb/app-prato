@@ -8,6 +8,7 @@ import { AppContent, Fixture, LiveEvent, LivePhase, MatchCompetition, MatchLineu
 import { completeStandingRows, emptyStandingRows, normalizeStandingRow, recalculateContentStandings, sortStandingRows } from '../utils/standings';
 import { canonicalTeamName, normalizeTeamName } from '../utils/team-names';
 import { mergeMatchLists } from '../utils/match-merge';
+import { mergeListWithTombstones } from '../utils/content-merge';
 import { minuteLabelFor, inferLegacyEventPhase } from '../utils/live-match';
 import {
   loadAdminToken,
@@ -331,21 +332,20 @@ export function normalizeContent(content: AppContent): AppContent {
     if (!mergedTeams.some((team) => team.normalizedName === saved.normalizedName)) mergedTeams.push(saved);
   }
 
-  // Merge news: completa dal seed le news mancanti (per id)
+  // Merge news: come per il calendario, un id esplicitamente cancellato
+  // dall'admin non deve essere resuscitato dal seed al prossimo salvataggio.
+  const deletedNewsIds = Array.isArray(content.deletedNewsIds)
+    ? [...new Set(content.deletedNewsIds.filter((id): id is string => typeof id === 'string' && !!id))]
+    : [];
   const savedNews = Array.isArray(content.news) ? content.news.map(normalizeNews) : [];
-  const savedNewsMap = new Map(savedNews.map((n) => [n.id, n]));
-  const mergedNews = seedContent.news.map((seed) => savedNewsMap.get(seed.id) ?? seed);
-  for (const saved of savedNews) {
-    if (!mergedNews.some((n) => n.id === saved.id)) mergedNews.push(saved);
-  }
+  const mergedNews = mergeListWithTombstones(seedContent.news, savedNews, deletedNewsIds);
 
-  // Merge media: completa dal seed i media mancanti (per id)
+  // Stesso principio per i media.
+  const deletedMediaIds = Array.isArray(content.deletedMediaIds)
+    ? [...new Set(content.deletedMediaIds.filter((id): id is string => typeof id === 'string' && !!id))]
+    : [];
   const savedMedia = Array.isArray(content.media) ? content.media.map(normalizeMedia) : [];
-  const savedMediaMap = new Map(savedMedia.map((m) => [m.id, m]));
-  const mergedMedia = seedContent.media.map((seed) => savedMediaMap.get(seed.id) ?? seed);
-  for (const saved of savedMedia) {
-    if (!mergedMedia.some((m) => m.id === saved.id)) mergedMedia.push(saved);
-  }
+  const mergedMedia = mergeListWithTombstones(seedContent.media, savedMedia, deletedMediaIds);
 
   // Merge fixtures: completa dal seed le partite mancanti (per id)
   const savedFixtures = Array.isArray(content.fixtures) ? content.fixtures.filter((fixture) => !isLegacyDemoFixture(fixture)).map(normalizeFixture) : [];
@@ -403,7 +403,9 @@ export function normalizeContent(content: AppContent): AppContent {
     teams: mergedTeams,
     players: mergedPlayers,
     news: mergedNews,
+    deletedNewsIds,
     media: mergedMedia,
+    deletedMediaIds,
     updatedAt: content.updatedAt || seedContent.updatedAt,
   };
   return normalized.groupMatches?.length ? recalculateContentStandings(normalized, normalized.groupMatches) : normalized;

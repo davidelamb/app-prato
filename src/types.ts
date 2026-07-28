@@ -187,6 +187,8 @@ export type AppContent = {
   formStandings?: Standing[];
   schedule?: SeasonMatch[];
   deletedScheduleMatchIds?: string[];
+  deletedNewsIds?: string[];
+  deletedMediaIds?: string[];
   groupMatches?: SeasonMatch[];
   teams?: Team[];
   players: Player[];
