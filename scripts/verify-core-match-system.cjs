@@ -647,6 +647,35 @@ function main() {
     assertEqual(withEdit.find((n) => n.id === 'seed-news-2').title, 'Titolo modificato', 'le modifiche a un elemento non cancellato vengono applicate');
 
     // ══════════════════════════════════════════
+    //  19. reconcileTabellino: una partita finale che non ha ancora il
+    //      tabellino/formazioni (es. fixture conclusa prima che questa
+    //      funzionalità esistesse) deve riceverli sempre, non solo
+    //      quando la fixture cambia di nuovo — bug riportato dall'utente
+    //      (partita conclusa vista senza gol né formazioni).
+    // ══════════════════════════════════════════
+
+    console.log('── 19. reconcileTabellino (backfill retroattivo) ──');
+
+    const oldFinalMatch = { id: 'md-1', competition: 'Amichevole', home: 'AC Prato', away: 'San Donato Tavarnelle', dateLabel: '01/08/2026', time: '18:00', homeScore: 1, awayScore: 0, status: 'final', sortOrder: 0 };
+    const finishedFixtureWithTabellino = {
+      id: 'fx-1', competition: 'Amichevole', dateLabel: '01/08/2026', time: '18:00', home: 'AC Prato', away: 'San Donato Tavarnelle',
+      status: 'final', homeScore: 1, awayScore: 0,
+      liveEvents: [{ id: 'ev-1', type: 'goal', label: 'Gol! Caon', phase: 'first_half', team: 'AC Prato', minuteLabel: "12'" }],
+      homeLineup: { formation: '4-3-3', starters: [{ playerId: 'caon', starter: true }], substitutes: [] },
+    };
+
+    const reconciled = matchSync.reconcileTabellino([oldFinalMatch], [finishedFixtureWithTabellino]);
+    assertOk(reconciled[0].liveEvents && reconciled[0].liveEvents.length === 1, 'il tabellino viene riportato retroattivamente sulla partita già finale');
+    assertEqual(reconciled[0].homeLineup && reconciled[0].homeLineup.formation, '4-3-3', 'la formazione viene riportata retroattivamente');
+
+    // Una partita finale il cui punteggio NON viene da una fixture Live
+    // (inserito a mano in admin) resta senza tabellino, correttamente:
+    // non si inventano eventi che non esistono.
+    const manualFinalMatch = { id: 'md-2', competition: 'Amichevole', home: 'AC Prato', away: 'Altra Squadra', dateLabel: '02/08/2026', time: '18:00', homeScore: 2, awayScore: 2, status: 'final', sortOrder: 1 };
+    const reconciledManual = matchSync.reconcileTabellino([manualFinalMatch], [finishedFixtureWithTabellino]);
+    assertOk(!reconciledManual[0].liveEvents, 'nessun tabellino inventato per una partita mai tracciata in Live');
+
+    // ══════════════════════════════════════════
     //  Summary
     // ══════════════════════════════════════════
 

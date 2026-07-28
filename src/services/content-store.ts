@@ -8,6 +8,7 @@ import { AppContent, Fixture, LiveEvent, LivePhase, MatchCompetition, MatchLineu
 import { completeStandingRows, emptyStandingRows, normalizeStandingRow, recalculateContentStandings, sortStandingRows } from '../utils/standings';
 import { canonicalTeamName, normalizeTeamName } from '../utils/team-names';
 import { mergeMatchLists } from '../utils/match-merge';
+import { reconcileTabellino } from '../utils/match-sync';
 import { mergeListWithTombstones } from '../utils/content-merge';
 import { minuteLabelFor, inferLegacyEventPhase } from '../utils/live-match';
 import {
@@ -397,9 +398,9 @@ export function normalizeContent(content: AppContent): AppContent {
     homeStandings: sortStandingRows(completeStandingRows(content.homeStandings, emptyMaster)),
     awayStandings: sortStandingRows(completeStandingRows(content.awayStandings, emptyMaster)),
     formStandings: sortStandingRows(completeStandingRows(content.formStandings, emptyMaster)),
-    schedule: mergedSchedule,
+    schedule: reconcileTabellino(mergedSchedule, mergedFixtures),
     deletedScheduleMatchIds,
-    groupMatches: fixedGroupMatches,
+    groupMatches: reconcileTabellino(fixedGroupMatches, mergedFixtures),
     teams: mergedTeams,
     players: mergedPlayers,
     news: mergedNews,
