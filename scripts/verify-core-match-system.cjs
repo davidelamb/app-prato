@@ -58,6 +58,7 @@ function main() {
       'src/utils/live-match.ts',
       'src/utils/match-sync.ts',
       'src/utils/match-merge.ts',
+      'src/utils/content-merge.ts',
     ].map((f) => path.join(projectRoot, f));
 
     execFileSync(
@@ -80,6 +81,7 @@ function main() {
     const liveMatch = require(path.join(tmpDir, 'utils', 'live-match.js'));
     const matchSync = require(path.join(tmpDir, 'utils', 'match-sync.js'));
     const matchMerge = require(path.join(tmpDir, 'utils', 'match-merge.js'));
+    const contentMerge = require(path.join(tmpDir, 'utils', 'content-merge.js'));
 
     // ══════════════════════════════════════════
     //  1. ALIAS: AC Prato / A.C. Prato / Prato
@@ -607,6 +609,42 @@ function main() {
     const manuallyAdded = { id: 'admin-added', matchday: 3, competition: 'Coppa Italia', roundLabel: 'Ottavi', dateLabel: '', time: '', home: 'AC Prato', away: 'Foligno Calcio 1928', venue: '', sortOrder: 99 };
     const withManual = matchMerge.mergeMatchLists(seedGirone, [oldOnlyPratoMatch, manuallyAdded]);
     assertEqual(withManual.length, 5, 'una partita aggiunta manualmente (non nel seed) viene mantenuta, non scartata');
+
+    // ══════════════════════════════════════════
+    //  18. Cancellare un elemento del seed (news/media) non lo deve
+    //      resuscitare al salvataggio successivo — bug riportato
+    //      dall'utente ("il cestino non cancella la notizia").
+    // ══════════════════════════════════════════
+
+    console.log('── 18. Cancellazione con tombstone (news/media) ──');
+
+    const seedNews = [
+      { id: 'seed-news-1', title: 'Notizia seed 1' },
+      { id: 'seed-news-2', title: 'Notizia seed 2' },
+    ];
+
+    // Scenario 1 (il bug): l'admin cancella 'seed-news-1' localmente
+    // (savedNews non la contiene più), ma senza tombstone il vecchio
+    // codice la resuscitava dal seed ad ogni normalizzazione.
+    const savedAfterDeleteNoTombstone = [seedNews[1]];
+    const resuscitated = contentMerge.mergeListWithTombstones(seedNews, savedAfterDeleteNoTombstone, []); // senza tombstone: bug riprodotto
+    assertEqual(resuscitated.length, 2, "senza tombstone l'elemento cancellato torna (riproduce il bug originale)");
+
+    // Scenario 2 (il fix): stessa cancellazione, ma con l'id registrato
+    // nel tombstone — l'elemento NON deve tornare.
+    const fixedResult = contentMerge.mergeListWithTombstones(seedNews, savedAfterDeleteNoTombstone, ['seed-news-1']);
+    assertEqual(fixedResult.length, 1, "con il tombstone l'elemento cancellato NON torna più");
+    assertEqual(fixedResult.map((n) => n.id).join(','), 'seed-news-2', 'resta solo la notizia non cancellata');
+
+    // Un elemento aggiunto manualmente (non nel seed) deve restare.
+    const withNewArticle = contentMerge.mergeListWithTombstones(seedNews, [...savedAfterDeleteNoTombstone, { id: 'admin-added', title: 'Aggiunta a mano' }], ['seed-news-1']);
+    assertEqual(withNewArticle.map((n) => n.id).sort().join(','), 'admin-added,seed-news-2', 'una notizia aggiunta manualmente resta, insieme a quella non cancellata');
+
+    // Una modifica salvata su un elemento del seed (non cancellato) deve
+    // comunque essere applicata correttamente.
+    const editedSeed = [{ id: 'seed-news-2', title: 'Titolo modificato' }];
+    const withEdit = contentMerge.mergeListWithTombstones(seedNews, editedSeed, ['seed-news-1']);
+    assertEqual(withEdit.find((n) => n.id === 'seed-news-2').title, 'Titolo modificato', 'le modifiche a un elemento non cancellato vengono applicate');
 
     // ══════════════════════════════════════════
     //  Summary
