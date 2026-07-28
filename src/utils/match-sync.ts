@@ -132,3 +132,21 @@ export function synchronizeFixture(content: AppContent, nextFixture: Fixture): A
   });
   return recalculateContentStandings({ ...content, fixtures, schedule, groupMatches, players }, groupMatches);
 }
+
+// Assicura che ogni partita finale del calendario/girone abbia sempre
+// tabellino e formazioni della fixture Live corrispondente, anche se
+// quella fixture è diventata finale prima che questa propagazione
+// esistesse (o prima dell'ultima sincronizzazione). Va richiamata ad
+// ogni normalizzazione, non solo quando una fixture cambia.
+export function reconcileTabellino(matches: SeasonMatch[], fixtures: Fixture[]): SeasonMatch[] {
+  return matches.map((match) => {
+    const source = fixtures.find((fixture) => fixture.status === 'final' && sameMatch(match, fixture));
+    if (!source) return match;
+    return {
+      ...match,
+      ...(source.liveEvents?.length ? { liveEvents: source.liveEvents } : {}),
+      ...(source.homeLineup ? { homeLineup: source.homeLineup } : {}),
+      ...(source.awayLineup ? { awayLineup: source.awayLineup } : {}),
+    };
+  });
+}
