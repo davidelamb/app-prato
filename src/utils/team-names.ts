@@ -42,6 +42,15 @@ export function canonicalTeamName(value: string): string {
   return aliasIndex.get(basicTeamKey(trimmed)) ?? trimmed;
 }
 
+/** Nome compatto per l'interfaccia, senza numeri storici nel nome. */
+export function displayTeamName(value: string): string {
+  return canonicalTeamName(value)
+    .replace(/\bPolisportiva\b/gi, 'Pol.')
+    .replace(/\d+/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export function normalizeTeamName(value: string): string {
   return basicTeamKey(canonicalTeamName(value));
 }

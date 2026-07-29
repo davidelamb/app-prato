@@ -9,7 +9,7 @@ import { getSimulatedStandings, isStandingsEmpty, SIMULATED_LABEL } from '../dat
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, Team } from '../types';
 import { normalizeStandingRow, standingRows } from '../utils/standings';
-import { normalizeTeamName } from '../utils/team-names';
+import { displayTeamName, normalizeTeamName } from '../utils/team-names';
 
 type StatsView = 'schedule' | 'standings';
 
@@ -245,7 +245,7 @@ function CalendarView({
                           { fontSize: bodySize },
                         ]}
                       >
-                        {match.home}
+                        {displayTeamName(match.home)}
                       </Text>
                     </View>
 
@@ -277,7 +277,7 @@ function CalendarView({
                           { fontSize: bodySize, textAlign: 'right' },
                         ]}
                       >
-                        {match.away}
+                        {displayTeamName(match.away)}
                       </Text>
                       <TeamLogo name={match.away} size={logoSize} />
                     </View>
@@ -455,7 +455,7 @@ function MatchdayCalendarView({
                     <Text
                       style={[styles.mdTeamName, isHomePrato && styles.calTeamPrato, { fontSize: bodySize - 1 }]}
                     >
-                      {match.home}
+                      {displayTeamName(match.home)}
                     </Text>
                   </View>
 
@@ -477,7 +477,7 @@ function MatchdayCalendarView({
                         { fontSize: bodySize - 1, textAlign: 'right' },
                       ]}
                     >
-                      {match.away}
+                      {displayTeamName(match.away)}
                     </Text>
                     <TeamLogo name={match.away} size={logoSize} />
                   </View>
@@ -560,7 +560,7 @@ function StandingsView({
                     style={[styles.standingClub, prato && styles.standingClubPrato, { fontSize: highlightName, flex: 1 }]}
                     numberOfLines={1}
                   >
-                    {row.club}
+                    {displayTeamName(row.club)}
                   </Text>
                   <View style={styles.formIndicators}>
                     {(row.form ?? []).map((f, i) => {
@@ -614,7 +614,7 @@ function StandingsView({
                     style={[styles.standingClub, prato && styles.standingClubPrato, { fontSize: highlightName, flex: 1 }]}
                     numberOfLines={1}
                   >
-                    {row.club}
+                    {displayTeamName(row.club)}
                   </Text>
                   <View style={styles.pointsBadge}>
                     <Text style={[styles.pointsValue, { fontSize: bodySize + 2 }]}>{row.points + (row.penalty ?? 0)}</Text>

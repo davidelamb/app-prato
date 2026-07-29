@@ -4,6 +4,7 @@ import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } fr
 import { colors, radii } from '../theme';
 import { LiveEvent, MatchLineup, Player, SeasonMatch } from '../types';
 import { sortLiveEvents } from '../utils/live-match';
+import { displayTeamName } from '../utils/team-names';
 import { TeamLogo } from './TeamLogo';
 
 const eventIcon = (type: LiveEvent['type']): React.ComponentProps<typeof MaterialCommunityIcons>['name'] => {
@@ -65,7 +66,7 @@ export function MatchDetailModal({ match, players, onClose }: { match: SeasonMat
       <View style={styles.hero}>
         <View style={styles.teamColumn}>
           <TeamLogo name={match.home} size={64} />
-          <Text style={styles.teamName} numberOfLines={2}>{match.home}</Text>
+          <Text style={styles.teamName} numberOfLines={2}>{displayTeamName(match.home)}</Text>
         </View>
 
         <View style={styles.scoreColumn}>
@@ -79,7 +80,7 @@ export function MatchDetailModal({ match, players, onClose }: { match: SeasonMat
 
         <View style={styles.teamColumn}>
           <TeamLogo name={match.away} size={64} />
-          <Text style={styles.teamName} numberOfLines={2}>{match.away}</Text>
+          <Text style={styles.teamName} numberOfLines={2}>{displayTeamName(match.away)}</Text>
         </View>
       </View>
 
