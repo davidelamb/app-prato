@@ -63,3 +63,9 @@ export function teamNamesEqual(left: string, right: string): boolean {
 export function isPratoTeam(value: string): boolean {
   return normalizeTeamName(value) === normalizeTeamName('AC Prato');
 }
+
+export function opponentOfPrato(home: string, away: string): string | null {
+  if (isPratoTeam(home)) return away;
+  if (isPratoTeam(away)) return home;
+  return null;
+}
