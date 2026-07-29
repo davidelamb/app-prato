@@ -244,8 +244,6 @@ function CalendarView({
                           isHomePrato && styles.calTeamPrato,
                           { fontSize: bodySize },
                         ]}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
                       >
                         {match.home}
                       </Text>
@@ -278,8 +276,6 @@ function CalendarView({
                           isAwayPrato && styles.calTeamPrato,
                           { fontSize: bodySize, textAlign: 'right' },
                         ]}
-                        numberOfLines={2}
-                        ellipsizeMode="tail"
                       >
                         {match.away}
                       </Text>
@@ -458,8 +454,6 @@ function MatchdayCalendarView({
                     <TeamLogo name={match.home} size={logoSize} />
                     <Text
                       style={[styles.mdTeamName, isHomePrato && styles.calTeamPrato, { fontSize: bodySize - 1 }]}
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
                     >
                       {match.home}
                     </Text>
@@ -482,8 +476,6 @@ function MatchdayCalendarView({
                         isAwayPrato && styles.calTeamPrato,
                         { fontSize: bodySize - 1, textAlign: 'right' },
                       ]}
-                      numberOfLines={2}
-                      ellipsizeMode="tail"
                     >
                       {match.away}
                     </Text>
@@ -807,7 +799,10 @@ const styles = StyleSheet.create({
   calRound: {
     color: colors.muted,
     fontWeight: '700',
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   calDateTime: {
     flexDirection: 'row',
@@ -847,6 +842,8 @@ const styles = StyleSheet.create({
   calTeamName: {
     color: colors.ink,
     fontWeight: '800',
+    flex: 1,
+    minWidth: 0,
     flexShrink: 1,
   },
   calTeamPrato: {
@@ -1206,6 +1203,8 @@ const styles = StyleSheet.create({
   mdTeamName: {
     color: colors.ink,
     fontWeight: '700',
+    flex: 1,
+    minWidth: 0,
     flexShrink: 1,
   },
   mdCenterCell: {
