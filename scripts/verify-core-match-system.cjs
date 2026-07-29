@@ -113,6 +113,9 @@ function main() {
     assertEqual(teamNames.isPratoTeam('US Città di Pontedera'), false, 'isPrato false');
     assertEqual(teamNames.canonicalTeamName('FC Prato'), 'AC Prato', 'FC Prato → AC Prato');
     assertEqual(teamNames.canonicalTeamName('Prato Doc'), 'Prato Doc', 'Prato Doc stays');
+    assertEqual(teamNames.opponentOfPrato('AC Prato', 'Antella'), 'Antella', 'avversaria con Prato in casa');
+    assertEqual(teamNames.opponentOfPrato('San Donato Tavarnelle', 'A.C. Prato'), 'San Donato Tavarnelle', 'avversaria con Prato in trasferta');
+    assertEqual(teamNames.opponentOfPrato('Antella', 'Signa'), null, 'nessuna avversaria se il Prato non è presente');
 
     // ══════════════════════════════════════════
     //  2. CLASSIFICA 2–1

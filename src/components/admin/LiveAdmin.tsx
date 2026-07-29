@@ -9,7 +9,7 @@ import { kickoffInput, kickoffIso, kickoffTimestamp } from '../../utils/fixture-
 import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, removeGoal, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
 import { lineupSelectionForRoster } from '../../utils/lineup-roster';
 import { synchronizeFixture } from '../../utils/match-sync';
-import { isPratoTeam } from '../../utils/team-names';
+import { displayTeamName, isPratoTeam, opponentOfPrato } from '../../utils/team-names';
 import { Button, Field, adminStyles, confirmAdminAction } from './Primitives';
 
 const eventId = () => `event-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -177,7 +177,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     const event: LiveEvent = {
       id: eventId(),
       type: 'goal',
-      label: pratoGoal ? `Gol ${team}` : 'Gol avversario',
+      label: `Gol ${displayTeamName(team)}`,
       ...timing,
       team,
       playerId: player?.id,
@@ -284,6 +284,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
   const eligibleScorers = players.filter((player) => scorerIds.has(player.id));
   const liveActive = fixture.livePhase === 'first_half' || fixture.livePhase === 'second_half';
   const events = sortLiveEvents(fixture.liveEvents ?? []).reverse();
+  const opponentName = displayTeamName(opponentOfPrato(fixture.home, fixture.away) ?? 'Avversario');
 
   return <View style={{ gap: 14 }}>
     <View style={adminStyles.panel}>
@@ -349,9 +350,9 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     </View>
 
     <View style={adminStyles.panel}>
-      <Text style={adminStyles.title}>Registra gol avversario</Text>
+      <Text style={adminStyles.title}>Registra gol {opponentName}</Text>
       <Field label="Marcatore (facoltativo)" value={opponentScorer} onChangeText={setOpponentScorer} />
-      <Button label="Gol avversario" icon="soccer" danger disabled={!liveActive} onPress={() => void addGoal(false)} />
+      <Button label={`Gol ${opponentName}`} icon="soccer" danger disabled={!liveActive} onPress={() => void addGoal(false)} />
     </View>
 
     <View style={adminStyles.panel}>
