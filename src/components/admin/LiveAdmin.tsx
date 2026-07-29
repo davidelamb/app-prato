@@ -6,7 +6,7 @@ import { colors } from '../../theme';
 import { displayPlayerName } from '../../utils/player-name';
 import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup } from '../../types';
 import { kickoffInput, kickoffIso, kickoffTimestamp } from '../../utils/fixture-time';
-import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, removeGoal, shouldAddSecondYellowRed, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
+import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, shouldAddSecondYellowRed, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
 import { lineupSelectionForRoster } from '../../utils/lineup-roster';
 import { synchronizeFixture } from '../../utils/match-sync';
 import { displayTeamName, isPratoTeam, opponentOfPrato } from '../../utils/team-names';
@@ -188,10 +188,6 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     await commitFixture(addEvent({ ...fixture, status: 'live', homeScore, awayScore, minute: timing.minute }, event));
     setScorerId('');
     setOpponentScorer('');
-  };
-
-  const deleteGoal = (event: LiveEvent) => {
-    confirmAdminAction('Eliminare questo gol?', `${event.minuteLabel ?? ''} ${event.scorer ?? event.team ?? ''}`.trim(), () => commitFixture(removeGoal(fixture, event.id)));
   };
 
   // Giocatori Prato attualmente in campo: titolari meno chi è già stato
@@ -415,7 +411,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
           <Text style={[adminStyles.choiceText, editEventsMode && adminStyles.choiceTextActive]}>{editEventsMode ? 'Fine modifica' : 'Modifica eventi'}</Text>
         </Pressable>
       </View>
-      {editEventsMode ? <Text style={adminStyles.copy}>Puoi correggere il minuto di ogni evento o eliminarlo, anche a partita in corso. Il punteggio si ricalcola automaticamente.</Text> : null}
+      {editEventsMode ? <Text style={adminStyles.copy}>Puoi correggere il minuto di ogni evento, anche a partita in corso. Il punteggio si ricalcola automaticamente.</Text> : null}
       <View style={adminStyles.list}>{events.map((event) => <View key={event.id} style={[adminStyles.listRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <MaterialCommunityIcons
@@ -427,7 +423,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
             <Text style={adminStyles.listTitle}>{event.minuteLabel ? `${event.minuteLabel} · ` : ''}{event.label}</Text>
             <Text style={adminStyles.listMeta}>{event.scorer ? `${event.scorer} · ` : ''}{event.score ?? ''}</Text>
           </View>
-          {!editEventsMode && event.type === 'goal' ? <Pressable accessibilityLabel="Elimina gol" onPress={() => deleteGoal(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.live} /></Pressable> : null}
+          <Pressable accessibilityLabel="Elimina evento" onPress={() => deleteAnyEvent(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable>
         </View>
         {editEventsMode ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.lineSoft }}>
@@ -439,8 +435,6 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
               style={{ width: 56, minHeight: 38, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.canvasRaised, color: colors.ink, fontWeight: '800', textAlign: 'center' }}
             />
             <Pressable onPress={() => void saveEventMinute(event)} style={{ padding: 8 }} accessibilityLabel="Salva minuto"><MaterialCommunityIcons name="content-save-check-outline" size={20} color={colors.accentStrong} /></Pressable>
-            <View style={{ flex: 1 }} />
-            <Pressable accessibilityLabel="Elimina evento" onPress={() => deleteAnyEvent(event)} style={{ padding: 8 }}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable>
           </View>
         ) : null}
       </View>)}</View>
