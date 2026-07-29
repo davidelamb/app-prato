@@ -7,6 +7,7 @@ import { colors } from '../../theme';
 import { AppContent, Player, PlayerRole } from '../../types';
 import { nationalityList } from '../../utils/nationality';
 import { playerImageStyle } from '../../utils/player-image';
+import { displayPlayerName } from '../../utils/player-name';
 import { NationalityBadge } from '../NationalityBadge';
 import { PlayerPhotoEditor } from './PlayerPhotoEditor';
 import { Button, Field, adminStyles } from './Primitives';
@@ -63,7 +64,7 @@ export function PlayersAdmin({ content, onChange, onScrollToTop }: { content: Ap
     setSaveMessage('');
     try {
       await onChange({ ...content, players });
-      setSaveMessage(`Modifiche di ${player.name} salvate.`);
+      setSaveMessage(`Modifiche di ${displayPlayerName(player.name)} salvate.`);
       reset();
     } catch (error) {
       console.warn('Salvataggio calciatore non riuscito', error);
@@ -105,7 +106,7 @@ export function PlayersAdmin({ content, onChange, onScrollToTop }: { content: Ap
       <Text style={adminStyles.title}>Rosa pubblicata</Text>
       <View style={adminStyles.list}>{content.players.map((player) => <Pressable key={player.id} onPress={() => { setEditing(player.id); setDraft({ ...player, imageScale: player.imageScale ?? 1, imagePositionX: player.imagePositionX ?? 0, imagePositionY: player.imagePositionY ?? 0 }); onScrollToTop?.(); }} style={adminStyles.listRow}>
         <View style={{ width: 46, height: 50, overflow: 'hidden', borderRadius: 10, backgroundColor: colors.surfaceSoft }}>{player.imageUrl ? <Image source={{ uri: player.imageUrl }} resizeMode="cover" style={[{ width: '100%', height: '100%' }, playerImageStyle(player)]} /> : null}</View>
-        <View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{player.name}</Text><Text style={adminStyles.listMeta}>{player.number ? `#${player.number} · ` : ''}{player.role}</Text></View>
+        <View style={adminStyles.listBody}><Text style={adminStyles.listTitle}>{displayPlayerName(player.name)}</Text><Text style={adminStyles.listMeta}>{player.number ? `#${player.number} · ` : ''}{player.role}</Text></View>
         <NationalityBadge value={player.nationality} compact />
         <MaterialCommunityIcons name="pencil-outline" size={20} color={colors.accentStrong} />
       </Pressable>)}</View>

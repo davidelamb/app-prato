@@ -6,6 +6,7 @@ import { TeamLogo } from './TeamLogo';
 import { colors, radii } from '../theme';
 import { Fixture, LiveEvent, MatchLineup, Player } from '../types';
 import { formatMatchClock, sortLiveEvents } from '../utils/live-match';
+import { displayPlayerName } from '../utils/player-name';
 import { displayTeamName } from '../utils/team-names';
 
 const icons: Record<LiveEvent['type'], React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
@@ -35,6 +36,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
     return () => clearInterval(timer);
   }, [fixture.id, fixture.livePhase, fixture.phaseStartedAt]);
   const events = useMemo(() => sortLiveEvents(fixture.liveEvents ?? []), [fixture.liveEvents]);
+  const playerNames = useMemo(() => new Map(players.map((player) => [player.id, displayPlayerName(player.name)])), [players]);
   const isLive = fixture.status === 'live';
   const isScheduled = fixture.status === 'scheduled';
 
@@ -110,7 +112,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
             </View>
             <View style={styles.eventBody}>
               <Text style={styles.eventTitle}>{event.label}</Text>
-              {event.scorer ? <Text style={styles.eventCopy}>{event.scorer}</Text> : null}
+              {event.scorer ? <Text style={styles.eventCopy}>{event.playerId ? playerNames.get(event.playerId) ?? event.scorer : event.scorer}</Text> : null}
               {event.score ? <Text style={styles.scorePill}>{event.score}</Text> : null}
             </View>
           </View>
@@ -133,7 +135,7 @@ function LineupBlock({ team, lineup, players }: { team: string; lineup: MatchLin
     if (!player) return null;
     return <View key={item.playerId} style={styles.lineupPlayer}>
       <Text style={styles.lineupNumber}>{player.number ?? '—'}</Text>
-      <Text style={styles.lineupName}>{player.name}</Text>
+      <Text style={styles.lineupName}>{displayPlayerName(player.name)}</Text>
       <Text style={styles.lineupRole}>{player.role}</Text>
     </View>;
   };

@@ -6,6 +6,7 @@ import { colors, radii } from '../theme';
 import { Player } from '../types';
 import { nationalityList } from '../utils/nationality';
 import { playerImageStyle } from '../utils/player-image';
+import { displayPlayerName } from '../utils/player-name';
 
 function Stat({ value, label }: { value: string | number; label: string }) {
   return <View style={styles.stat}><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>;
@@ -42,7 +43,7 @@ export function PlayerProfileModal({ player, onClose }: { player: Player | null;
                 <View style={styles.nationalityTopRight}><NationalityBadge value={player.nationality} /></View>
                 <Text style={styles.role}>{player.role}</Text>
                 <View style={styles.nameRow}>
-                  <Text style={styles.name}>{player.name}</Text>
+                  <Text style={styles.name}>{displayPlayerName(player.name)}</Text>
                 </View>
                 <Text style={styles.subline}>{nationalityList(player.nationality).join(' / ') || 'Italia'}{player.age ? ` · ${player.age} anni` : ''}</Text>
               </View>
