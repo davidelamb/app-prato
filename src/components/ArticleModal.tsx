@@ -4,7 +4,6 @@ import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, Vi
 
 import { colors } from '../theme';
 import { NewsArticle } from '../types';
-import { imageTransformStyle } from '../utils/player-image';
 
 export function ArticleModal({ article, onClose }: { article: NewsArticle | null; onClose: () => void }) {
   return (
@@ -23,27 +22,31 @@ export function ArticleModal({ article, onClose }: { article: NewsArticle | null
               <View style={styles.spacer} />
             </View>
 
-            <View style={styles.imageFrame}>
-              {article.imageUrl ? (
-                <Image
-                  source={{ uri: article.imageUrl }}
-                  resizeMode="cover"
-                  style={[styles.image, imageTransformStyle(article)]}
-                />
-              ) : (
-                <LinearGradient colors={[colors.accentStrong, colors.accent]} style={styles.placeholder}>
-                  <Image source={require('../../assets/ac-prato-crest.png')} resizeMode="cover" style={styles.placeholderLogo} />
-                </LinearGradient>
-              )}
-            </View>
+            <View style={styles.articleShell}>
+              <View style={styles.articleCard}>
+                <View style={styles.imageFrame}>
+                  {article.imageUrl ? (
+                    <Image
+                      source={{ uri: article.imageUrl }}
+                      resizeMode="contain"
+                      style={styles.image}
+                    />
+                  ) : (
+                    <LinearGradient colors={[colors.accentStrong, colors.accent]} style={styles.placeholder}>
+                      <Image source={require('../../assets/ac-prato-crest.png')} resizeMode="cover" style={styles.placeholderLogo} />
+                    </LinearGradient>
+                  )}
+                </View>
 
-            <View style={styles.body}>
-              <Text style={styles.eyebrow}>{article.category}</Text>
-              <Text style={styles.title}>{article.title}</Text>
-              <Text style={styles.meta}>{article.publishedAt}</Text>
-              <Text style={styles.lead}>{article.summary}</Text>
-              <View style={styles.divider} />
-              <Text style={styles.text}>{article.body ?? article.summary}</Text>
+                <View style={styles.body}>
+                  <Text style={styles.eyebrow}>{article.category}</Text>
+                  <Text style={styles.title}>{article.title}</Text>
+                  <Text style={styles.meta}>{article.publishedAt}</Text>
+                  <Text style={styles.lead}>{article.summary}</Text>
+                  <View style={styles.divider} />
+                  <Text style={styles.text}>{article.body ?? article.summary}</Text>
+                </View>
+              </View>
             </View>
           </ScrollView>
         ) : null}
@@ -70,18 +73,33 @@ const styles = StyleSheet.create({
   topLogo: { width: 38, height: 38, borderRadius: 11 },
   topTitle: { color: colors.ink, fontSize: 15, fontWeight: '900' },
   spacer: { width: 42 },
-  imageFrame: {
+  articleShell: {
     width: '100%',
-    maxWidth: 960,
-    aspectRatio: 16 / 9,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+  },
+  articleCard: {
+    width: '100%',
+    maxWidth: 800,
     alignSelf: 'center',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 20,
+    backgroundColor: colors.paper,
+  },
+  imageFrame: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    overflow: 'hidden',
     backgroundColor: colors.surfaceSoft,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineSoft,
   },
   image: { width: '100%', height: '100%' },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   placeholderLogo: { width: 116, height: 116, borderRadius: 32 },
-  body: { width: '100%', maxWidth: 800, alignSelf: 'center', padding: 22, backgroundColor: colors.paper },
+  body: { width: '100%', padding: 22, backgroundColor: colors.paper },
   eyebrow: { color: colors.accentStrong, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   title: { color: colors.ink, fontSize: 35, lineHeight: 40, fontWeight: '900', marginTop: 8 },
   meta: { color: colors.muted, fontSize: 12, fontWeight: '700', marginTop: 12 },
