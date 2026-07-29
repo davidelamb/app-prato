@@ -350,39 +350,39 @@ export function NewsAdmin({
         <Text style={adminStyles.title}>Notizie pubblicate</Text>
         <View style={adminStyles.list}>
           {content.news.map((article) => (
-            <Pressable
-              key={article.id}
-              onPress={() => startEdit(article)}
-              style={adminStyles.listRow}
-            >
-              <Image
-                source={{ uri: article.imageUrl }}
-                resizeMode="cover"
-                style={{
-                  width: 58,
-                  height: 46,
-                  borderRadius: 9,
-                  transform: [
-                    { scale: Math.max(1, Number(article.imageScale) || 1) },
-                    { translateX: Number(article.imagePositionX) || 0 },
-                    { translateY: Number(article.imagePositionY) || 0 },
-                  ],
-                }}
-              />
-              <View style={adminStyles.listBody}>
-                <Text numberOfLines={2} style={adminStyles.listTitle}>
-                  {article.title}
-                </Text>
-                <Text style={adminStyles.listMeta}>
-                  {article.category} · {article.publishedAt}
-                </Text>
-              </View>
+            <View key={article.id} style={[adminStyles.listRow, { alignItems: 'center' }]}>
               <Pressable
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  remove(article.id);
-                }}
-                hitSlop={10}
+                onPress={() => startEdit(article)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}
+              >
+                <Image
+                  source={{ uri: article.imageUrl }}
+                  resizeMode="cover"
+                  style={{
+                    width: 58,
+                    height: 46,
+                    borderRadius: 9,
+                    transform: [
+                      { scale: Math.max(1, Number(article.imageScale) || 1) },
+                      { translateX: Number(article.imagePositionX) || 0 },
+                      { translateY: Number(article.imagePositionY) || 0 },
+                    ],
+                  }}
+                />
+                <View style={adminStyles.listBody}>
+                  <Text numberOfLines={2} style={adminStyles.listTitle}>
+                    {article.title}
+                  </Text>
+                  <Text style={adminStyles.listMeta}>
+                    {article.category} · {article.publishedAt}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Elimina ${article.title}`}
+                onPress={() => remove(article.id)}
+                hitSlop={12}
+                style={{ padding: 10 }}
               >
                 <MaterialCommunityIcons
                   name="trash-can-outline"
@@ -390,7 +390,7 @@ export function NewsAdmin({
                   color={colors.live}
                 />
               </Pressable>
-            </Pressable>
+            </View>
           ))}
         </View>
       </View>
