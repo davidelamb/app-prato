@@ -1,8 +1,18 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radii } from '../../theme';
 
 export type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+export function confirmAdminAction(title: string, message: string, onConfirm: () => void | Promise<void>) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    if (window.confirm(`${title}\n\n${message}`)) void onConfirm();
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Annulla', style: 'cancel' },
+    { text: 'Elimina', style: 'destructive', onPress: () => void onConfirm() },
+  ]);
+}
 export function Field({ label, value, onChangeText, placeholder, multiline = false, keyboardType = 'default' }: { label: string; value: string; onChangeText: (value: string) => void; placeholder?: string; multiline?: boolean; keyboardType?: 'default' | 'numeric' | 'url' }) { return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.mutedDark} multiline={multiline} keyboardType={keyboardType} autoCapitalize={keyboardType === 'url' ? 'none' : 'sentences'} style={[styles.input, multiline && styles.multiline]} /></View>; }
 export function Button({ label, icon, onPress, secondary = false, danger = false, disabled = false }: { label: string; icon?: IconName; onPress: () => void; secondary?: boolean; danger?: boolean; disabled?: boolean }) { const textColor = secondary || danger || disabled ? colors.ink : colors.paper; return <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, secondary && styles.secondary, danger && styles.danger, disabled && styles.disabled, pressed && !disabled && { opacity: 0.82 }]}>{icon ? <MaterialCommunityIcons name={icon} size={18} color={textColor} /> : null}<Text style={[styles.buttonText, { color: textColor }]}>{label}</Text></Pressable>; }
 export const adminStyles = StyleSheet.create({ panel: { padding: 18, borderRadius: radii.lg, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line }, title: { color: colors.ink, fontSize: 21, fontWeight: '900' }, copy: { color: colors.muted, lineHeight: 20, marginTop: 5 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, list: { gap: 8, marginTop: 15 }, listRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: radii.md, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.lineSoft }, listBody: { flex: 1 }, listTitle: { color: colors.ink, fontWeight: '900' }, listMeta: { color: colors.muted, fontSize: 11, marginTop: 3 }, preview: { height: 190, marginTop: 15, marginBottom: 10, borderRadius: radii.lg, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.line }, previewImage: { width: '100%', height: '100%' }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 10 }, choice: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: colors.canvasRaised, borderWidth: 1, borderColor: colors.line }, choiceActive: { backgroundColor: colors.accentStrong }, choiceText: { color: colors.muted, fontSize: 11, fontWeight: '900' }, choiceTextActive: { color: colors.paper } });

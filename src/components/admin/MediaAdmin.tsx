@@ -5,7 +5,7 @@ import { Alert, Image, Pressable, Switch, Text, View } from 'react-native';
 
 import { colors } from '../../theme';
 import { AppContent, MediaItem, MediaKind } from '../../types';
-import { Button, Field, adminStyles } from './Primitives';
+import { Button, Field, adminStyles, confirmAdminAction } from './Primitives';
 
 const kinds: MediaKind[] = ['Highlights', 'Intervista', 'Video', 'Podcast'];
 const id = () => `media-${Date.now()}`;
@@ -77,24 +77,19 @@ export function MediaAdmin({ content, onChange }: { content: AppContent; onChang
   };
 
   const remove = (item: MediaItem) => {
-    Alert.alert('Eliminare il media?', item.title, [
-      { text: 'Annulla', style: 'cancel' },
-      {
-        text: 'Elimina',
-        style: 'destructive',
-        onPress: () => {
-          const deletedMediaIds = [...new Set([...(content.deletedMediaIds ?? []), item.id])];
-          void onChange({
-            ...content,
-            media: content.media.filter((entry) => entry.id !== item.id),
-            deletedMediaIds,
-          }).catch((error) => {
-            console.warn('Eliminazione media non riuscita', error);
-            Alert.alert('Eliminazione non riuscita', 'Il media non è stato rimosso.');
-          });
-        },
-      },
-    ]);
+    confirmAdminAction('Eliminare il media?', item.title, async () => {
+      const deletedMediaIds = [...new Set([...(content.deletedMediaIds ?? []), item.id])];
+      try {
+        await onChange({
+          ...content,
+          media: content.media.filter((entry) => entry.id !== item.id),
+          deletedMediaIds,
+        });
+      } catch (error) {
+        console.warn('Eliminazione media non riuscita', error);
+        Alert.alert('Eliminazione non riuscita', 'Il media non è stato rimosso.');
+      }
+    });
   };
 
   return (
@@ -140,7 +135,7 @@ export function MediaAdmin({ content, onChange }: { content: AppContent; onChang
                 <Text numberOfLines={2} style={adminStyles.listTitle}>{item.title}</Text>
                 <Text style={adminStyles.listMeta}>{item.kind} · {item.source}</Text>
               </View>
-              <Pressable accessibilityLabel={`Elimina ${item.title}`} onPress={() => remove(item)}>
+              <Pressable accessibilityLabel={`Elimina ${item.title}`} onPress={() => remove(item)} hitSlop={12} style={{ padding: 6 }}>
                 <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} />
               </Pressable>
             </View>

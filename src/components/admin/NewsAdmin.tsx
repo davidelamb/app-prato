@@ -13,7 +13,7 @@ import {
 import { colors, radii } from '../../theme';
 import { AppContent, NewsArticle } from '../../types';
 import { imageTransformStyle } from '../../utils/player-image';
-import { Button, Field, adminStyles } from './Primitives';
+import { Button, Field, adminStyles, confirmAdminAction } from './Primitives';
 
 const id = () => `news-${Date.now()}`;
 
@@ -189,24 +189,19 @@ export function NewsAdmin({
   };
 
   const remove = (id: string) => {
-    Alert.alert('Eliminare la notizia?', 'La rimozione sarà visibile su tutti i dispositivi.', [
-      { text: 'Annulla', style: 'cancel' },
-      {
-        text: 'Elimina',
-        style: 'destructive',
-        onPress: () => {
-          const deletedNewsIds = [...new Set([...(content.deletedNewsIds ?? []), id])];
-          void onChange({
-            ...content,
-            news: content.news.filter((item) => item.id !== id),
-            deletedNewsIds,
-          }).catch((error) => {
-            console.warn('Eliminazione notizia non riuscita', error);
-            Alert.alert('Eliminazione non riuscita', 'La notizia non è stata rimossa.');
-          });
-        },
-      },
-    ]);
+    confirmAdminAction('Eliminare la notizia?', 'La rimozione sarà visibile su tutti i dispositivi.', async () => {
+      const deletedNewsIds = [...new Set([...(content.deletedNewsIds ?? []), id])];
+      try {
+        await onChange({
+          ...content,
+          news: content.news.filter((item) => item.id !== id),
+          deletedNewsIds,
+        });
+      } catch (error) {
+        console.warn('Eliminazione notizia non riuscita', error);
+        Alert.alert('Eliminazione non riuscita', 'La notizia non è stata rimossa.');
+      }
+    });
   };
 
   const editorTransform = imageTransformStyle({
@@ -382,7 +377,8 @@ export function NewsAdmin({
                   e.stopPropagation?.();
                   remove(article.id);
                 }}
-                hitSlop={10}
+                hitSlop={12}
+                style={{ padding: 6 }}
               >
                 <MaterialCommunityIcons
                   name="trash-can-outline"
