@@ -53,6 +53,19 @@ export async function verifyAdminToken(token: string): Promise<boolean> {
   }
 }
 
+export async function registerPushSubscription(subscription: {
+  token: string;
+  platform: 'android' | 'ios';
+  deviceId: string;
+}): Promise<void> {
+  const response = await apiFetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(subscription),
+  });
+  if (!response.ok) throw new Error(`Registrazione notifiche non riuscita (${response.status}).`);
+}
+
 export async function loadRemoteContent(): Promise<AppContent | null> {
   const response = await apiFetch('/api/content', {
     headers: { Accept: 'application/json' },

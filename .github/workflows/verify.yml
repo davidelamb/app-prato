@@ -22,6 +22,8 @@ jobs:
           npm run typecheck > tsc-errors.txt 2>&1
           npm run typecheck:worker >> tsc-errors.txt 2>&1
           cat tsc-errors.txt
+      - name: Domain tests
+        run: npm run verify
       - name: Upload TypeScript errors
         if: failure() && steps.typecheck.outcome == 'failure'
         uses: actions/upload-artifact@v4

@@ -25,6 +25,22 @@ type MediaMonthlyUsage = {
   upload_count: number;
 };
 
+type PushSubscriptionInput = {
+  token?: unknown;
+  platform?: unknown;
+  deviceId?: unknown;
+};
+
+type PushSubscriptionRow = {
+  expo_push_token: string;
+};
+
+type PushNotice = {
+  title: string;
+  body: string;
+  data: { tab: 'news' | 'live' };
+};
+
 function corsHeaders(request: Request): Headers {
   const origin = request.headers.get('Origin');
   const allowed = origin && (
@@ -74,6 +90,120 @@ async function isAdminRequest(request: Request, env: Env): Promise<boolean> {
   }
   return difference === 0;
 }
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function arrayValue(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map(objectValue).filter((item): item is Record<string, unknown> => !!item) : [];
+}
+
+function contentPushNotice(previousPayload: string | undefined, next: Record<string, unknown>): PushNotice | null {
+  if (!previousPayload) return null;
+  let previous: Record<string, unknown>;
+  try {
+    previous = objectValue(JSON.parse(previousPayload)) ?? {};
+  } catch {
+    return null;
+  }
+
+  const previousFixtures = new Map(arrayValue(previous.fixtures).map((fixture) => [String(fixture.id ?? ''), fixture]));
+  for (const fixture of arrayValue(next.fixtures)) {
+    const fixtureId = String(fixture.id ?? '');
+    const before = previousFixtures.get(fixtureId);
+    if (!before) continue;
+
+    const oldEvents = new Set(arrayValue(before.liveEvents).map((event) => String(event.id ?? '')));
+    const newEvents = arrayValue(fixture.liveEvents).filter((event) => !oldEvents.has(String(event.id ?? '')));
+    const goal = newEvents.find((event) => event.type === 'goal');
+    if (goal) {
+      const scorer = typeof goal.scorer === 'string' ? goal.scorer : '';
+      const score = typeof goal.score === 'string' ? goal.score : '';
+      return {
+        title: score ? `Gol! ${score}` : 'Gol!',
+        body: scorer || String(goal.label ?? 'La partita si è sbloccata.'),
+        data: { tab: 'live' },
+      };
+    }
+    if (before.status !== 'live' && fixture.status === 'live') {
+      return {
+        title: 'La partita è iniziata',
+        body: `${String(fixture.home ?? '')} - ${String(fixture.away ?? '')}`,
+        data: { tab: 'live' },
+      };
+    }
+    if (before.status !== 'final' && fixture.status === 'final') {
+      return {
+        title: 'Risultato finale',
+        body: `${String(fixture.home ?? '')} ${String(fixture.homeScore ?? 0)}-${String(fixture.awayScore ?? 0)} ${String(fixture.away ?? '')}`,
+        data: { tab: 'live' },
+      };
+    }
+  }
+
+  const previousNewsIds = new Set(arrayValue(previous.news).map((article) => String(article.id ?? '')));
+  const newArticle = arrayValue(next.news).find((article) => !previousNewsIds.has(String(article.id ?? '')));
+  if (newArticle) {
+    return {
+      title: 'Nuova news APPrato',
+      body: String(newArticle.title ?? 'È disponibile un nuovo aggiornamento.'),
+      data: { tab: 'news' },
+    };
+  }
+  return null;
+}
+
+async function sendPushNotice(env: Env, notice: PushNotice): Promise<void> {
+  const result = await env.CONTENT_DB
+    .prepare('SELECT expo_push_token FROM push_subscriptions WHERE enabled = 1 ORDER BY updated_at DESC')
+    .all<PushSubscriptionRow>();
+  const tokens = result.results.map((row) => row.expo_push_token);
+  for (let offset = 0; offset < tokens.length; offset += 100) {
+    const messages = tokens.slice(offset, offset + 100).map((to) => ({
+      to,
+      sound: 'default',
+      channelId: 'app-prato',
+      title: notice.title,
+      body: notice.body,
+      data: notice.data,
+    }));
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(messages),
+    });
+    if (!response.ok) console.error(JSON.stringify({ event: 'push_send_failed', status: response.status }));
+  }
+}
+
+async function subscribePush(request: Request, env: Env): Promise<Response> {
+  let input: PushSubscriptionInput;
+  try {
+    input = await request.json<PushSubscriptionInput>();
+  } catch {
+    return json(request, { error: 'Richiesta notifiche non valida.' }, { status: 400 });
+  }
+  const token = typeof input.token === 'string' ? input.token.trim() : '';
+  const platform = input.platform === 'android' || input.platform === 'ios' ? input.platform : '';
+  const deviceId = typeof input.deviceId === 'string' ? input.deviceId.trim().slice(0, 120) : '';
+  if (!/^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$/.test(token) || !platform || !deviceId) {
+    return json(request, { error: 'Dati notifiche non validi.' }, { status: 400 });
+  }
+  const now = new Date().toISOString();
+  await env.CONTENT_DB
+    .prepare(`INSERT INTO push_subscriptions (expo_push_token, platform, device_id, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, 1, ?, ?)
+      ON CONFLICT(expo_push_token) DO UPDATE SET
+        platform = excluded.platform,
+        device_id = excluded.device_id,
+        enabled = 1,
+        updated_at = excluded.updated_at`)
+    .bind(token, platform, deviceId, now, now)
+    .run();
+  return json(request, { ok: true }, { status: 201 });
+}
+
 
 function isContentPayload(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -134,7 +264,7 @@ async function getContent(request: Request, env: Env): Promise<Response> {
   });
 }
 
-async function putContent(request: Request, env: Env): Promise<Response> {
+async function putContent(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   if (!await isAdminRequest(request, env)) return unauthorized(request);
   const contentLength = Number(request.headers.get('Content-Length') ?? 0);
   if (contentLength > MAX_CONTENT_BYTES) return json(request, { error: 'Contenuto troppo grande.' }, { status: 413 });
@@ -181,6 +311,8 @@ async function putContent(request: Request, env: Env): Promise<Response> {
       )`)
     .bind(CONTENT_KEY, CONTENT_KEY)
     .run();
+  const notice = contentPushNotice(current?.payload, payload);
+  if (notice) ctx.waitUntil(sendPushNotice(env, notice));
 
   return json(request, payload, {
     headers: { ETag: `"content-${version}"`, 'X-Content-Version': String(version) },
@@ -272,10 +404,11 @@ async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Pro
     return json(request, { ok: true, storage: 'd1-r2' });
   }
   if (url.pathname === '/api/content' && request.method === 'GET') return getContent(request, env);
-  if (url.pathname === '/api/content' && request.method === 'PUT') return putContent(request, env);
+  if (url.pathname === '/api/content' && request.method === 'PUT') return putContent(request, env, ctx);
   if (url.pathname === '/api/admin/check' && request.method === 'GET') {
     return await isAdminRequest(request, env) ? json(request, { ok: true }) : unauthorized(request);
   }
+  if (url.pathname === '/api/push/subscribe' && request.method === 'POST') return subscribePush(request, env);
   if (url.pathname === '/api/images' && request.method === 'POST') return uploadImage(request, env);
   if (url.pathname.startsWith('/api/images/') && request.method === 'GET') {
     return serveImage(request, env, ctx, decodeURIComponent(url.pathname.slice('/api/images/'.length)));

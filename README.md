@@ -55,8 +55,14 @@ I contenuti amministrativi sono condivisi tramite un backend Cloudflare:
 - R2 conserva le immagini caricate dal pannello admin;
 - il Worker espone la lettura pubblica e protegge le scritture con
   `ADMIN_TOKEN`;
+- i token Expo Push autorizzati dagli utenti sono conservati in D1 e usati
+  per notificare nuove news, inizio partita, gol e risultato finale;
 - AsyncStorage resta una cache offline e mantiene compatibili i dati locali
   creati dalle versioni precedenti.
+
+Le notifiche remote richiedono una build nativa EAS e le credenziali FCM/APNs;
+non sono disponibili in Expo Go su Android. Le pagine pubbliche per gli store
+sono `/privacy.html` e `/terms.html`.
 
 La chiave amministratore viene conservata in SecureStore su iOS/Android e
 nello storage locale del browser sul web. Non deve essere inserita nel codice
