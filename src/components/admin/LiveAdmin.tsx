@@ -6,7 +6,7 @@ import { colors } from '../../theme';
 import { displayPlayerName } from '../../utils/player-name';
 import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup } from '../../types';
 import { kickoffInput, kickoffIso, kickoffTimestamp } from '../../utils/fixture-time';
-import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, removeGoal, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
+import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, removeGoal, shouldAddSecondYellowRed, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
 import { lineupSelectionForRoster } from '../../utils/lineup-roster';
 import { synchronizeFixture } from '../../utils/match-sync';
 import { displayTeamName, isPratoTeam, opponentOfPrato } from '../../utils/team-names';
@@ -248,6 +248,10 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     const timing = currentEventTiming(fixture, Date.parse(createdAt));
     const cardLabel = cardType === 'yellow_card' ? 'Cartellino giallo' : 'Cartellino rosso';
     const name = pratoSide && player ? displayPlayerName(player.name) : opponentCardPlayer.trim() || undefined;
+    const addAutomaticRed = cardType === 'yellow_card' && shouldAddSecondYellowRed(
+      fixture.liveEvents ?? [],
+      { team, playerId: player?.id, playerName: name },
+    );
     const event: LiveEvent = {
       id: eventId(),
       type: cardType,
@@ -259,7 +263,19 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
       score: currentScore(),
       createdAt,
     };
-    await commitFixture(addEvent({ ...fixture, minute: timing.minute }, event));
+    let nextFixture = addEvent({ ...fixture, minute: timing.minute }, event);
+    if (addAutomaticRed) {
+      nextFixture = addEvent(nextFixture, {
+        ...event,
+        id: eventId(),
+        type: 'red_card',
+        label: name
+          ? `Cartellino rosso per doppia ammonizione: ${name}`
+          : `Cartellino rosso per doppia ammonizione (${team})`,
+        createdAt: new Date(Date.parse(createdAt) + 1).toISOString(),
+      });
+    }
+    await commitFixture(nextFixture);
     setCardPlayerId('');
     setOpponentCardPlayer('');
   };
@@ -372,6 +388,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Cartellino AC Prato</Text>
+      <Text style={adminStyles.copy}>Il secondo giallo allo stesso giocatore genera automaticamente il rosso.</Text>
       <View style={adminStyles.choices}>{onPitchPlayers.map((player) => <Pressable key={`card-${player.id}`} onPress={() => setCardPlayerId(player.id)} style={[adminStyles.choice, cardPlayerId === player.id && adminStyles.choiceActive]}>
         <Text style={[adminStyles.choiceText, cardPlayerId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{displayPlayerName(player.name)}</Text>
       </Pressable>)}</View>
@@ -383,7 +400,8 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Cartellino avversario</Text>
-      <Field label="Giocatore (facoltativo)" value={opponentCardPlayer} onChangeText={setOpponentCardPlayer} />
+      <Field label="Giocatore" value={opponentCardPlayer} onChangeText={setOpponentCardPlayer} />
+      <Text style={adminStyles.copy}>Inserisci lo stesso nome per riconoscere automaticamente la doppia ammonizione.</Text>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
         <View style={{ flex: 1 }}><Button label="Giallo" icon="card" secondary disabled={!liveActive} onPress={() => void addCard(false, 'yellow_card')} /></View>
         <View style={{ flex: 1 }}><Button label="Rosso" icon="card" danger disabled={!liveActive} onPress={() => void addCard(false, 'red_card')} /></View>

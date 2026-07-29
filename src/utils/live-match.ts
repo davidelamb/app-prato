@@ -85,6 +85,30 @@ export function sortLiveEvents(events: LiveEvent[]): LiveEvent[] {
   });
 }
 
+type CardRecipient = {
+  team: string;
+  playerId?: string;
+  playerName?: string;
+};
+
+function normalizedPlayerName(value: string | undefined): string {
+  return value?.trim().toLocaleLowerCase('it').replace(/\s+/g, ' ') ?? '';
+}
+
+function isCardForRecipient(event: LiveEvent, recipient: CardRecipient): boolean {
+  if (!event.team || !teamNamesEqual(event.team, recipient.team)) return false;
+  if (recipient.playerId) return event.playerId === recipient.playerId;
+  const expectedName = normalizedPlayerName(recipient.playerName);
+  return Boolean(expectedName) && normalizedPlayerName(event.scorer) === expectedName;
+}
+
+export function shouldAddSecondYellowRed(events: LiveEvent[], recipient: CardRecipient): boolean {
+  const matchingCards = events.filter((event) => isCardForRecipient(event, recipient));
+  const hasPreviousYellow = matchingCards.some((event) => event.type === 'yellow_card');
+  const hasRed = matchingCards.some((event) => event.type === 'red_card');
+  return hasPreviousYellow && !hasRed;
+}
+
 function parseScore(value: string | undefined): [number, number] | null {
   const match = value?.match(/^(\d+)\s*[-:]\s*(\d+)$/);
   return match ? [Number(match[1]), Number(match[2])] : null;
