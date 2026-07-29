@@ -48,7 +48,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
           </View>
           <Text style={styles.compactCompetition}>{fixture.competition}</Text>
         </View>
-        <Text style={styles.compactEyebrow}>{isLive ? 'Diretta partita' : isScheduled ? 'Prossima amichevole' : fixture.matchday}</Text>
+        <Text style={styles.compactEyebrow}>{isLive ? 'Diretta partita' : isScheduled ? 'Prossima partita' : fixture.matchday}</Text>
         <View style={styles.compactTeamsRow}><TeamLogo name={fixture.home} size={28} style={{ borderRadius: 7 }} /><Text style={styles.compactScore}>{displayTeamName(fixture.home)} {isScheduled ? 'VS' : `${fixture.homeScore ?? 0}–${fixture.awayScore ?? 0}`} {displayTeamName(fixture.away)}</Text><TeamLogo name={fixture.away} size={28} style={{ borderRadius: 7 }} /></View>
         <Text style={styles.compactMeta}>{phaseLabel(fixture, now)} · {fixture.venue}</Text>
       </View>
@@ -97,7 +97,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
         <View style={styles.timelineHeader}>
           <View style={styles.timelineTitleBlock}>
             <Text style={styles.timelineEyebrow}>DIRETTA</Text>
-            <Text style={styles.timelineTitle}>{isScheduled ? 'Prossima amichevole' : 'Cronaca minuto per minuto'}</Text>
+            <Text style={styles.timelineTitle}>{isScheduled ? 'Eventi della partita' : 'Cronaca minuto per minuto'}</Text>
           </View>
           <Text style={styles.timelineCount}>{events.length} eventi</Text>
         </View>
