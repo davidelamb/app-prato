@@ -22,6 +22,7 @@ import { RosterScreen } from './screens/RosterScreen';
 import { StatsScreen } from './screens/StatsScreen';
 import { loadContent, resetContent, saveContent } from './services/content-store';
 import { clearAdminToken, loadAdminToken, verifyAdminToken } from './services/content-api';
+import { observeNotificationTabs, registerForPushNotifications } from './services/notifications';
 import { colors, radii } from './theme';
 import { AppContent, Fixture, NewsArticle, Player } from './types';
 import { isLiveWindow, kickoffTimestamp } from './utils/fixture-time';
@@ -43,6 +44,7 @@ const MIN_HIT_AREA = 44;
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
 const CONTENT_REFRESH_INTERVAL_MS = 60_000;
+const LIVE_REFRESH_INTERVAL_MS = 15_000;
 const publicTabKeys = new Set<PublicTab>(allTabs.map((item) => item.key));
 
 type TabItem = typeof allTabs[number];
@@ -130,14 +132,21 @@ export default function AppShell() {
     });
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') void refreshContent();
-    }, CONTENT_REFRESH_INTERVAL_MS);
+    }, tab === 'live' ? LIVE_REFRESH_INTERVAL_MS : CONTENT_REFRESH_INTERVAL_MS);
 
     return () => {
       mounted = false;
       clearInterval(interval);
       subscription.remove();
     };
-  }, [refreshRequest]);
+  }, [refreshRequest, tab]);
+  useEffect(() => {
+    if (contentSyncStatus !== 'ready') return;
+    void registerForPushNotifications().catch((error) => {
+      console.warn('Registrazione notifiche non riuscita', error);
+    });
+  }, [contentSyncStatus]);
+  useEffect(() => observeNotificationTabs((nextTab) => setTab(nextTab)), []);
   useEffect(() => {
     let active = true;
     AsyncStorage.getItem(TAB_STORAGE_KEY)
