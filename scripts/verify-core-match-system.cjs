@@ -795,6 +795,68 @@ function main() {
     );
 
     // ══════════════════════════════════════════
+    //  23. Secondo giallo: espulsione automatica.
+    // ══════════════════════════════════════════
+
+    console.log('── 23. Rosso automatico per doppia ammonizione ──');
+
+    const firstYellow = {
+      id: 'yellow-1',
+      type: 'yellow_card',
+      label: 'Cartellino giallo: Mario Rossi',
+      team: 'AC Prato',
+      playerId: 'player-1',
+      scorer: 'Mario Rossi',
+      createdAt: '2026-08-01T16:10:00.000Z',
+    };
+
+    assertEqual(
+      liveMatch.shouldAddSecondYellowRed([firstYellow], { team: 'A.C. Prato', playerId: 'player-1', playerName: 'Mario Rossi' }),
+      true,
+      'il secondo giallo allo stesso giocatore del Prato genera il rosso',
+    );
+    assertEqual(
+      liveMatch.shouldAddSecondYellowRed([firstYellow], { team: 'AC Prato', playerId: 'player-2', playerName: 'Luca Bianchi' }),
+      false,
+      'il primo giallo a un altro giocatore non genera il rosso',
+    );
+    assertEqual(
+      liveMatch.shouldAddSecondYellowRed([firstYellow], { team: 'Antella', playerId: 'player-1', playerName: 'Mario Rossi' }),
+      false,
+      'un cartellino della squadra opposta non viene confuso con quello del Prato',
+    );
+    assertEqual(
+      liveMatch.shouldAddSecondYellowRed([
+        firstYellow,
+        { ...firstYellow, id: 'red-1', type: 'red_card' },
+      ], { team: 'AC Prato', playerId: 'player-1', playerName: 'Mario Rossi' }),
+      false,
+      'non viene generato un altro rosso se il giocatore è già stato espulso',
+    );
+    assertEqual(
+      liveMatch.shouldAddSecondYellowRed([{
+        ...firstYellow,
+        id: 'opponent-yellow',
+        team: 'Antella',
+        playerId: undefined,
+        scorer: '  Paolo   Verdi ',
+      }], { team: 'Antella', playerName: 'paolo verdi' }),
+      true,
+      'il nome dell’avversario viene riconosciuto senza differenze di maiuscole o spazi',
+    );
+    assertEqual(
+      liveMatch.shouldAddSecondYellowRed([{
+        ...firstYellow,
+        id: 'anonymous-yellow',
+        team: 'Antella',
+        playerId: undefined,
+        scorer: undefined,
+      }], { team: 'Antella' }),
+      false,
+      'senza il nome dell’avversario non vengono associate ammonizioni anonime',
+    );
+
+    // ══════════════════════════════════════════
     //  Summary
     // ══════════════════════════════════════════
 
