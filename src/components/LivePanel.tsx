@@ -49,7 +49,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
           <Text style={styles.compactCompetition}>{fixture.competition}</Text>
         </View>
         <Text style={styles.compactEyebrow}>{isLive ? 'Diretta partita' : isScheduled ? 'Prossima amichevole' : fixture.matchday}</Text>
-        <View style={styles.compactTeamsRow}><TeamLogo name={fixture.home} size={28} style={{ borderRadius: 7 }} /><Text style={styles.compactScore}>{fixture.home} {isScheduled ? 'VS' : `${fixture.homeScore ?? 0}–${fixture.awayScore ?? 0}`} {fixture.away}</Text><TeamLogo name={fixture.away} size={28} style={{ borderRadius: 7 }} /></View>
+        <View style={styles.compactTeamsRow}><TeamLogo name={fixture.home} size={28} style={{ borderRadius: 7 }} /><Text style={styles.compactScore}>{displayTeamName(fixture.home)} {isScheduled ? 'VS' : `${fixture.homeScore ?? 0}–${fixture.awayScore ?? 0}`} {displayTeamName(fixture.away)}</Text><TeamLogo name={fixture.away} size={28} style={{ borderRadius: 7 }} /></View>
         <Text style={styles.compactMeta}>{phaseLabel(fixture, now)} · {fixture.venue}</Text>
       </View>
     );
@@ -61,7 +61,9 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
         <View style={styles.scoreHeader}>
           <View>
             <Text style={styles.competition}>{fixture.competition}</Text>
-            <Text style={styles.matchday}>{fixture.matchday}</Text>
+            {fixture.matchday && fixture.matchday !== fixture.competition ? (
+              <Text style={styles.matchday}>{fixture.matchday}</Text>
+            ) : null}
           </View>
           <View style={[styles.phasePill, !isLive && styles.phasePillNeutral]}>
             <View style={[styles.phaseDot, !isLive && styles.phaseDotNeutral]} />
