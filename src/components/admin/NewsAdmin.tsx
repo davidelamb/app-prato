@@ -396,7 +396,10 @@ export function NewsAdmin({
 
 const styles = {
   editorWrap: {
-    height: 190,
+    width: '100%' as const,
+    maxWidth: 720,
+    aspectRatio: 16 / 9,
+    alignSelf: 'center' as const,
     marginTop: 15,
     marginBottom: 10,
     borderRadius: radii.lg,
