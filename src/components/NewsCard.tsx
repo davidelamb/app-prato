@@ -65,15 +65,15 @@ export function NewsCard({
 const styles = StyleSheet.create({
   pressed: { opacity: 0.88 },
   featured: {
-    minHeight: 330,
+    minHeight: 250,
     overflow: 'hidden',
     borderRadius: radii.lg,
     backgroundColor: colors.accentStrong,
     borderWidth: 1,
     borderColor: colors.line,
   },
-  featuredImage: { width: '100%', height: 330 },
-  placeholder: { height: 330, alignItems: 'center', justifyContent: 'center' },
+  featuredImage: { width: '100%', height: 250 },
+  placeholder: { height: 250, alignItems: 'center', justifyContent: 'center' },
   featuredShade: { ...StyleSheet.absoluteFillObject },
   featuredBody: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 20 },
   featuredCategory: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, textTransform: 'uppercase' },
