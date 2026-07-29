@@ -58,6 +58,7 @@ function main() {
       'src/utils/live-match.ts',
       'src/utils/fixture-time.ts',
       'src/utils/live-fixture-selection.ts',
+      'src/utils/lineup-roster.ts',
       'src/utils/match-sync.ts',
       'src/utils/match-merge.ts',
       'src/utils/content-merge.ts',
@@ -82,6 +83,7 @@ function main() {
     const standings = require(path.join(tmpDir, 'utils', 'standings.js'));
     const liveMatch = require(path.join(tmpDir, 'utils', 'live-match.js'));
     const liveFixtureSelection = require(path.join(tmpDir, 'utils', 'live-fixture-selection.js'));
+    const lineupRoster = require(path.join(tmpDir, 'utils', 'lineup-roster.js'));
     const matchSync = require(path.join(tmpDir, 'utils', 'match-sync.js'));
     const matchMerge = require(path.join(tmpDir, 'utils', 'match-merge.js'));
     const contentMerge = require(path.join(tmpDir, 'utils', 'content-merge.js'));
@@ -723,6 +725,44 @@ function main() {
       liveFixtureSelection.selectPublicLiveFixture([{ ...completedFixture, isDemo: true }, nextFixture], beforeReveal)?.id,
       'next',
       'le partite demo non entrano nella selezione pubblica',
+    );
+
+    // ══════════════════════════════════════════
+    //  21. Formazioni admin sincronizzate con la rosa corrente.
+    // ══════════════════════════════════════════
+
+    console.log('── 21. Formazione riconciliata con la rosa ──');
+
+    const savedLineupWithOldPlayers = {
+      starters: [
+        { playerId: 'player-1', starter: true },
+        { playerId: 'removed-player', starter: true },
+        { playerId: 'player-1', starter: true },
+      ],
+      substitutes: [
+        { playerId: 'player-2', starter: false },
+        { playerId: 'player-1', starter: false },
+        { playerId: 'removed-player', starter: false },
+      ],
+    };
+    const currentRosterSelection = lineupRoster.lineupSelectionForRoster(
+      savedLineupWithOldPlayers,
+      ['player-1', 'player-2', 'new-player'],
+    );
+
+    assertEqual(
+      currentRosterSelection.starters.join(','),
+      'player-1',
+      'i titolari rimossi o duplicati vengono esclusi',
+    );
+    assertEqual(
+      currentRosterSelection.substitutes.join(','),
+      'player-2',
+      'la panchina contiene solo giocatori attuali non gia titolari',
+    );
+    assertOk(
+      !currentRosterSelection.starters.includes('new-player') && !currentRosterSelection.substitutes.includes('new-player'),
+      'un nuovo giocatore appare disponibile ma non viene selezionato automaticamente',
     );
 
     // ══════════════════════════════════════════

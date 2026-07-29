@@ -7,6 +7,7 @@ import { displayPlayerName } from '../../utils/player-name';
 import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup } from '../../types';
 import { kickoffInput, kickoffIso, kickoffTimestamp } from '../../utils/fixture-time';
 import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, removeGoal, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
+import { lineupSelectionForRoster } from '../../utils/lineup-roster';
 import { synchronizeFixture } from '../../utils/match-sync';
 import { isPratoTeam } from '../../utils/team-names';
 import { Button, Field, adminStyles } from './Primitives';
@@ -57,11 +58,12 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     if (!fixture) return;
     const input = kickoffInput(fixture);
     const lineup = lineupForPrato(fixture);
+    const currentSelection = lineupSelectionForRoster(lineup, players.map((player) => player.id));
     setOfficialDate(input.date);
     setOfficialTime(input.time);
     setFormation(lineup?.formation ?? '4-3-3');
-    setStarters(lineup?.starters.map((item) => item.playerId) ?? []);
-    setSubstitutes(lineup?.substitutes.map((item) => item.playerId) ?? []);
+    setStarters(currentSelection.starters);
+    setSubstitutes(currentSelection.substitutes);
     setScorerId('');
     setOpponentScorer('');
     setSubOutId('');
@@ -70,7 +72,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     setOpponentCardPlayer('');
     setEditEventsMode(false);
     setMinuteDrafts({});
-  }, [fixture?.id, fixture?.kickoffAt, fixture?.dateLabel, fixture?.time, fixture?.homeLineup, fixture?.awayLineup]);
+  }, [fixture?.id, fixture?.kickoffAt, fixture?.dateLabel, fixture?.time, fixture?.homeLineup, fixture?.awayLineup, players]);
 
   useEffect(() => {
     if (fixture?.livePhase !== 'first_half' && fixture?.livePhase !== 'second_half') return;
@@ -124,11 +126,15 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
   };
 
   const saveLineup = async () => {
-    if (starters.length !== 11) return Alert.alert('Formazione incompleta', `Seleziona esattamente 11 titolari. Attualmente: ${starters.length}/11.`);
+    const currentSelection = lineupSelectionForRoster({
+      starters: starters.map((playerId) => ({ playerId, starter: true })),
+      substitutes: substitutes.map((playerId) => ({ playerId, starter: false })),
+    }, players.map((player) => player.id));
+    if (currentSelection.starters.length !== 11) return Alert.alert('Formazione incompleta', `Seleziona esattamente 11 titolari della rosa attuale. Attualmente: ${currentSelection.starters.length}/11.`);
     const lineup: MatchLineup = {
       formation: formation.trim() || undefined,
-      starters: starters.map((playerId, positionOrder) => ({ playerId, starter: true, positionOrder })),
-      substitutes: substitutes.filter((playerId) => !starters.includes(playerId)).map((playerId, positionOrder) => ({ playerId, starter: false, positionOrder })),
+      starters: currentSelection.starters.map((playerId, positionOrder) => ({ playerId, starter: true, positionOrder })),
+      substitutes: currentSelection.substitutes.map((playerId, positionOrder) => ({ playerId, starter: false, positionOrder })),
       confirmedAt: new Date().toISOString(),
     };
     const nextFixture = isPratoTeam(fixture.home)
@@ -325,7 +331,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Formazione ufficiale AC Prato</Text>
-      <Text style={adminStyles.copy}>Seleziona 11 titolari e le riserve. Un giocatore non può essere in entrambi gli elenchi.</Text>
+      <Text style={adminStyles.copy}>Rosa attuale: {players.length} giocatori. Seleziona 11 titolari e le riserve.</Text>
       <Field label="Modulo" value={formation} onChangeText={setFormation} placeholder="4-3-3" />
       <Text style={[adminStyles.listTitle, { marginTop: 14 }]}>Titolari {starters.length}/11</Text>
       <View style={adminStyles.choices}>{players.map((player) => <Pressable key={`starter-${player.id}`} onPress={() => toggleStarter(player.id)} style={[adminStyles.choice, starters.includes(player.id) && adminStyles.choiceActive]}>
