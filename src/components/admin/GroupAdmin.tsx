@@ -7,7 +7,7 @@ import { AppContent, FixtureStatus, SeasonMatch } from '../../types';
 import { synchronizeGroupMatches } from '../../utils/match-sync';
 import { calculateStandingSets } from '../../utils/standings';
 import { canonicalTeamName, normalizeTeamName } from '../../utils/team-names';
-import { Button, Field, adminStyles } from './Primitives';
+import { Button, Field, adminStyles, confirmAdminAction } from './Primitives';
 
 const isPrato = (name: string) => /\bprato\b/i.test(name);
 
@@ -168,10 +168,9 @@ export function GroupAdmin({ content, onChange }: { content: AppContent; onChang
   const clearResult = (id: string) => updateMatch(id, { homeScore: undefined, awayScore: undefined, status: 'scheduled' });
 
   const removeMatch = (id: string) => {
-    Alert.alert('Eliminare la partita?', 'La partita verrà rimossa dal girone al prossimo salvataggio.', [
-      { text: 'Annulla', style: 'cancel' },
-      { text: 'Elimina', style: 'destructive', onPress: () => setMatches((current) => current.filter((match) => match.id !== id)) },
-    ]);
+    confirmAdminAction('Eliminare la partita?', 'La partita verrà rimossa dal girone al prossimo salvataggio.', () => {
+      setMatches((current) => current.filter((match) => match.id !== id));
+    });
   };
 
   const validateAndFinalize = (list: SeasonMatch[]): SeasonMatch[] | null => {

@@ -4,7 +4,7 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { colors } from '../../theme';
 import { AppContent, MatchCompetition, SeasonMatch } from '../../types';
 import { synchronizeSchedule } from '../../utils/match-sync';
-import { Button, Field, adminStyles } from './Primitives';
+import { Button, Field, adminStyles, confirmAdminAction } from './Primitives';
 
 const competitions: MatchCompetition[] = ['Campionato', 'Coppa Italia', 'Amichevole'];
 const number = (value: string | number | undefined) => Number(value) || 0;
@@ -243,7 +243,7 @@ export function CalendarAdmin({ content, onChange }: { content: AppContent; onCh
           <View style={adminStyles.row}><Field label="Casa" value={match.home} onChangeText={(v) => updateMatch(match.id, { home: v })} /><Field label="Trasferta" value={match.away} onChangeText={(v) => updateMatch(match.id, { away: v })} /><Field label="Stadio" value={match.venue ?? ''} onChangeText={(v) => updateMatch(match.id, { venue: v })} /></View>
           <View style={adminStyles.row}><Field label="Gol casa" value={match.homeScore === undefined ? '' : String(match.homeScore)} onChangeText={(v) => setMatchScore(match.id, 'homeScore', v)} keyboardType="numeric" /><Field label="Gol ospite" value={match.awayScore === undefined ? '' : String(match.awayScore)} onChangeText={(v) => setMatchScore(match.id, 'awayScore', v)} keyboardType="numeric" /></View>
         </View>
-        <Pressable onPress={() => setSchedule((c) => c.filter((item) => item.id !== match.id))}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable>
+        <Pressable accessibilityLabel={`Elimina ${match.home} - ${match.away}`} onPress={() => confirmAdminAction('Eliminare la partita?', `${match.home} - ${match.away}. La rimozione diventerà definitiva quando salvi il calendario.`, () => setSchedule((current) => current.filter((item) => item.id !== match.id)))}><MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.live} /></Pressable>
       </View>)}</View>
       <Button label={saving ? 'Salvataggio...' : 'Salva calendario'} icon="content-save-outline" disabled={saving} onPress={() => void saveSchedule()} />
     </View>

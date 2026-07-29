@@ -34,7 +34,6 @@ export function AdminDashboard({ content, onChange, onReset, onClose, onLogout, 
         style: 'destructive',
         onPress: () => {
           void onReset()
-            .then(() => Alert.alert('Contenuti ripristinati', 'Il contenuto iniziale è stato salvato nel cloud.'))
             .catch((error) => {
               console.warn('Ripristino contenuti non riuscito', error);
               Alert.alert('Ripristino non riuscito', 'I contenuti condivisi non sono stati modificati.');

@@ -25,6 +25,7 @@ import { clearAdminToken, loadAdminToken, verifyAdminToken } from './services/co
 import { observeNotificationTabs, registerForPushNotifications } from './services/notifications';
 import { colors, radii } from './theme';
 import { AppContent, Fixture, NewsArticle, Player } from './types';
+import { adminSuccessMessage } from './utils/admin-feedback';
 import { isLiveWindow } from './utils/fixture-time';
 import { selectPublicLiveFixture } from './utils/live-fixture-selection';
 
@@ -97,6 +98,8 @@ export default function AppShell() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [adminStatus, setAdminStatus] = useState<AdminStatus>('locked');
   const [contentSyncStatus, setContentSyncStatus] = useState<ContentSyncStatus>('loading');
+  const [adminFeedback, setAdminFeedback] = useState('');
+  const adminFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [refreshRequest, setRefreshRequest] = useState(0);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -148,6 +151,9 @@ export default function AppShell() {
     });
   }, [contentSyncStatus]);
   useEffect(() => observeNotificationTabs((nextTab) => setTab(nextTab)), []);
+  useEffect(() => () => {
+    if (adminFeedbackTimer.current) clearTimeout(adminFeedbackTimer.current);
+  }, []);
   useEffect(() => {
     let active = true;
     AsyncStorage.getItem(TAB_STORAGE_KEY)
@@ -160,9 +166,23 @@ export default function AppShell() {
   useEffect(() => {
     if (tabReady && tab !== 'admin') void AsyncStorage.setItem(TAB_STORAGE_KEY, tab);
   }, [tab, tabReady]);
+  const showAdminFeedback = (message: string) => {
+    if (adminFeedbackTimer.current) clearTimeout(adminFeedbackTimer.current);
+    setAdminFeedback(message);
+    adminFeedbackTimer.current = setTimeout(() => {
+      setAdminFeedback('');
+      adminFeedbackTimer.current = null;
+    }, 3200);
+  };
   const commit = async (next: AppContent) => {
+    const feedbackMessage = adminSuccessMessage(content, next);
     const stamped = { ...next, updatedAt: stamp() };
     setContent(await saveContent(stamped));
+    showAdminFeedback(feedbackMessage);
+  };
+  const resetAdminContent = async () => {
+    setContent(await resetContent());
+    showAdminFeedback('Contenuti ripristinati e salvati nel cloud.');
   };
   const toggleAdmin = async () => {
     if (tab === 'admin') {
@@ -227,11 +247,15 @@ export default function AppShell() {
         {tab === 'stats' ? <StatsScreen content={content} wide={wide} /> : null}
         {tab === 'club' ? <RosterScreen content={content} wide={wide} onPlayer={setSelectedPlayer} /> : null}
         {tab === 'admin' && adminStatus !== 'ready' ? <AdminLogin checking={adminStatus === 'checking'} onAuthenticated={() => setAdminStatus('ready')} /> : null}
-        {tab === 'admin' && adminStatus === 'ready' ? <AdminDashboard content={content} onChange={commit} onReset={async () => setContent(await resetContent())} onClose={() => setTab('news')} onLogout={() => void logoutAdmin()} onScrollToTop={() => scrollRef.current?.scrollTo({ y: 0, animated: true })} /> : null}
+        {tab === 'admin' && adminStatus === 'ready' ? <AdminDashboard content={content} onChange={commit} onReset={resetAdminContent} onClose={() => setTab('news')} onLogout={() => void logoutAdmin()} onScrollToTop={() => scrollRef.current?.scrollTo({ y: 0, animated: true })} /> : null}
       </View>
     </ScrollView>
 
     {tab !== 'admin' ? <View style={[styles.nav, { paddingBottom: safeBottom }]}><View style={styles.navInner}>{tabs.map((item) => <NavTabItem key={item.key} item={item} active={publicTab === item.key} onPress={() => setTab(item.key)} />)}</View></View> : null}
+    {tab === 'admin' && adminFeedback ? <View accessibilityRole="alert" accessibilityLiveRegion="polite" pointerEvents="none" style={[styles.adminFeedback, { top: safeTop + 58 }]}>
+      <MaterialCommunityIcons name="check-circle" size={22} color={colors.paper} />
+      <Text style={styles.adminFeedbackText}>{adminFeedback}</Text>
+    </View> : null}
     <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     <ArticleModal article={selectedNews} onClose={() => setSelectedNews(null)} />
   </View>;
@@ -251,6 +275,8 @@ function PageHeader({ eyebrow, title, copy }: { eyebrow: string; title: string; 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.canvasRaised },
   adminButton: { position: 'absolute', zIndex: 20, right: 12, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.lineSoft },
+  adminFeedback: { position: 'absolute', zIndex: 30, left: 16, right: 16, maxWidth: 560, alignSelf: 'center', minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radii.md, backgroundColor: colors.success, shadowColor: '#000000', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 8 },
+  adminFeedbackText: { flexShrink: 1, color: colors.paper, fontSize: 13, lineHeight: 18, fontWeight: '900', textAlign: 'center' },
   onlineDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.success },
   scroll: { flex: 1 },
     scrollContent: {},
