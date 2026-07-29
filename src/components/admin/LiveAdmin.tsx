@@ -25,8 +25,13 @@ function lineupForPrato(fixture: Fixture): MatchLineup | undefined {
 }
 
 export function LiveAdmin({ content, onChange }: { content: AppContent; onChange: (next: AppContent) => Promise<void> }) {
-  const availableFixtures = useMemo(() => [...content.fixtures]
+  const activeFixtures = useMemo(() => content.fixtures
+    .filter((fixture) => fixture.status !== 'final')
     .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER)), [content.fixtures]);
+  const archivedFixtures = useMemo(() => content.fixtures
+    .filter((fixture) => fixture.status === 'final')
+    .sort((a, b) => (kickoffTimestamp(b) ?? Number.MIN_SAFE_INTEGER) - (kickoffTimestamp(a) ?? Number.MIN_SAFE_INTEGER)), [content.fixtures]);
+  const availableFixtures = useMemo(() => [...activeFixtures, ...archivedFixtures], [activeFixtures, archivedFixtures]);
   const [selectedId, setSelectedId] = useState(availableFixtures[0]?.id ?? '');
   const fixture = content.fixtures.find((item) => item.id === selectedId) ?? availableFixtures[0];
   const [officialDate, setOfficialDate] = useState('');
@@ -282,11 +287,20 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
 
   return <View style={{ gap: 14 }}>
     <View style={adminStyles.panel}>
-      <Text style={adminStyles.title}>Partita da gestire</Text>
-      <View style={adminStyles.choices}>{availableFixtures.map((item) => <Pressable key={item.id} onPress={() => setSelectedId(item.id)} style={[adminStyles.choice, item.id === fixture.id && adminStyles.choiceActive]}>
+      <Text style={adminStyles.title}>Partite da gestire</Text>
+      {activeFixtures.length === 0 ? <Text style={adminStyles.copy}>Non ci sono partite attive o in programma.</Text> : null}
+      <View style={adminStyles.choices}>{activeFixtures.map((item) => <Pressable key={item.id} onPress={() => setSelectedId(item.id)} style={[adminStyles.choice, item.id === fixture.id && adminStyles.choiceActive]}>
         <Text style={[adminStyles.choiceText, item.id === fixture.id && adminStyles.choiceTextActive]}>{item.home} – {item.away}</Text>
       </Pressable>)}</View>
     </View>
+
+    {archivedFixtures.length > 0 ? <View style={adminStyles.panel}>
+      <Text style={adminStyles.title}>Archivio partite concluse</Text>
+      <Text style={adminStyles.copy}>Le partite restano consultabili e modificabili per eventuali correzioni.</Text>
+      <View style={adminStyles.choices}>{archivedFixtures.map((item) => <Pressable key={item.id} onPress={() => setSelectedId(item.id)} style={[adminStyles.choice, item.id === fixture.id && adminStyles.choiceActive]}>
+        <Text style={[adminStyles.choiceText, item.id === fixture.id && adminStyles.choiceTextActive]}>{item.home} – {item.away}</Text>
+      </Pressable>)}</View>
+    </View> : null}
 
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Inizio ufficiale</Text>

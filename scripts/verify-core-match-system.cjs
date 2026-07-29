@@ -56,6 +56,8 @@ function main() {
       'src/utils/team-names.ts',
       'src/utils/standings.ts',
       'src/utils/live-match.ts',
+      'src/utils/fixture-time.ts',
+      'src/utils/live-fixture-selection.ts',
       'src/utils/match-sync.ts',
       'src/utils/match-merge.ts',
       'src/utils/content-merge.ts',
@@ -79,6 +81,7 @@ function main() {
     const teamNames = require(path.join(tmpDir, 'utils', 'team-names.js'));
     const standings = require(path.join(tmpDir, 'utils', 'standings.js'));
     const liveMatch = require(path.join(tmpDir, 'utils', 'live-match.js'));
+    const liveFixtureSelection = require(path.join(tmpDir, 'utils', 'live-fixture-selection.js'));
     const matchSync = require(path.join(tmpDir, 'utils', 'match-sync.js'));
     const matchMerge = require(path.join(tmpDir, 'utils', 'match-merge.js'));
     const contentMerge = require(path.join(tmpDir, 'utils', 'content-merge.js'));
@@ -674,6 +677,53 @@ function main() {
     const manualFinalMatch = { id: 'md-2', competition: 'Amichevole', home: 'AC Prato', away: 'Altra Squadra', dateLabel: '02/08/2026', time: '18:00', homeScore: 2, awayScore: 2, status: 'final', sortOrder: 1 };
     const reconciledManual = matchSync.reconcileTabellino([manualFinalMatch], [finishedFixtureWithTabellino]);
     assertOk(!reconciledManual[0].liveEvents, 'nessun tabellino inventato per una partita mai tracciata in Live');
+
+    // ══════════════════════════════════════════
+    //  20. Permanenza della partita conclusa nel Live pubblico.
+    //      L'ultima gara resta visibile fino a 48 ore prima della
+    //      successiva, poi viene sostituita dalla prossima partita.
+    // ══════════════════════════════════════════
+
+    console.log('── 20. Selezione Live tra ultima gara e prossima ──');
+
+    const completedFixture = {
+      id: 'completed', competition: 'Amichevole', matchday: 'Amichevole', dateLabel: '01/08/2026', time: '18:00',
+      home: 'AC Prato', away: 'San Donato Tavarnelle', status: 'final',
+    };
+    const nextFixture = {
+      id: 'next', competition: 'Amichevole', matchday: 'Amichevole', dateLabel: '10/08/2026', time: '18:00',
+      home: 'AC Prato', away: 'Antella', status: 'scheduled',
+    };
+    const beforeReveal = Date.parse('2026-08-08T15:59:00.000Z');
+    const atReveal = Date.parse('2026-08-08T16:00:00.000Z');
+
+    assertEqual(
+      liveFixtureSelection.selectPublicLiveFixture([completedFixture, nextFixture], beforeReveal)?.id,
+      'completed',
+      'fino a un minuto prima della soglia resta visibile la partita conclusa',
+    );
+    assertEqual(
+      liveFixtureSelection.selectPublicLiveFixture([completedFixture, nextFixture], atReveal)?.id,
+      'next',
+      'esattamente 48 ore prima viene mostrata la prossima partita',
+    );
+    assertEqual(
+      liveFixtureSelection.selectPublicLiveFixture([completedFixture], atReveal)?.id,
+      'completed',
+      'senza una prossima partita resta visibile l’ultima conclusa',
+    );
+
+    const activeFixture = { ...nextFixture, id: 'live-now', status: 'live' };
+    assertEqual(
+      liveFixtureSelection.selectPublicLiveFixture([completedFixture, nextFixture, activeFixture], beforeReveal)?.id,
+      'live-now',
+      'una partita dichiarata live ha sempre la precedenza',
+    );
+    assertEqual(
+      liveFixtureSelection.selectPublicLiveFixture([{ ...completedFixture, isDemo: true }, nextFixture], beforeReveal)?.id,
+      'next',
+      'le partite demo non entrano nella selezione pubblica',
+    );
 
     // ══════════════════════════════════════════
     //  Summary
