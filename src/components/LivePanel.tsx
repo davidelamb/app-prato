@@ -93,7 +93,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
         {fixture.awayLineup ? <LineupBlock team={fixture.away} lineup={fixture.awayLineup} players={players} /> : null}
       </View> : null}
 
-      <View style={styles.timelineCard}>
+      {!isScheduled ? <View style={styles.timelineCard}>
         <View style={styles.timelineHeader}>
           <View style={styles.timelineTitleBlock}>
             <Text style={styles.timelineEyebrow}>DIRETTA</Text>
@@ -121,7 +121,7 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
             <Text style={styles.emptyCopy}>{isScheduled ? 'La diretta e gli eventi saranno disponibili il giorno della partita.' : 'Gli eventi compariranno qui durante la partita.'}</Text>
           </View>
         )}
-      </View>
+      </View> : null}
     </View>
   );
 }
