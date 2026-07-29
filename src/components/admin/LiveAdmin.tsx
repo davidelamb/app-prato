@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../theme';
+import { displayPlayerName } from '../../utils/player-name';
 import { AppContent, Fixture, LiveEvent, LivePhase, MatchLineup } from '../../types';
 import { kickoffInput, kickoffIso, kickoffTimestamp } from '../../utils/fixture-time';
 import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent, removeGoal, sortLiveEvents, updateEventMinute } from '../../utils/live-match';
@@ -161,7 +162,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     const timing = currentEventTiming(fixture, Date.parse(createdAt));
     const homeScore = (fixture.homeScore ?? 0) + (team === fixture.home ? 1 : 0);
     const awayScore = (fixture.awayScore ?? 0) + (team === fixture.away ? 1 : 0);
-    const scorer = pratoGoal ? player?.name : opponentScorer.trim() || undefined;
+    const scorer = pratoGoal && player ? displayPlayerName(player.name) : opponentScorer.trim() || undefined;
     const event: LiveEvent = {
       id: eventId(),
       type: 'goal',
@@ -216,7 +217,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     const event: LiveEvent = {
       id: eventId(),
       type: 'substitution',
-      label: `Cambio: esce ${playerOut.name}, entra ${playerIn.name}`,
+      label: `Cambio: esce ${displayPlayerName(playerOut.name)}, entra ${displayPlayerName(playerIn.name)}`,
       ...timing,
       team: pratoTeam,
       playerOutId: playerOut.id,
@@ -238,7 +239,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     const createdAt = new Date().toISOString();
     const timing = currentEventTiming(fixture, Date.parse(createdAt));
     const cardLabel = cardType === 'yellow_card' ? 'Cartellino giallo' : 'Cartellino rosso';
-    const name = pratoSide ? player?.name : opponentCardPlayer.trim() || undefined;
+    const name = pratoSide && player ? displayPlayerName(player.name) : opponentCardPlayer.trim() || undefined;
     const event: LiveEvent = {
       id: eventId(),
       type: cardType,
@@ -314,11 +315,11 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
       <Field label="Modulo" value={formation} onChangeText={setFormation} placeholder="4-3-3" />
       <Text style={[adminStyles.listTitle, { marginTop: 14 }]}>Titolari {starters.length}/11</Text>
       <View style={adminStyles.choices}>{players.map((player) => <Pressable key={`starter-${player.id}`} onPress={() => toggleStarter(player.id)} style={[adminStyles.choice, starters.includes(player.id) && adminStyles.choiceActive]}>
-        <Text style={[adminStyles.choiceText, starters.includes(player.id) && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+        <Text style={[adminStyles.choiceText, starters.includes(player.id) && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{displayPlayerName(player.name)}</Text>
       </Pressable>)}</View>
       <Text style={[adminStyles.listTitle, { marginTop: 8 }]}>Panchina ({substitutes.length})</Text>
       <View style={adminStyles.choices}>{players.filter((player) => !starters.includes(player.id)).map((player) => <Pressable key={`sub-${player.id}`} onPress={() => toggleSubstitute(player.id)} style={[adminStyles.choice, substitutes.includes(player.id) && adminStyles.choiceActive]}>
-        <Text style={[adminStyles.choiceText, substitutes.includes(player.id) && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+        <Text style={[adminStyles.choiceText, substitutes.includes(player.id) && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{displayPlayerName(player.name)}</Text>
       </Pressable>)}</View>
       <Button label="Salva formazione" icon="account-check-outline" disabled={starters.length !== 11} onPress={() => void saveLineup()} />
     </View>
@@ -327,7 +328,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
       <Text style={adminStyles.title}>Registra gol AC Prato</Text>
       <Text style={adminStyles.copy}>Il minuto viene preso automaticamente dal timer. Il marcatore può essere scelto solo dalla formazione salvata.</Text>
       <View style={adminStyles.choices}>{eligibleScorers.map((player) => <Pressable key={player.id} onPress={() => setScorerId(player.id)} style={[adminStyles.choice, scorerId === player.id && adminStyles.choiceActive]}>
-        <Text style={[adminStyles.choiceText, scorerId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+        <Text style={[adminStyles.choiceText, scorerId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{displayPlayerName(player.name)}</Text>
       </Pressable>)}</View>
       {!eligibleScorers.length ? <Text style={adminStyles.copy}>Salva prima la formazione ufficiale.</Text> : null}
       <Button label="Gol Prato" icon="soccer" disabled={!liveActive || !scorerId} onPress={() => void addGoal(true)} />
@@ -344,11 +345,11 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
       <Text style={adminStyles.copy}>Il minuto viene preso automaticamente dal timer. Puoi scegliere solo fra chi è attualmente in campo e chi è in panchina e non è ancora entrato.</Text>
       <Text style={[adminStyles.listTitle, { marginTop: 8 }]}>Esce</Text>
       <View style={adminStyles.choices}>{onPitchPlayers.map((player) => <Pressable key={`out-${player.id}`} onPress={() => setSubOutId(player.id)} style={[adminStyles.choice, subOutId === player.id && adminStyles.choiceActive]}>
-        <Text style={[adminStyles.choiceText, subOutId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+        <Text style={[adminStyles.choiceText, subOutId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{displayPlayerName(player.name)}</Text>
       </Pressable>)}</View>
       <Text style={[adminStyles.listTitle, { marginTop: 8 }]}>Entra</Text>
       <View style={adminStyles.choices}>{benchAvailable.map((player) => <Pressable key={`in-${player.id}`} onPress={() => setSubInId(player.id)} style={[adminStyles.choice, subInId === player.id && adminStyles.choiceActive]}>
-        <Text style={[adminStyles.choiceText, subInId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+        <Text style={[adminStyles.choiceText, subInId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{displayPlayerName(player.name)}</Text>
       </Pressable>)}</View>
       {!benchAvailable.length ? <Text style={adminStyles.copy}>Nessuna riserva disponibile: salva prima la formazione ufficiale.</Text> : null}
       <Button label="Registra cambio" icon="swap-horizontal" disabled={!liveActive || !subOutId || !subInId} onPress={() => void addSubstitution()} />
@@ -357,7 +358,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
     <View style={adminStyles.panel}>
       <Text style={adminStyles.title}>Cartellino AC Prato</Text>
       <View style={adminStyles.choices}>{onPitchPlayers.map((player) => <Pressable key={`card-${player.id}`} onPress={() => setCardPlayerId(player.id)} style={[adminStyles.choice, cardPlayerId === player.id && adminStyles.choiceActive]}>
-        <Text style={[adminStyles.choiceText, cardPlayerId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{player.name}</Text>
+        <Text style={[adminStyles.choiceText, cardPlayerId === player.id && adminStyles.choiceTextActive]}>{player.number ? `${player.number} · ` : ''}{displayPlayerName(player.name)}</Text>
       </Pressable>)}</View>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
         <View style={{ flex: 1 }}><Button label="Giallo" icon="card" disabled={!liveActive || !cardPlayerId} onPress={() => void addCard(true, 'yellow_card')} /></View>

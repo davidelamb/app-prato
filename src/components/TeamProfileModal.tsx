@@ -4,10 +4,11 @@ import { Image, Linking, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet,
 import { colors, radii } from '../theme';
 import { Team } from '../types';
 import { flagFor, nationalityList } from '../utils/nationality';
+import { displayPlayerName } from '../utils/player-name';
 import { TeamLogo } from './TeamLogo';
 
 export function TeamProfileModal({ team, onClose }: { team: Team | null; onClose: () => void }) {
-  const players = [...(team?.players ?? [])].sort((a, b) => (a.number ?? Number.MAX_SAFE_INTEGER) - (b.number ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, 'it'));
+  const players = [...(team?.players ?? [])].sort((a, b) => (a.number ?? Number.MAX_SAFE_INTEGER) - (b.number ?? Number.MAX_SAFE_INTEGER) || displayPlayerName(a.name).localeCompare(displayPlayerName(b.name), 'it'));
   return <Modal visible={!!team} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
     <SafeAreaView style={styles.safe}>{team ? <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.top}>
@@ -28,7 +29,7 @@ export function TeamProfileModal({ team, onClose }: { team: Team | null; onClose
             {player.imageUrl ? <Image source={{ uri: player.imageUrl }} style={styles.avatarImage} resizeMode="cover" /> : <MaterialCommunityIcons name="account-outline" size={22} color={colors.muted} />}
           </View>
           <Text style={styles.number}>{player.number ?? '—'}</Text>
-          <View style={styles.playerBody}><Text style={styles.playerName}>{player.name}</Text><Text style={styles.playerMeta}>{player.role}</Text></View>
+          <View style={styles.playerBody}><Text style={styles.playerName}>{displayPlayerName(player.name)}</Text><Text style={styles.playerMeta}>{player.role}</Text></View>
           {nations.length ? (
             <View style={styles.nationBadge}>
               {nations.map((nation) => (

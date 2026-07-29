@@ -4,6 +4,7 @@ import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } fr
 import { colors, radii } from '../theme';
 import { LiveEvent, MatchLineup, Player, SeasonMatch } from '../types';
 import { sortLiveEvents } from '../utils/live-match';
+import { displayPlayerName } from '../utils/player-name';
 import { displayTeamName } from '../utils/team-names';
 import { TeamLogo } from './TeamLogo';
 
@@ -30,7 +31,10 @@ const statusLabel = (status: SeasonMatch['status']) => {
 export function MatchDetailModal({ match, players, onClose }: { match: SeasonMatch | null; players?: Player[]; onClose: () => void }) {
   const hasResult = match?.homeScore != null && match?.awayScore != null;
   const events = match?.liveEvents?.length ? sortLiveEvents(match.liveEvents) : [];
-  const playerName = (playerId: string) => players?.find((p) => p.id === playerId)?.name ?? playerId;
+  const playerName = (playerId: string) => {
+    const player = players?.find((item) => item.id === playerId);
+    return player ? displayPlayerName(player.name) : playerId;
+  };
   const lineupBlock = (label: string, lineup?: MatchLineup) => {
     if (!lineup || (!lineup.starters.length && !lineup.substitutes.length)) return null;
     return (
