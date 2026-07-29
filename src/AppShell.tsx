@@ -29,6 +29,7 @@ import { isLiveWindow, kickoffTimestamp } from './utils/fixture-time';
 export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
 type AdminStatus = 'checking' | 'locked' | 'ready';
+type ContentSyncStatus = 'loading' | 'ready' | 'error';
 const clubIcon = require('../assets/club-tab-icon-44.png');
 const allTabs: Array<{ key: PublicTab; label: string; image?: ReturnType<typeof require> }> = [
   { key: 'news', label: 'News' },
@@ -92,6 +93,8 @@ export default function AppShell() {
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [adminStatus, setAdminStatus] = useState<AdminStatus>('locked');
+  const [contentSyncStatus, setContentSyncStatus] = useState<ContentSyncStatus>('loading');
+  const [refreshRequest, setRefreshRequest] = useState(0);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   // Alcuni Android edge-to-edge restituiscono inset inferiori nulli: mantieni
@@ -109,9 +112,13 @@ export default function AppShell() {
       refreshing = true;
       try {
         const next = await loadContent();
-        if (mounted) setContent(next);
+        if (mounted) {
+          setContent(next);
+          setContentSyncStatus('ready');
+        }
       } catch (error) {
         console.warn('Sincronizzazione contenuti non riuscita', error);
+        if (mounted) setContentSyncStatus('error');
       } finally {
         refreshing = false;
       }
@@ -130,7 +137,7 @@ export default function AppShell() {
       clearInterval(interval);
       subscription.remove();
     };
-  }, []);
+  }, [refreshRequest]);
   useEffect(() => {
     let active = true;
     AsyncStorage.getItem(TAB_STORAGE_KEY)
@@ -212,6 +219,7 @@ export default function AppShell() {
 
     <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: (wide ? 48 : 58) + safeBottom }, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
       <View style={[styles.container, wide && styles.containerWide]}>
+        {contentSyncStatus !== 'ready' ? <ContentSyncBanner status={contentSyncStatus} onRetry={() => setRefreshRequest((value) => value + 1)} /> : null}
         {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
         {tab === 'media' ? <MediaScreen content={content} wide={wide} /> : null}
         {tab === 'live' && liveFixture ? <View style={styles.stack}><PageHeader eyebrow="MATCH CENTER" title="Diretta partita" copy="Risultato, cronaca e aggiornamenti minuto per minuto." /><LivePanel fixture={liveFixture} players={content.players} /></View> : null}
@@ -226,6 +234,13 @@ export default function AppShell() {
     <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     <ArticleModal article={selectedNews} onClose={() => setSelectedNews(null)} />
   </View>;
+}
+
+function ContentSyncBanner({ status, onRetry }: { status: ContentSyncStatus; onRetry: () => void }) {
+  if (status === 'loading') {
+    return <View style={[styles.syncBanner, styles.syncLoading]}><MaterialCommunityIcons name="cloud-sync-outline" size={18} color={colors.accentStrong} /><Text style={styles.syncText}>Aggiorniamo i contenuti...</Text></View>;
+  }
+  return <View style={[styles.syncBanner, styles.syncError]}><MaterialCommunityIcons name="cloud-alert-outline" size={18} color={colors.live} /><Text style={[styles.syncText, styles.syncErrorText]}>Ultimi contenuti non disponibili</Text><Pressable onPress={onRetry} style={styles.syncRetry}><Text style={styles.syncRetryText}>Riprova</Text></Pressable></View>;
 }
 
 function PageHeader({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) {
@@ -243,6 +258,13 @@ const styles = StyleSheet.create({
   container: { width: '100%', padding: 16 },
   containerWide: { maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 32 },
   stack: { gap: 20 },
+  syncBanner: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: radii.sm, borderWidth: 1 },
+  syncLoading: { backgroundColor: colors.surfaceRaised, borderColor: colors.line },
+  syncError: { backgroundColor: colors.liveSoft, borderColor: '#F4B8B8' },
+  syncText: { flex: 1, color: colors.accentStrong, fontSize: 12, fontWeight: '800' },
+  syncErrorText: { color: colors.ink },
+  syncRetry: { minHeight: 30, justifyContent: 'center', paddingHorizontal: 10, borderRadius: radii.xs, backgroundColor: colors.paper },
+  syncRetryText: { color: colors.live, fontSize: 12, fontWeight: '900' },
   eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
   pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
   pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 8 },
