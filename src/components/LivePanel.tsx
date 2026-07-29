@@ -89,12 +89,6 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
         <Text style={styles.venue}>{fixture.venue}</Text>
       </View>
 
-      {fixture.homeLineup || fixture.awayLineup ? <View style={styles.lineupsCard}>
-        <Text style={styles.timelineEyebrow}>FORMAZIONI UFFICIALI</Text>
-        {fixture.homeLineup ? <LineupBlock team={fixture.home} lineup={fixture.homeLineup} players={players} /> : null}
-        {fixture.awayLineup ? <LineupBlock team={fixture.away} lineup={fixture.awayLineup} players={players} /> : null}
-      </View> : null}
-
       {!isScheduled ? <View style={styles.timelineCard}>
         <View style={styles.timelineHeader}>
           <View style={styles.timelineTitleBlock}>
@@ -123,6 +117,12 @@ export function LivePanel({ fixture, players = [], compact = false }: { fixture:
             <Text style={styles.emptyCopy}>{isScheduled ? 'La diretta e gli eventi saranno disponibili il giorno della partita.' : 'Gli eventi compariranno qui durante la partita.'}</Text>
           </View>
         )}
+      </View> : null}
+
+      {fixture.homeLineup || fixture.awayLineup ? <View style={styles.lineupsCard}>
+        <Text style={styles.timelineEyebrow}>FORMAZIONI UFFICIALI</Text>
+        {fixture.homeLineup ? <LineupBlock team={fixture.home} lineup={fixture.homeLineup} players={players} /> : null}
+        {fixture.awayLineup ? <LineupBlock team={fixture.away} lineup={fixture.awayLineup} players={players} /> : null}
       </View> : null}
     </View>
   );
