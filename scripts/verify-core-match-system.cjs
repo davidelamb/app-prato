@@ -53,6 +53,7 @@ function main() {
     // ── Compile needed TypeScript modules ──
     const srcFiles = [
       'src/types.ts',
+      'src/utils/admin-feedback.ts',
       'src/utils/team-names.ts',
       'src/utils/standings.ts',
       'src/utils/live-match.ts',
@@ -80,6 +81,7 @@ function main() {
 
     // ── Load compiled modules ──
     const teamNames = require(path.join(tmpDir, 'utils', 'team-names.js'));
+    const adminFeedback = require(path.join(tmpDir, 'utils', 'admin-feedback.js'));
     const standings = require(path.join(tmpDir, 'utils', 'standings.js'));
     const liveMatch = require(path.join(tmpDir, 'utils', 'live-match.js'));
     const liveFixtureSelection = require(path.join(tmpDir, 'utils', 'live-fixture-selection.js'));
@@ -763,6 +765,30 @@ function main() {
     assertOk(
       !currentRosterSelection.starters.includes('new-player') && !currentRosterSelection.substitutes.includes('new-player'),
       'un nuovo giocatore appare disponibile ma non viene selezionato automaticamente',
+    );
+
+    // ══════════════════════════════════════════
+    //  22. Feedback admin dopo salvataggio cloud.
+    // ══════════════════════════════════════════
+
+    console.log('── 22. Feedback visivo azioni admin ──');
+
+    const feedbackBase = { fixtures: [], standings: [], players: [], news: [], media: [], updatedAt: '' };
+    const feedbackAdded = { ...feedbackBase, news: [{ id: 'news-1' }] };
+    assertEqual(
+      adminFeedback.adminSuccessMessage(feedbackBase, feedbackAdded),
+      'Contenuto aggiunto e salvato nel cloud.',
+      'l’aggiunta completata mostra un messaggio specifico',
+    );
+    assertEqual(
+      adminFeedback.adminSuccessMessage(feedbackAdded, feedbackBase),
+      'Eliminazione completata e salvata nel cloud.',
+      'l’eliminazione completata mostra un messaggio specifico',
+    );
+    assertEqual(
+      adminFeedback.adminSuccessMessage(feedbackBase, { ...feedbackBase, updatedAt: '2026-07-29T18:00:00Z' }),
+      'Modifiche salvate correttamente nel cloud.',
+      'una modifica senza variazioni di quantità mostra la conferma di salvataggio',
     );
 
     // ══════════════════════════════════════════

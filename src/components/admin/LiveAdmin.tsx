@@ -10,7 +10,7 @@ import { currentEventTiming, formatMatchClock, phaseElapsedSeconds, removeEvent,
 import { lineupSelectionForRoster } from '../../utils/lineup-roster';
 import { synchronizeFixture } from '../../utils/match-sync';
 import { isPratoTeam } from '../../utils/team-names';
-import { Button, Field, adminStyles } from './Primitives';
+import { Button, Field, adminStyles, confirmAdminAction } from './Primitives';
 
 const eventId = () => `event-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const roleOrder = { Portiere: 0, Difensore: 1, Centrocampista: 2, Attaccante: 3 } as const;
@@ -191,10 +191,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
   };
 
   const deleteGoal = (event: LiveEvent) => {
-    Alert.alert('Eliminare questo gol?', `${event.minuteLabel ?? ''} ${event.scorer ?? event.team ?? ''}`.trim(), [
-      { text: 'Annulla', style: 'cancel' },
-      { text: 'Elimina', style: 'destructive', onPress: () => void commitFixture(removeGoal(fixture, event.id)) },
-    ]);
+    confirmAdminAction('Eliminare questo gol?', `${event.minuteLabel ?? ''} ${event.scorer ?? event.team ?? ''}`.trim(), () => commitFixture(removeGoal(fixture, event.id)));
   };
 
   // Giocatori Prato attualmente in campo: titolari meno chi è già stato
@@ -269,10 +266,7 @@ export function LiveAdmin({ content, onChange }: { content: AppContent; onChange
 
   // ── Modifica/eliminazione di qualunque evento (disponibile anche a partita in corso, non solo a fine partita) ──
   const deleteAnyEvent = (event: LiveEvent) => {
-    Alert.alert('Eliminare questo evento?', `${event.minuteLabel ?? ''} ${event.label}`.trim(), [
-      { text: 'Annulla', style: 'cancel' },
-      { text: 'Elimina', style: 'destructive', onPress: () => void commitFixture(removeEvent(fixture, event.id)) },
-    ]);
+    confirmAdminAction('Eliminare questo evento?', `${event.minuteLabel ?? ''} ${event.label}`.trim(), () => commitFixture(removeEvent(fixture, event.id)));
   };
 
   const saveEventMinute = async (event: LiveEvent) => {
