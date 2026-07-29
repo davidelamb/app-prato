@@ -25,7 +25,8 @@ import { clearAdminToken, loadAdminToken, verifyAdminToken } from './services/co
 import { observeNotificationTabs, registerForPushNotifications } from './services/notifications';
 import { colors, radii } from './theme';
 import { AppContent, Fixture, NewsArticle, Player } from './types';
-import { isLiveWindow, kickoffTimestamp } from './utils/fixture-time';
+import { isLiveWindow } from './utils/fixture-time';
+import { selectPublicLiveFixture } from './utils/live-fixture-selection';
 
 export type PublicTab = 'news' | 'media' | 'live' | 'stats' | 'club';
 type Tab = PublicTab | 'admin';
@@ -179,12 +180,6 @@ export default function AppShell() {
   };
   const liveFixture = useMemo(() => {
     const real = content.fixtures.filter((item) => !item.isDemo);
-    const live = real.find((item) => item.status === 'live');
-    if (live) return live;
-    const inWindow = real.filter((item) => isLiveWindow(item));
-    if (inWindow.length > 0) {
-      return [...inWindow].sort((a, b) => (a.kickoffAt ? Date.parse(a.kickoffAt) : 0) - (b.kickoffAt ? Date.parse(b.kickoffAt) : 0))[0];
-    }
     const calendarFixtures: Fixture[] = (content.schedule ?? [])
       .filter((match) => match.status !== 'final' && match.home.trim() && match.away.trim())
       .map((match) => ({
@@ -202,16 +197,13 @@ export default function AppShell() {
         status: match.status ?? 'scheduled',
         venue: match.venue ?? 'Stadio da definire',
       }));
-    const candidates = [...real.filter((item) => item.status === 'scheduled'), ...calendarFixtures]
-      .filter((item) => kickoffTimestamp(item) != null)
-      .sort((a, b) => (kickoffTimestamp(a) ?? Number.MAX_SAFE_INTEGER) - (kickoffTimestamp(b) ?? Number.MAX_SAFE_INTEGER));
-    return candidates[0] ?? null;
+    return selectPublicLiveFixture([...real, ...calendarFixtures]);
   }, [content.fixtures, content.schedule]);
   const liveTabVisible = useMemo(() => {
     if (!liveFixture) return false;
     if (liveFixture.isDemo) return false;
     if (liveFixture.status === 'live') return true;
-    return liveFixture.status === 'scheduled' || isLiveWindow(liveFixture);
+    return liveFixture.status === 'scheduled' || liveFixture.status === 'final' || isLiveWindow(liveFixture);
   }, [liveFixture]);
   const tabs = useMemo(() => {
     return liveTabVisible ? allTabs : allTabs.filter((item) => item.key !== 'live');
