@@ -43,8 +43,8 @@ const allTabs: Array<{ key: PublicTab; label: string; image?: ReturnType<typeof 
 ];
 
 const MIN_HIT_AREA = 44;
-const NAV_CONTENT_HEIGHT = 50;
-const NAV_MAX_WIDTH = 720;
+const NAV_CONTENT_HEIGHT = 58;
+const NAV_MAX_WIDTH = 500;
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
 const CONTENT_REFRESH_INTERVAL_MS = 60_000;
@@ -66,9 +66,8 @@ function NavTabIcon({ tab, active, hovered }: { tab: PublicTab; active: boolean;
 function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean; onPress: () => void }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-  const isClub = item.key === 'club';
-  const highlight = !active && !isClub && (hovered || focused);
-  const textColor = active ? colors.accentStrong : colors.muted;
+  const highlight = !active && (hovered || focused);
+  const textColor = active ? colors.paper : colors.accentStrong;
 
   return (
     <Pressable
@@ -81,7 +80,7 @@ function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean;
       onHoverOut={() => setHovered(false)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      style={[styles.navItem, active && styles.navItemActive, focused && !active && !isClub && styles.navItemFocus]}
+      style={[styles.navItem, active && styles.navItemActive, highlight && styles.navItemFocus]}
     >
       {item.image ? (
         <Image source={item.image} style={styles.clubIcon} resizeMode="contain" />
@@ -300,13 +299,13 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
   pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
   pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 8 },
-  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft, shadowColor: colors.shadow, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: -3 }, elevation: 10 },
-    navInner: { width: '100%', maxWidth: NAV_MAX_WIDTH, height: NAV_CONTENT_HEIGHT, alignSelf: 'center', flexDirection: 'row', paddingHorizontal: 4 },
-    navItem: { flex: 1, minWidth: 0, minHeight: MIN_HIT_AREA, alignItems: 'center', justifyContent: 'center', gap: 1, paddingTop: 3, paddingBottom: 3, borderTopLeftRadius: radii.xs, borderTopRightRadius: radii.xs },
-  navItemActive: { backgroundColor: colors.surfaceRaised },
-  navItemFocus: { backgroundColor: 'rgba(0,0,0,0.04)' },
-  navText: { color: colors.muted, fontSize: 10, lineHeight: 12, fontWeight: '900' },
+  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 3, borderTopColor: colors.yellow, shadowColor: colors.accentStrong, shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 12 },
+    navInner: { width: '100%', maxWidth: NAV_MAX_WIDTH, height: NAV_CONTENT_HEIGHT, alignSelf: 'center', flexDirection: 'row', paddingHorizontal: 6 },
+    navItem: { flex: 1, minWidth: 0, minHeight: MIN_HIT_AREA, marginHorizontal: 2, marginVertical: 4, alignItems: 'center', justifyContent: 'center', gap: 1, paddingTop: 3, paddingBottom: 3, borderRadius: radii.xs },
+  navItemActive: { backgroundColor: colors.accentStrong },
+  navItemFocus: { backgroundColor: colors.yellowSoft },
+  navText: { color: colors.accentStrong, fontSize: 10, lineHeight: 12, fontWeight: '900' },
   navTextActive: { color: colors.accentStrong },
-   navUnderline: { position: 'absolute', left: '18%', right: '18%', bottom: 0, height: 4, backgroundColor: colors.yellow, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+   navUnderline: { position: 'absolute', left: '22%', right: '22%', bottom: 3, height: 3, backgroundColor: colors.yellow, borderRadius: 3 },
    clubIcon: { width: 25, height: 25 },
 });

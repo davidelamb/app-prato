@@ -4,6 +4,7 @@ import { colors } from '../../theme';
 
 type Props = { size?: number; active?: boolean; hovered?: boolean };
 
-export default function NewsIcon({ size = 22 }: Props) {
-  return <MaterialCommunityIcons name="newspaper-variant-outline" size={size} color={colors.ink} />;
+export default function NewsIcon({ size = 22, active, hovered }: Props) {
+  const color = active ? colors.paper : hovered ? colors.accent : colors.accentStrong;
+  return <MaterialCommunityIcons name="newspaper-variant-outline" size={size} color={color} />;
 }
