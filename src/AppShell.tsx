@@ -43,6 +43,8 @@ const allTabs: Array<{ key: PublicTab; label: string; image?: ReturnType<typeof 
 ];
 
 const MIN_HIT_AREA = 44;
+const NAV_CONTENT_HEIGHT = 50;
+const NAV_MAX_WIDTH = 720;
 const stamp = () => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date());
 const TAB_STORAGE_KEY = 'app-prato:active-tab';
 const CONTENT_REFRESH_INTERVAL_MS = 60_000;
@@ -51,7 +53,7 @@ const publicTabKeys = new Set<PublicTab>(allTabs.map((item) => item.key));
 
 type TabItem = typeof allTabs[number];
 function NavTabIcon({ tab, active, hovered }: { tab: PublicTab; active: boolean; hovered: boolean }) {
-  const size = 28;
+  const size = 26;
   switch (tab) {
     case 'news': return <NewsIcon size={size} active={active} hovered={hovered} />;
     case 'media': return <MediaIcon size={size} active={active} hovered={hovered} />;
@@ -71,6 +73,9 @@ function NavTabItem({ item, active, onPress }: { item: TabItem; active: boolean;
   return (
     <Pressable
       key={item.key}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={item.label}
       onPress={onPress}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
@@ -238,7 +243,7 @@ export default function AppShell() {
       {tab === 'admin' ? <MaterialCommunityIcons name="close" size={20} color={colors.accentStrong} /> : <View style={styles.onlineDot} />}
     </Pressable>
 
-    <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: (wide ? 48 : 58) + safeBottom }, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
+    <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: NAV_CONTENT_HEIGHT + 14 + safeBottom }, tab === 'admin' && styles.adminScroll, wide && styles.scrollContentWide]}>
       <View style={[styles.container, wide && styles.containerWide]}>
         {contentSyncStatus !== 'ready' ? <ContentSyncBanner status={contentSyncStatus} onRetry={() => setRefreshRequest((value) => value + 1)} /> : null}
         {tab === 'news' ? <NewsScreen content={content} wide={wide} onNews={setSelectedNews} /> : null}
@@ -251,7 +256,7 @@ export default function AppShell() {
       </View>
     </ScrollView>
 
-    {tab !== 'admin' ? <View style={[styles.nav, { paddingBottom: safeBottom }]}><View style={styles.navInner}>{tabs.map((item) => <NavTabItem key={item.key} item={item} active={publicTab === item.key} onPress={() => setTab(item.key)} />)}</View></View> : null}
+    {tab !== 'admin' ? <View accessibilityRole="tablist" style={[styles.nav, { paddingBottom: safeBottom }]}><View style={styles.navInner}>{tabs.map((item) => <NavTabItem key={item.key} item={item} active={publicTab === item.key} onPress={() => setTab(item.key)} />)}</View></View> : null}
     {tab === 'admin' && adminFeedback ? <View accessibilityRole="alert" accessibilityLiveRegion="polite" pointerEvents="none" style={[styles.adminFeedback, { top: safeTop + 58 }]}>
       <MaterialCommunityIcons name="check-circle" size={22} color={colors.paper} />
       <Text style={styles.adminFeedbackText}>{adminFeedback}</Text>
@@ -295,13 +300,13 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.yellow, fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
   pageTitle: { color: colors.ink, fontSize: 37, lineHeight: 42, fontWeight: '900', marginTop: 4 },
   pageCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '700', marginTop: 8 },
-  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft },
-    navInner: { width: '100%', maxWidth: 760, alignSelf: 'center', flexDirection: 'row', minHeight: MIN_HIT_AREA, paddingHorizontal: 3 },
-    navItem: { flex: 1, minWidth: 0, minHeight: MIN_HIT_AREA, alignItems: 'center', justifyContent: 'center', gap: 0, paddingTop: 0 },
+  nav: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.paper, borderTopWidth: 1, borderTopColor: colors.lineSoft, shadowColor: colors.shadow, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: -3 }, elevation: 10 },
+    navInner: { width: '100%', maxWidth: NAV_MAX_WIDTH, height: NAV_CONTENT_HEIGHT, alignSelf: 'center', flexDirection: 'row', paddingHorizontal: 4 },
+    navItem: { flex: 1, minWidth: 0, minHeight: MIN_HIT_AREA, alignItems: 'center', justifyContent: 'center', gap: 1, paddingTop: 3, paddingBottom: 3, borderTopLeftRadius: radii.xs, borderTopRightRadius: radii.xs },
   navItemActive: { backgroundColor: colors.surfaceRaised },
   navItemFocus: { backgroundColor: 'rgba(0,0,0,0.04)' },
-  navText: { color: colors.muted, fontSize: 9, fontWeight: '900' },
+  navText: { color: colors.muted, fontSize: 10, lineHeight: 12, fontWeight: '900' },
   navTextActive: { color: colors.accentStrong },
-   navUnderline: { position: 'absolute', left: 7, right: 7, bottom: 0, height: 3, backgroundColor: colors.yellow, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-   clubIcon: { width: 26, height: 26 },
+   navUnderline: { position: 'absolute', left: '18%', right: '18%', bottom: 0, height: 4, backgroundColor: colors.yellow, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+   clubIcon: { width: 25, height: 25 },
 });
