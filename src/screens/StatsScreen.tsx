@@ -5,9 +5,9 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimen
 import { MatchDetailModal } from '../components/MatchDetailModal';
 import { TeamProfileModal } from '../components/TeamProfileModal';
 import { TeamLogo } from '../components/TeamLogo';
-import { getSimulatedStandings, isStandingsEmpty, SIMULATED_LABEL } from '../data/simulated-standings';
 import { colors, radii } from '../theme';
 import { AppContent, MatchCompetition, SeasonMatch, Standing, StandingScope, Team } from '../types';
+import { kickoffIso } from '../utils/fixture-time';
 import { normalizeStandingRow, standingRows } from '../utils/standings';
 import { displayTeamName, normalizeTeamName } from '../utils/team-names';
 
@@ -32,9 +32,10 @@ const scopeFilters: StandingScope[] = ['overall', 'home', 'away', 'form'];
 
 const isPrato = (club: string) => /\bprato\b/i.test(club);
 
-function dateValue(label: string): number {
-  const d = new Date(`${label} 2026`);
-  return isNaN(d.getTime()) ? 0 : d.getTime();
+function dateValue(match: SeasonMatch): number {
+  const iso = match.kickoffAt ?? kickoffIso(match.dateLabel, match.time);
+  const value = iso ? Date.parse(iso) : Number.NaN;
+  return Number.isNaN(value) ? 0 : value;
 }
 
 function formIcon(value: 'W' | 'D' | 'L') {
@@ -56,7 +57,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
     const items = content.schedule ?? [];
     const filtered = items.filter((m) => calFilter === 'Tutte' || (m.competition ?? 'Campionato') === calFilter);
     return [...filtered].sort((a, b) => {
-      const d = dateValue(a.dateLabel) - dateValue(b.dateLabel);
+      const d = dateValue(a) - dateValue(b);
       if (d !== 0) return d;
       return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     });
@@ -64,8 +65,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
 
   const displayStandings = useMemo(() => {
     const rows = standingRows(content, scope);
-    if (!isStandingsEmpty(rows)) return { rows: rows.map(normalizeStandingRow), simulated: false };
-    return { rows: getSimulatedStandings(scope), simulated: true };
+    return rows.map(normalizeStandingRow);
   }, [content, scope]);
 
   /** Risolve una squadra per nome normalizzato da content.teams oppure costruisce un fallback. */
@@ -130,8 +130,7 @@ export function StatsScreen({ content, wide }: { content: AppContent; wide: bool
         )
       ) : (
         <StandingsView
-          standings={displayStandings.rows}
-          simulated={displayStandings.simulated}
+          standings={displayStandings}
           scope={scope}
           onScope={setScope}
           wide={wide}
@@ -336,7 +335,7 @@ function MatchdayCalendarView({
   const defaultMatchday = useMemo(() => {
     if (matchdays.length === 0) return null;
     // Apre sulla prima giornata non completamente conclusa; se tutte
-    // sono concluse (dataset dimostrativo), apre sull'ultima.
+    // sono concluse, apre sull'ultima.
     for (const md of matchdays) {
       const roundMatches = matches.filter((m) => m.matchday === md);
       const allFinal = roundMatches.length > 0 && roundMatches.every((m) => m.status === 'final');
@@ -493,7 +492,6 @@ function MatchdayCalendarView({
 
 function StandingsView({
   standings,
-  simulated,
   scope,
   onScope,
   wide,
@@ -501,7 +499,6 @@ function StandingsView({
   onTeamPress,
 }: {
   standings: Standing[];
-  simulated: boolean;
   scope: StandingScope;
   onScope: (s: StandingScope) => void;
   wide: boolean;
@@ -536,13 +533,6 @@ function StandingsView({
           );
         })}
       </ScrollView>
-
-      {simulated && (
-        <View style={styles.simulatedBanner}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={14} color={colors.warning} />
-          <Text style={styles.simulatedText}>{SIMULATED_LABEL}</Text>
-        </View>
-      )}
 
       {/* Vista Forma: solo posizione, squadra, forma — niente PT/punteggi */}
       {scope === 'form' ? (
@@ -916,24 +906,6 @@ const styles = StyleSheet.create({
     color: colors.mutedDark,
     fontWeight: '600',
     flexShrink: 1,
-  },
-
-  // Banner simulazione
-  simulatedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.yellowSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.xs,
-    marginBottom: 12,
-  },
-  simulatedText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.warning,
-    flex: 1,
   },
 
   // Classifica — header (desktop)

@@ -82,6 +82,18 @@ export const teamLogos: Record<string, TeamLogoInfo> = {
     logoSource: require('../../assets/team-logos/aquila-montevarchi.png'),
     sourceUrl: 'https://www.transfermarkt.it/aquila-1902-montevarchi/startseite/verein/4339',
   },
+  'Flaminia Civitacastellana': {
+    canonicalName: 'Flaminia Civitacastellana',
+    aliases: ['Flaminia', 'Calcio Flaminia'],
+    logoSource: require('../../assets/team-logos/flaminia-civitacastellana.png'),
+    sourceUrl: 'https://www.transfermarkt.it/calcio-flaminia/startseite/verein/23051',
+  },
+  Grassina: {
+    canonicalName: 'Grassina',
+    aliases: ['ASD Grassina'],
+    logoSource: require('../../assets/team-logos/grassina.png'),
+    sourceUrl: 'https://www.transfermarkt.it/asd-grassina/startseite/verein/66861',
+  },
   'Lucchese Calcio': {
     canonicalName: 'Lucchese Calcio',
     aliases: ['Lucchese'],
@@ -112,9 +124,9 @@ export const teamLogos: Record<string, TeamLogoInfo> = {
     logoSource: require('../../assets/team-logos/foligno-calcio-1928.png'),
     sourceUrl: 'https://www.transfermarkt.it/asd-c4/startseite/verein/83391',
   },
-  'Ternana Calcio': {
-    canonicalName: 'Ternana Calcio',
-    aliases: ['Ternana'],
+  'Nuova Ternana': {
+    canonicalName: 'Nuova Ternana',
+    aliases: ['Ternana', 'Ternana Calcio'],
     logoSource: require('../../assets/team-logos/ternana-calcio.png'),
     sourceUrl: 'https://www.transfermarkt.it/ternana-calcio/startseite/verein/1103',
   },
@@ -129,6 +141,24 @@ export const teamLogos: Record<string, TeamLogoInfo> = {
     aliases: ['Rondinella'],
     logoSource: require('../../assets/team-logos/rondinella-marzocco.png'),
     sourceUrl: 'https://www.transfermarkt.it/rondinella-marzocco/startseite/verein/4569',
+  },
+  Mezzolara: {
+    canonicalName: 'Mezzolara',
+    aliases: ['Mezzolara Calcio'],
+    logoSource: require('../../assets/team-logos/mezzolara.png'),
+    sourceUrl: 'https://www.transfermarkt.it/mezzolara-calcio/startseite/verein/27521',
+  },
+  Progresso: {
+    canonicalName: 'Progresso',
+    aliases: ['SCD Progresso', 'Progresso Calcio'],
+    logoSource: require('../../assets/team-logos/progresso.png'),
+    sourceUrl: 'https://www.transfermarkt.it/scd-progresso-calcio/startseite/verein/41878',
+  },
+  'Sasso Marconi': {
+    canonicalName: 'Sasso Marconi',
+    aliases: ['Sasso Marconi 1924'],
+    logoSource: require('../../assets/team-logos/sasso-marconi.png'),
+    sourceUrl: 'https://www.transfermarkt.it/sasso-marconi-1924/startseite/verein/54316',
   },
   'Polisportiva Pietralunghese': {
     canonicalName: 'Polisportiva Pietralunghese',

@@ -18,8 +18,8 @@ import {
   saveRemoteContent,
 } from './content-api';
 
-const STORAGE_KEY = '@ac-prato/content-v14';
-const LEGACY_KEYS = ['@ac-prato/content-v13', '@ac-prato/content-v12', '@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
+const STORAGE_KEY = '@ac-prato/content-v15';
+const LEGACY_KEYS = ['@ac-prato/content-v14', '@ac-prato/content-v13', '@ac-prato/content-v12', '@ac-prato/content-v11', '@ac-prato/content-v10', '@ac-prato/content-v9', '@ac-prato/content-v8', '@ac-prato/content-v7', '@ac-prato/content-v6', '@ac-prato/content-v5', '@ac-prato/content-v4', '@ac-prato/content-v3', '@ac-prato/content-v2'];
 
 function isSupportedCompetition(value: unknown): value is MatchCompetition {
   return value === 'Campionato' || value === 'Coppa Italia' || value === 'Amichevole';
@@ -30,6 +30,11 @@ function isLegacyDemoFixture(fixture: Fixture): boolean {
     || fixture.id === 'fixture-1'
     || /demo|dimostrativa/i.test(fixture.matchday)
     || /demo|dimostrativa/i.test(fixture.dateLabel);
+}
+
+function isLegacySimulatedSeasonMatch(match: SeasonMatch): boolean {
+  return /^season-2026-27-md\d+-\d+$/i.test(match.id)
+    || /^serie-d-2026-\d+$/i.test(match.id);
 }
 
 function normalizeLineup(lineup: MatchLineup | undefined): MatchLineup | undefined {
@@ -372,7 +377,9 @@ export function normalizeContent(content: AppContent): AppContent {
     .map(normalizeSchedule) ?? [];
   const savedSched = Array.isArray(content.schedule)
     ? content.schedule
-      .filter((match) => isSupportedCompetition(match.competition ?? 'Campionato') && !deletedScheduleMatchIdSet.has(match.id))
+      .filter((match) => isSupportedCompetition(match.competition ?? 'Campionato')
+        && !deletedScheduleMatchIdSet.has(match.id)
+        && !isLegacySimulatedSeasonMatch(match))
       .map(normalizeSchedule)
     : [];
   const mergedSchedule = mergeMatchLists(seedSchedule, savedSched);
@@ -387,7 +394,7 @@ export function normalizeContent(content: AppContent): AppContent {
     .map(normalizeGroupMatch) ?? [];
   const savedGroupMatches = Array.isArray(content.groupMatches)
     ? content.groupMatches
-      .filter((match) => !deletedScheduleMatchIdSet.has(match.id))
+      .filter((match) => !deletedScheduleMatchIdSet.has(match.id) && !isLegacySimulatedSeasonMatch(match))
       .map(normalizeGroupMatch)
     : [];
   const fixedGroupMatches = mergeMatchLists(seedGroupMatches, savedGroupMatches);
