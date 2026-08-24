@@ -1,4 +1,4 @@
-import { AppContent, MediaItem, Player } from '../types';
+import { AppContent, Fixture, MediaItem, Player, SeasonMatch } from '../types';
 import { fullSeasonMatches } from './full-season-2026-27';
 import { serieDTeams2026 } from './season-2026-27';
 import { calculateStandingSets } from '../utils/standings';
@@ -41,6 +41,46 @@ const preseasonFriendlies = [
   { id: 'friendly-signa', competition: 'Amichevole' as const, roundLabel: 'Amichevole', dateLabel: '13/08/2026', time: '18:00', kickoffAt: kickoffIso('13/08/2026', '18:00') ?? undefined, home: 'AC Prato', away: 'Signa', venue: 'Da definire', status: 'scheduled' as const, sortOrder: 1003 },
 ];
 
+const officialCupMatches: SeasonMatch[] = [
+  {
+    id: 'coppa-italia-2026-prato-san-donato',
+    competition: 'Coppa Italia',
+    roundLabel: 'Primo turno',
+    dateLabel: '30/08/2026',
+    time: '16:00',
+    kickoffAt: kickoffIso('30/08/2026', '16:00') ?? undefined,
+    home: 'AC Prato',
+    away: 'San Donato Tavarnelle',
+    venue: 'Stadio Lungobisenzio',
+    status: 'scheduled',
+    sortOrder: 900,
+  },
+];
+
+function fixtureFromMatch(match: SeasonMatch): Fixture {
+  return {
+    id: `fixture-${match.id}`,
+    scheduleMatchId: match.id,
+    groupMatchId: match.competition === 'Campionato' ? match.id : undefined,
+    competition: match.competition ?? 'Campionato',
+    matchday: match.roundLabel ?? (match.matchday ? `${match.matchday}ª giornata` : 'Partita'),
+    dateLabel: match.dateLabel,
+    time: match.time,
+    kickoffAt: match.kickoffAt ?? kickoffIso(match.dateLabel, match.time) ?? undefined,
+    home: match.home,
+    away: match.away,
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+    venue: match.venue ?? 'Stadio da definire',
+    status: match.status ?? 'scheduled',
+    livePhase: match.status === 'final' ? 'finished' : 'scheduled',
+  };
+}
+
+const pratoLeagueFixtures = fullSeasonMatches
+  .filter((match) => match.home === 'AC Prato' || match.away === 'AC Prato')
+  .map(fixtureFromMatch);
+
 const media: MediaItem[] = [
   { id: 'media-ghiviborgo', kind: 'Highlights', title: 'Ghiviborgo – Prato 0-3: gli highlights', description: 'La vittoria esterna dei biancazzurri con il rigore di Rossetti e la doppietta di Verde.', publishedAt: '29 MAR 2026', source: 'TV Prato', thumbnailUrl: ytThumb('ec3d9oX2qTI'), url: 'https://www.youtube.com/watch?v=ec3d9oX2qTI', featured: true },
   { id: 'media-prato-channel', kind: 'Video', title: 'AC Prato su Prato Channel', description: 'Contenuti e aggiornamenti video dal canale ufficiale biancazzurro.', publishedAt: '22 FEB 2026', source: 'Prato Channel', thumbnailUrl: ytThumb('E_JAeMd4ajA'), url: 'https://www.youtube.com/watch?v=E_JAeMd4ajA' },
@@ -50,16 +90,18 @@ const media: MediaItem[] = [
 ];
 
 export const seedContent: AppContent = {
-  updatedAt: '20 lug 2026 · stagione 2026-27',
+  updatedAt: '19 ago 2026 · calendario ufficiale Serie D 2026-27',
   fixtures: [
     ...preseasonFriendlies.map((match) => ({ ...match, matchday: 'Amichevole' })),
+    ...officialCupMatches.map(fixtureFromMatch),
+    ...pratoLeagueFixtures,
   ],
   standings: seasonStandingSets.overall,
   homeStandings: seasonStandingSets.home,
   awayStandings: seasonStandingSets.away,
   formStandings: seasonStandingSets.form,
   groupMatches: fullSeasonMatches,
-  schedule: [...fullSeasonMatches, ...preseasonFriendlies],
+  schedule: [...fullSeasonMatches, ...officialCupMatches, ...preseasonFriendlies],
   players,
   media,
   news: [

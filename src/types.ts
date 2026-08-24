@@ -72,6 +72,7 @@ export type SeasonMatch = {
   away: string;
   dateLabel: string;
   time: string;
+  kickoffAt?: string;
   venue?: string;
   homeScore?: number;
   awayScore?: number;

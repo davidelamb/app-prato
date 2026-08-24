@@ -1,10 +1,12 @@
 const canonicalAliases: Record<string, string[]> = {
   'AC Prato': ['Prato', 'A.C. Prato', 'Prato Calcio'],
+  'Flaminia Civitacastellana': ['Flaminia', 'Flaminia Civita Castellana'],
   'US Città di Pontedera': ['Pontedera', 'Città di Pontedera', 'US Pontedera'],
   'Tau Calcio Altopascio': ['Tau Altopascio', 'Tau Calcio'],
   'Siena FC': ['Siena', 'ACN Siena 1904'],
   'SC Trestina': ['Trestina'],
   'US Follonica Gavorrano': ['Follonica Gavorrano', 'Gavorrano'],
+  'Grassina': ['ASD Grassina'],
   'San Donato Tavarnelle': ['San Donato', 'Tavarnelle'],
   'Aquila Montevarchi': ['Montevarchi', 'Aquila 1902 Montevarchi'],
   'Lucchese Calcio': ['Lucchese', 'Lucchese 1905'],
@@ -13,10 +15,13 @@ const canonicalAliases: Record<string, string[]> = {
   'GSD Ghiviborgo VDS': ['Ghiviborgo', 'Ghiviborgo VDS', 'Ghivizzano Borgo a Mozzano'],
   'FC Scandicci 1908': ['Scandicci', 'CS Scandicci 1908'],
   'Foligno Calcio 1928': ['Foligno', 'C4 Foligno'],
-  'Ternana Calcio': ['Ternana'],
+  'Nuova Ternana': ['Ternana', 'Ternana Calcio'],
   'ASD Angelana 1930': ['Angelana', 'Angelana 1930'],
   'Rondinella Marzocco': ['Rondinella'],
   'Polisportiva Pietralunghese': ['Pietralunghese'],
+  'Mezzolara': ['ASD Mezzolara'],
+  'Progresso': ['SCD Progresso', 'Progresso Calcio'],
+  'Sasso Marconi': ['Sasso Marconi Calcio'],
 };
 
 function basicTeamKey(value: string): string {

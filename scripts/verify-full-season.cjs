@@ -1,111 +1,94 @@
 #!/usr/bin/env node
-// Verifica il dataset generato in src/data/full-season-2026-27.ts e la
-// coerenza della classifica calcolata a partire da quei risultati.
+// Verifica il calendario ufficiale LND generato per il Girone E 2026/27.
 const fs = require('fs');
 const path = require('path');
 
 const filePath = path.join(__dirname, '..', 'src', 'data', 'full-season-2026-27.ts');
 const content = fs.readFileSync(filePath, 'utf8');
 const marker = 'fullSeasonMatches: SeasonMatch[] = ';
-const idx = content.indexOf(marker) + marker.length;
-const matches = JSON.parse(content.slice(idx).replace(/;\s*$/, ''));
+const markerIndex = content.indexOf(marker);
+if (markerIndex < 0) throw new Error('Dataset fullSeasonMatches non trovato');
+const matches = JSON.parse(content.slice(markerIndex + marker.length).replace(/;\s*$/, ''));
+
+const expectedTeams = [
+  'AC Prato',
+  'Aquila Montevarchi',
+  'FC Scandicci 1908',
+  'Flaminia Civitacastellana',
+  'GSD Ghiviborgo VDS',
+  'Grassina',
+  'Lucchese Calcio',
+  'Mezzolara',
+  'Nuova Ternana',
+  'Progresso',
+  'Rondinella Marzocco',
+  'San Donato Tavarnelle',
+  'Sasso Marconi',
+  'Seravezza Pozzi',
+  'Siena FC',
+  'Tau Calcio Altopascio',
+  'Terranuova Traiana',
+  'US Follonica Gavorrano',
+].sort();
 
 let failed = 0;
-function check(label, cond) {
-  if (cond) { console.log(`✅ ${label}`); }
-  else { console.log(`❌ ${label}`); failed++; }
+function check(label, condition) {
+  console.log(`${condition ? 'OK' : 'ERRORE'} - ${label}`);
+  if (!condition) failed += 1;
 }
 
 check('306 partite totali', matches.length === 306);
 
-const teams = new Set();
-matches.forEach((m) => { teams.add(m.home); teams.add(m.away); });
-check('18 squadre coinvolte', teams.size === 18);
+const teams = [...new Set(matches.flatMap((match) => [match.home, match.away]))].sort();
+check('le 18 squadre coincidono con il Girone E ufficiale', JSON.stringify(teams) === JSON.stringify(expectedTeams));
 
 const perTeam = new Map();
 const perMatchday = new Map();
 const pairs = new Map();
-let selfMatch = 0;
-for (const m of matches) {
-  perTeam.set(m.home, (perTeam.get(m.home) || 0) + 1);
-  perTeam.set(m.away, (perTeam.get(m.away) || 0) + 1);
-  perMatchday.set(m.matchday, (perMatchday.get(m.matchday) || 0) + 1);
-  if (m.home === m.away) selfMatch++;
-  const key = [m.home, m.away].sort().join(' vs ');
+let doubleBooked = false;
+for (const match of matches) {
+  perTeam.set(match.home, (perTeam.get(match.home) || 0) + 1);
+  perTeam.set(match.away, (perTeam.get(match.away) || 0) + 1);
+  perMatchday.set(match.matchday, (perMatchday.get(match.matchday) || 0) + 1);
+  const key = [match.home, match.away].sort().join('|');
   pairs.set(key, (pairs.get(key) || 0) + 1);
 }
 
-check('ogni squadra gioca 34 partite', [...perTeam.values()].every((n) => n === 34));
-check('34 giornate da 9 partite', perMatchday.size === 34 && [...perMatchday.values()].every((n) => n === 9));
-check('nessuna squadra contro se stessa', selfMatch === 0);
-check('ogni coppia si affronta 2 volte', [...pairs.values()].every((n) => n === 2));
-
-// nessuna squadra due volte nella stessa giornata
-let doubleBooked = false;
-for (let md = 1; md <= 34; md++) {
+for (let matchday = 1; matchday <= 34; matchday += 1) {
   const seen = new Set();
-  for (const m of matches.filter((x) => x.matchday === md)) {
-    if (seen.has(m.home) || seen.has(m.away)) doubleBooked = true;
-    seen.add(m.home); seen.add(m.away);
+  for (const match of matches.filter((item) => item.matchday === matchday)) {
+    if (seen.has(match.home) || seen.has(match.away)) doubleBooked = true;
+    seen.add(match.home);
+    seen.add(match.away);
   }
 }
+
+check('ogni squadra gioca 34 partite', [...perTeam.values()].every((count) => count === 34));
+check('34 giornate da 9 partite', perMatchday.size === 34 && [...perMatchday.values()].every((count) => count === 9));
 check('nessuna squadra gioca due volte nella stessa giornata', !doubleBooked);
+check('ogni coppia si affronta due volte', [...pairs.values()].every((count) => count === 2));
+check('andata e ritorno hanno casa/trasferta invertite', matches
+  .filter((match) => match.leg === 'Andata')
+  .every((match) => matches.some((candidate) => candidate.leg === 'Ritorno'
+    && candidate.home === match.away
+    && candidate.away === match.home)));
 
-// casa/trasferta invertite fra andata e ritorno
-const andata = matches.filter((m) => m.leg === 'Andata');
-const ritorno = matches.filter((m) => m.leg === 'Ritorno');
-check('34 partite andata + 34 giornate*9/2 ritorno coerenti', andata.length === 153 && ritorno.length === 153);
-let swappedOk = true;
-for (const a of andata) {
-  const rev = ritorno.find((r) => r.home === a.away && r.away === a.home);
-  if (!rev) swappedOk = false;
-}
-check('ogni andata ha il ritorno corrispondente con casa/trasferta invertite', swappedOk);
+check('nessun risultato simulato', matches.every((match) => match.homeScore === undefined
+  && match.awayScore === undefined
+  && match.status === 'scheduled'));
+check('tutte le date e gli orari sono valorizzati', matches.every((match) => /^\d{2}\/\d{2}\/\d{4}$/.test(match.dateLabel)
+  && /^\d{2}:\d{2}$/.test(match.time)));
 
-// classifica: ricalcolo manuale e confronto punti totali
-const stats = new Map([...teams].map((t) => [t, { played: 0, points: 0, gf: 0, ga: 0 }]));
-for (const m of matches) {
-  if (m.status !== 'final' || !Number.isInteger(m.homeScore) || !Number.isInteger(m.awayScore)) continue;
-  const home = stats.get(m.home);
-  const away = stats.get(m.away);
-  home.played++; away.played++;
-  home.gf += m.homeScore; home.ga += m.awayScore;
-  away.gf += m.awayScore; away.ga += m.homeScore;
-  if (m.homeScore > m.awayScore) home.points += 3;
-  else if (m.homeScore < m.awayScore) away.points += 3;
-  else { home.points += 1; away.points += 1; }
-}
-check('tutte le 18 squadre hanno 34 partite giocate nella classifica', [...stats.values()].every((s) => s.played === 34));
-const totalGoalsFor = [...stats.values()].reduce((sum, s) => sum + s.gf, 0);
-const totalGoalsAgainst = [...stats.values()].reduce((sum, s) => sum + s.ga, 0);
-check('gol fatti totali = gol subiti totali (simmetria campionato)', totalGoalsFor === totalGoalsAgainst);
+const pratoMatches = matches.filter((match) => match.home === 'AC Prato' || match.away === 'AC Prato');
+const firstPratoMatch = pratoMatches.find((match) => match.matchday === 1);
+const lastPratoMatch = pratoMatches.find((match) => match.matchday === 34);
+check('il Prato ha 34 partite', pratoMatches.length === 34);
+check('prima giornata: AC Prato-Nuova Ternana il 6 settembre', firstPratoMatch?.home === 'AC Prato'
+  && firstPratoMatch?.away === 'Nuova Ternana'
+  && firstPratoMatch?.dateLabel === '06/09/2026');
+check('ultima giornata: AC Prato-Progresso il 2 maggio', lastPratoMatch?.home === 'AC Prato'
+  && lastPratoMatch?.away === 'Progresso'
+  && lastPratoMatch?.dateLabel === '02/05/2027');
 
-// Sistema punti: 3 vittoria, 1 pareggio, 0 sconfitta — verificato per
-// OGNI squadra (non solo sui totali), usando la stessa aritmetica della
-// funzione reale calculateStandingSets/toStanding.
-const winsLossesDraws = new Map([...teams].map((t) => [t, { w: 0, d: 0, l: 0 }]));
-for (const m of matches) {
-  if (m.status !== 'final' || !Number.isInteger(m.homeScore) || !Number.isInteger(m.awayScore)) continue;
-  const h = winsLossesDraws.get(m.home);
-  const a = winsLossesDraws.get(m.away);
-  if (m.homeScore > m.awayScore) { h.w++; a.l++; }
-  else if (m.homeScore < m.awayScore) { a.w++; h.l++; }
-  else { h.d++; a.d++; }
-}
-let pointsOk = true;
-for (const [team, wdl] of winsLossesDraws) {
-  const expectedPoints = wdl.w * 3 + wdl.d;
-  const actualPoints = stats.get(team).points;
-  const expectedPlayed = wdl.w + wdl.d + wdl.l;
-  if (expectedPoints !== actualPoints || expectedPlayed !== stats.get(team).played) {
-    pointsOk = false;
-    console.log(`  ⚠️  ${team}: atteso ${expectedPoints}pt/${expectedPlayed}g, trovato ${actualPoints}pt/${stats.get(team).played}g`);
-  }
-}
-check('punti = 3×vittorie + pareggi per OGNI squadra (18/18)', pointsOk);
-
-const pratoStats = stats.get('AC Prato');
-console.log(`\nAC Prato: ${pratoStats.played} giocate, ${pratoStats.points} punti, ${pratoStats.gf}-${pratoStats.ga}`);
-
-console.log(`\n📊 ${matches.length - failed >= 0 ? '' : ''}Risultato: ${failed === 0 ? 'TUTTI I CONTROLLI SUPERATI' : `${failed} controlli falliti`}`);
+console.log(`Risultato: ${failed === 0 ? 'tutti i controlli superati' : `${failed} controlli falliti`}`);
 process.exit(failed === 0 ? 0 : 1);
